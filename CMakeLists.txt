@@ -12,7 +12,7 @@ FetchContent_MakeAvailable(vcpkg)
 
 set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
 
-project(Singularity LANGUAGES Swift)
+project(Singularity LANGUAGES Swift CXX)
 
 # add_executable(windows WIN32
 #     mainWin.cpp
@@ -43,14 +43,58 @@ set(SWIFT_SOURCES
     macos2/mainMacos/mainMacos/mainMacosApp.swift
 )
 
+set(CPP_SOURCES
+    macos2/mainMacos/mainMacos/coreAudio.cpp
+)
+
 # Add executable for the macOS app bundle
 add_executable(mainMacos MACOSX_BUNDLE ${SWIFT_SOURCES})
 
-# Add the required frameworks for SwiftUI and macOS apps
-target_link_libraries(mainMacos
-    "-framework SwiftUI"
-    #"-framework AppKit"
+add_library(cxx-support ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos/coreAudio.cpp)
+target_compile_options(cxx-support PRIVATE
+  -fno-exceptions
+  -fignore-exceptions)
+target_include_directories(cxx-support PUBLIC
+  ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos)
+
+  target_link_libraries(cxx-support PUBLIC
+  "-framework CoreAudio"
+  "-framework AudioUnit"  # AudioUnit framework is required for Core Audio I/O operations
 )
+
+target_compile_options(mainMacos PRIVATE
+  "SHELL:-cxx-interoperability-mode=default")
+#target_link_libraries(mainMacos PRIVATE cxx-support "-framework SwiftUI" "-framework CoreAudio")
+target_link_libraries(mainMacos PRIVATE
+  cxx-support
+  "-framework SwiftUI"   # SwiftUI framework for macOS
+  "-framework CoreAudio"  # CoreAudio framework
+  "-framework AudioUnit"  # AudioUnit framework (if needed)
+)
+
+# Set the bridging header for the project (required for Swift <-> C interop)
+# set_source_files_properties(${SWIFT_SOURCES}
+#     PROPERTIES
+#     SWIFT_OBJC_BRIDGING_HEADER "${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos/mainMacosApp-Bridging-Header.h"
+# )
+
+# # Optionally set Swift or Xcode-specific flags
+# set_target_properties(mainMacos PROPERTIES
+#     XCODE_ATTRIBUTE_SWIFT_OBJC_INTEROP_MODE "On"  # Or "Off" as needed
+# )
+# Configure Swift/C++ interoperability
+# target_compile_options(mainMacos PRIVATE
+#     -cxx-interoperability-mode=default
+# )
+
+# target_compile_options(mainMacos PRIVATE
+#   "SHELL:-cxx-interoperability-mode=default")
+# Add the required frameworks for SwiftUI and macOS apps
+# target_link_libraries(mainMacos
+#     "-framework SwiftUI"
+#     "-framework CoreAudio" 
+#     #"-framework AppKit"
+# )
 
 # Specify the bundle properties (optional: set your own icons, etc.)
 # set_target_properties(mainMacos PROPERTIES
@@ -73,3 +117,9 @@ target_sources(mainMacos PRIVATE
 set_source_files_properties(${ASSETS_DIR} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources"
 )
+
+# Include directory for C headers (if needed)
+# target_include_directories(mainMacos
+#     PRIVATE
+#     ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos   # Include the C source directory for C headers
+# )

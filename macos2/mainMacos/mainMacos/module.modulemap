@@ -1,0 +1,4 @@
+module coreAudio {
+    header "coreAudio.h"
+    requires cplusplus
+}
