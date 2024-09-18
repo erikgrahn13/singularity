@@ -1,10 +1,6 @@
 {
   "dependencies": [
     {
-      "name": "asiosdk",
-      "platform": "windows"
-    },
-    {
       "name": "skia"
     }
   ]
