@@ -11,6 +11,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: brew install autoconf automake autoconf-archive
+
       - name: Configure CMake
         run: cmake -S . -B build
 
