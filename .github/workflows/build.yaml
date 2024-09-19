@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-singularity-project:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
