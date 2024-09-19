@@ -6,13 +6,13 @@ on:
 
 jobs:
   Build Singularity project:
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Configure CMake
-    - run: cmake -S . -B build
+      - name: Configure CMake
+      - run: cmake -S . -B build
 
-    - name: Build CMake
-    - run: cmake --build build
+      - name: Build CMake
+      - run: cmake --build build
