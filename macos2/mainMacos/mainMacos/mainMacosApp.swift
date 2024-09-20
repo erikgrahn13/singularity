@@ -7,15 +7,49 @@
 
 import SwiftUI
 import coreAudio
+import skiaGui
+
+struct SkiaView: NSViewRepresentable {
+    func makeNSView(context: Context) -> SkiaNSView {
+        let view = SkiaNSView()
+        return view
+    }
+
+    func updateNSView(_ nsView: SkiaNSView, context: Context) {
+        nsView.setNeedsDisplay(nsView.bounds)  // Request to redraw the view
+    }
+
+}
+
+class SkiaNSView: NSView {
+
+override func draw(_ dirtyRect: NSRect) {
+    // Get the current graphics context (CGContext)
+    guard let context = NSGraphicsContext.current?.cgContext else {
+        print("Error: No CGContext found!")
+        return
+    }
+
+    drawSkia(context)
+}
+
+override func viewDidMoveToWindow() {
+    self.wantsLayer = true
+    self.layer?.displayIfNeeded()  // Force immediate redraw
+}
+
+}
+
 
 @main
 struct mainMacosApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var body: some Scene {
         WindowGroup {
-            EmptyView()
+            SkiaView()
                 .onAppear {
                     // Call the C++ Core Audio setup when the app starts
+                    setupSkia();
                     setupCoreAudio()
                 }
         }

@@ -14,6 +14,9 @@ set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" 
 
 project(Singularity LANGUAGES Swift CXX)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # add_executable(windows WIN32
 #     mainWin.cpp
 #     ${asio_SOURCE_DIR}/host/pc/asiolist.cpp
@@ -46,11 +49,15 @@ set(SWIFT_SOURCES
 set(CPP_SOURCES
     macos2/mainMacos/mainMacos/coreAudio.cpp
 )
+find_package(unofficial-skia CONFIG REQUIRED)
 
 # Add executable for the macOS app bundle
 add_executable(mainMacos MACOSX_BUNDLE ${SWIFT_SOURCES})
 
-add_library(cxx-support ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos/coreAudio.cpp)
+add_library(cxx-support 
+  ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos/coreAudio.cpp
+  ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos/EditorMac.cpp
+)
 target_compile_options(cxx-support PRIVATE
   -fno-exceptions
   -fignore-exceptions)
@@ -58,19 +65,23 @@ target_include_directories(cxx-support PUBLIC
   ${CMAKE_SOURCE_DIR}/macos2/mainMacos/mainMacos)
 
   target_link_libraries(cxx-support PUBLIC
+  unofficial::skia::skia
   "-framework CoreAudio"
   "-framework AudioUnit"  # AudioUnit framework is required for Core Audio I/O operations
 )
 
 target_compile_options(mainMacos PRIVATE
   "SHELL:-cxx-interoperability-mode=default")
-#target_link_libraries(mainMacos PRIVATE cxx-support "-framework SwiftUI" "-framework CoreAudio")
 target_link_libraries(mainMacos PRIVATE
   cxx-support
   "-framework SwiftUI"   # SwiftUI framework for macOS
   "-framework CoreAudio"  # CoreAudio framework
   "-framework AudioUnit"  # AudioUnit framework (if needed)
 )
+
+
+# Similar for optional components, e.g. unofficial::skia::modules::skparagraph
+
 
 # Set the bridging header for the project (required for Swift <-> C interop)
 # set_source_files_properties(${SWIFT_SOURCES}

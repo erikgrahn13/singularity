@@ -2,3 +2,8 @@ module coreAudio {
     header "coreAudio.h"
     requires cplusplus
 }
+
+module skiaGui {
+    header "EditorMac.h"
+    requires cplusplus
+}
