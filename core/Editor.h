@@ -11,10 +11,11 @@ class Editor
     virtual ~Editor();
     void draw(SkCanvas *canvas);
 
+    sk_sp<SkSurface> skiaSurface;
+
   protected:
     // virtual void initializeSkiaSurface() = 0;
 
-    sk_sp<SkSurface> skiaSurface;
     int width;
     int height;
 };
