@@ -1,9 +1,20 @@
+if(WIN32)
+  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-pc-windows-msvc-gl.tar.gz")
+  set(SKIA_LIB "skia.lib")
+elseif(APPLE)
+  message("Add macos URL to skia here")
+elseif(UNIX)
+  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-unknown-linux-gnu.tar.gz")
+else()
+  message("Unsupported platform")
+endif()
+
+
+
 FetchContent_Declare(
   skia
-  URL https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-unknown-linux-gnu.tar.gz
-
+  URL ${SKIA_URL}
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia
-
 )
 FetchContent_MakeAvailable(skia)
 
