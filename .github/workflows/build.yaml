@@ -20,12 +20,8 @@ jobs:
       - name: Install dependencies
         run: brew install autoconf automake autoconf-archive
 
-      - name: Set CMake default generator
-        if: matrix.os == 'macos-latest'
-        run: echo "CMAKE_GENERATOR=Xcode" >> $GITHUB_ENV
-
       - name: Configure CMake
-        run: cmake -S . -B build
+        run: cmake -G Xcode -S . -B build
 
       - name: Build CMake
         run: cmake --build build
