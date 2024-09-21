@@ -20,6 +20,8 @@
 #include "include/core/SkPaint.h" // Include SkPaint
 #include "include/core/SkSurface.h"
 
+#include "EditorWin.h"
+
 extern AsioDrivers *asioDrivers;
 
 enum
@@ -391,7 +393,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                                WS_OVERLAPPEDWINDOW,         // Window style
 
                                // Size and position
-                               CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+                               CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
 
                                NULL,      // Parent window
                                NULL,      // Menu
@@ -403,6 +405,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     {
         return 0;
     }
+
+    auto editor = std::make_unique<EditorWin>(800, 600);
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(editor.get()));
 
     ShowWindow(hwnd, nCmdShow);
 
@@ -433,8 +438,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 
-    static sk_sp<SkSurface> skiaSurface; // Skia surface to draw on
-    static BITMAPINFO bmi;               // Bitmap info for Windows GDI
+    // static sk_sp<SkSurface> skiaSurface; // Skia surface to draw on
+    EditorWin *editor = reinterpret_cast<EditorWin *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    // static BITMAPINFO bmi; // Bitmap info for Windows GDI
 
     switch (uMsg)
     {
@@ -450,34 +456,38 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
-        if (!skiaSurface)
+        if (!editor->skiaSurface)
         {
+            editor->initializeSkiaSurface();
             // Create a Skia surface that matches the window dimensions
-            SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600); // Set width/height accordingly
-            skiaSurface = SkSurfaces::Raster(info);
+            // SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600); // Set width/height accordingly
+            // editor->skiaSurface = SkSurfaces::Raster(info);
 
-            // Initialize GDI bitmap info
-            memset(&bmi, 0, sizeof(bmi));
-            bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-            bmi.bmiHeader.biWidth = info.width();
-            bmi.bmiHeader.biHeight = -info.height(); // Negative for top-down bitmap
-            bmi.bmiHeader.biPlanes = 1;
-            bmi.bmiHeader.biBitCount = 32;
-            bmi.bmiHeader.biCompression = BI_RGB;
+            // // Initialize GDI bitmap info
+            // memset(&bmi, 0, sizeof(bmi));
+            // bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            // bmi.bmiHeader.biWidth = info.width();
+            // bmi.bmiHeader.biHeight = -info.height(); // Negative for top-down bitmap
+            // bmi.bmiHeader.biPlanes = 1;
+            // bmi.bmiHeader.biBitCount = 32;
+            // bmi.bmiHeader.biCompression = BI_RGB;
         }
 
-        // Get the canvas from the surface
-        SkCanvas *canvas = skiaSurface->getCanvas();
+        auto *canvas = editor->skiaSurface->getCanvas();
+        editor->draw(canvas);
 
-        // Draw something with Skia
-        SkPaint paint;
-        paint.setColor(SK_ColorRED);
-        canvas->drawRect(SkRect::MakeXYWH(100, 100, 200, 200), paint); // Draw red rectangle
+        // Get the canvas from the surface
+        // SkCanvas *canvas = editor->skiaSurface->getCanvas();
+
+        // // Draw something with Skia
+        // SkPaint paint;
+        // paint.setColor(SK_ColorRED);
+        // canvas->drawRect(SkRect::MakeXYWH(100, 100, 200, 200), paint); // Draw red rectangle
 
         SkImageInfo info;
         size_t rowBytes;
         void *pixels = canvas->accessTopLayerPixels(&info, &rowBytes);
-        StretchDIBits(hdc, 0, 0, 800, 600, 0, 0, 800, 600, pixels, &bmi, DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc, 0, 0, 800, 600, 0, 0, 800, 600, pixels, &editor->bmi, DIB_RGB_COLORS, SRCCOPY);
 
         EndPaint(hwnd, &ps);
     }
