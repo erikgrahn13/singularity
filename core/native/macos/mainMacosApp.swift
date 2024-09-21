@@ -23,6 +23,8 @@ struct SkiaView: NSViewRepresentable {
 
 class SkiaNSView: NSView {
 
+var editor: UnsafeMutableRawPointer?
+
 override func draw(_ dirtyRect: NSRect) {
     // Get the current graphics context (CGContext)
     guard let context = NSGraphicsContext.current?.cgContext else {
@@ -30,13 +32,25 @@ override func draw(_ dirtyRect: NSRect) {
         return
     }
 
-    drawSkia(context)
+    if editor == nil {
+        // Create the editor, now returning an opaque pointer (void*)
+        editor = createEditorMac(800, 600)
+    }
+
+    drawEditorMac(editor, context);
 }
 
 override func viewDidMoveToWindow() {
     self.wantsLayer = true
     self.layer?.displayIfNeeded()  // Force immediate redraw
 }
+
+        deinit {
+        // Clean up the C++ object
+        if let editor = editor {
+            destroyEditorMac(editor)
+        }
+    }
 
 }
 
@@ -49,7 +63,6 @@ struct mainMacosApp: App {
             SkiaView()
                 .onAppear {
                     // Call the C++ Core Audio setup when the app starts
-                    setupSkia();
                     setupCoreAudio()
                 }
         }

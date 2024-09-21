@@ -372,7 +372,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-    SkGraphics::Init();
+    // SkGraphics::Init();
 
     // Register the window class.
     const wchar_t CLASS_NAME[] = L"Sample Window Class";
@@ -456,22 +456,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
-        if (!editor->skiaSurface)
-        {
-            editor->initializeSkiaSurface();
-            // Create a Skia surface that matches the window dimensions
-            // SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600); // Set width/height accordingly
-            // editor->skiaSurface = SkSurfaces::Raster(info);
+        // if (!editor->skiaSurface)
+        // {
+        // //     editor->initializeSkiaSurface();
+        // //     // Create a Skia surface that matches the window dimensions
+        // //     // SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600); // Set width/height accordingly
+        // //     // editor->skiaSurface = SkSurfaces::Raster(info);
 
-            // // Initialize GDI bitmap info
-            // memset(&bmi, 0, sizeof(bmi));
-            // bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-            // bmi.bmiHeader.biWidth = info.width();
-            // bmi.bmiHeader.biHeight = -info.height(); // Negative for top-down bitmap
-            // bmi.bmiHeader.biPlanes = 1;
-            // bmi.bmiHeader.biBitCount = 32;
-            // bmi.bmiHeader.biCompression = BI_RGB;
-        }
+        // //     // // Initialize GDI bitmap info
+        // //     // memset(&bmi, 0, sizeof(bmi));
+        // //     // bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        // //     // bmi.bmiHeader.biWidth = info.width();
+        // //     // bmi.bmiHeader.biHeight = -info.height(); // Negative for top-down bitmap
+        // //     // bmi.bmiHeader.biPlanes = 1;
+        // //     // bmi.bmiHeader.biBitCount = 32;
+        // //     // bmi.bmiHeader.biCompression = BI_RGB;
+        // // }
 
         auto *canvas = editor->skiaSurface->getCanvas();
         editor->draw(canvas);

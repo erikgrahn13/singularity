@@ -4,6 +4,6 @@ module coreAudio {
 }
 
 module skiaGui {
-    header "EditorMac.h"
+    header "EditorFactory.h"
     requires cplusplus
 }

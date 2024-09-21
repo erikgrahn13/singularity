@@ -13,7 +13,7 @@ class EditorWin : public Editor
 {
   public:
     EditorWin(int width, int height);
-    void initializeSkiaSurface() override;
+    // void initializeSkiaSurface() override;
 
     BITMAPINFO bmi;
 };
