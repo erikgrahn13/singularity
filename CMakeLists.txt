@@ -6,7 +6,7 @@ include(FetchContent)
 #include(VCPKG)
 include(SDL)
 include(ASIOSDK)
-#include(SKIA)
+include(SKIA)
 project(Singularity)
 
 set(CMAKE_CXX_STANDARD 17)

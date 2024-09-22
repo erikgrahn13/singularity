@@ -5,7 +5,9 @@ elseif(APPLE)
   set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-aarch64-apple-darwin.tar.gz")
   set(SKIA_LIB "libskia.a")
 elseif(UNIX)
-  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-unknown-linux-gnu.tar.gz")
+  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-unknown-linux-gnu-textlayout.tar.gz")
+  # set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-unknown-linux-gnu.tar.gz")
+  set(SKIA_LIB "libskia.a")
 else()
   message("Unsupported platform")
 endif()
@@ -21,7 +23,7 @@ include(ExternalProject)
 ExternalProject_Add(
     skia_headers
     GIT_REPOSITORY https://github.com/google/skia.git
-    GIT_TAG c01f89da7c388e3f77edb0c0ec270396b7d5b468  # Specify the desired commit or tag
+    GIT_TAG chrome/m129  # Specify the desired commit or tag
     GIT_SHALLOW TRUE       # Only fetch the latest commit
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
