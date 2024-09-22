@@ -1,28 +1,78 @@
-#include <SFML/Window.hpp>
+#include "include/core/SkCanvas.h"
+#include "include/core/SkImageInfo.h"
+#include "include/core/SkPaint.h"
+#include "include/core/SkSurface.h"
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <iostream>
 
 int main()
 {
-    // Create a window with a size of 800x600 and a title "SFML Window"
-    sf::Window window(sf::VideoMode(800, 600), "SFML Window");
+    Display *display;
+    Window window;
+    XEvent event;
+    int screen;
 
-    // Main loop that continues until the window is closed
-    while (window.isOpen())
+    // Open connection to the X server
+    display = XOpenDisplay(NULL);
+    if (display == NULL)
     {
-        // Create an event object to handle window events
-        sf::Event event;
+        std::cerr << "Cannot open display\n";
+        return 1;
+    }
 
-        // Poll for events (such as closing the window)
-        while (window.pollEvent(event))
+    screen = DefaultScreen(display);
+
+    // Create an X11 window
+    window = XCreateSimpleWindow(display, RootWindow(display, screen), 10, 10, 800, 600, 1, BlackPixel(display, screen),
+                                 WhitePixel(display, screen));
+    XSelectInput(display, window, ExposureMask | KeyPressMask);
+    XMapWindow(display, window);
+
+    // Create Skia surface for CPU rendering
+    SkImageInfo imageInfo = SkImageInfo::MakeN32Premul(800, 600);
+    auto surface = SkSurfaces::Raster(imageInfo);
+
+    SkCanvas *canvas = surface->getCanvas();
+
+    // Skia drawing (e.g., red circle)
+    SkPaint paint;
+    paint.setColor(SK_ColorRED);
+    canvas->clear(SK_ColorWHITE);
+    canvas->drawCircle(400, 300, 100, paint);
+
+    // Event loop
+    while (true)
+    {
+        XNextEvent(display, &event);
+
+        if (event.type == Expose)
         {
-            // Check if the window close button was pressed
-            if (event.type == sf::Event::Closed)
+            // Skia has already rendered onto its surface, now we copy the pixel data to X11
+
+            // Get the raw pixel buffer from Skia
+            SkPixmap pixmap;
+            if (surface->peekPixels(&pixmap))
             {
-                window.close(); // Close the window
+                // Convert Skia pixels into XImage format for X11
+                XImage *ximage = XCreateImage(display, DefaultVisual(display, screen), 24, ZPixmap, 0,
+                                              (char *)pixmap.addr(), 800, 600, 32, pixmap.rowBytes());
+                // Transfer the image to the X11 window
+                XPutImage(display, window, DefaultGC(display, screen), ximage, 0, 0, 0, 0, 800, 600);
+                XFlush(display);
+                ximage->data = nullptr; // To prevent X11 from freeing Skia's pixel data
+                XDestroyImage(ximage);  // Clean up XImage struct, but keep Skia surface intact
             }
         }
 
-        // No rendering required since we are using sf::Window, not sf::RenderWindow
+        // Close on keypress
+        if (event.type == KeyPress)
+        {
+            break;
+        }
     }
 
+    // Cleanup
+    XCloseDisplay(display);
     return 0;
 }

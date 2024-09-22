@@ -19,20 +19,28 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(skia)
 
-include(ExternalProject)
-ExternalProject_Add(
-    skia_headers
-    GIT_REPOSITORY https://github.com/google/skia.git
-    GIT_TAG chrome/m129  # Specify the desired commit or tag
-    GIT_SHALLOW TRUE       # Only fetch the latest commit
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    UPDATE_COMMAND
-        git sparse-checkout init --cone &&
-        git sparse-checkout set include modules
-    LOG_DOWNLOAD ON
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia-headers
+
+FetchContent_Declare(
+  skia_headers
+  URL https://github.com/google/skia/archive/refs/heads/chrome/m129.zip
+  SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia_headers
 )
+FetchContent_MakeAvailable(skia_headers)
+
+# include(ExternalProject)
+# ExternalProject_Add(
+#     skia_headers
+#     GIT_REPOSITORY https://github.com/google/skia.git
+#     GIT_TAG chrome/m129  # Specify the desired commit or tag
+#     GIT_SHALLOW TRUE       # Only fetch the latest commit
+#     CONFIGURE_COMMAND ""
+#     BUILD_COMMAND ""
+#     INSTALL_COMMAND ""
+#     UPDATE_COMMAND
+#         git sparse-checkout init --cone &&
+#         git sparse-checkout set include modules
+#     LOG_DOWNLOAD ON
+#     SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia-headers
+# )
 
 #add_dependencies(MyApp skia_headers)
