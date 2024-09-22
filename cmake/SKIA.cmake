@@ -2,14 +2,13 @@ if(WIN32)
   set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-pc-windows-msvc-gl.tar.gz")
   set(SKIA_LIB "skia.lib")
 elseif(APPLE)
-  message("Add macos URL to skia here")
+  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-aarch64-apple-darwin.tar.gz")
+  set(SKIA_LIB "libskia.a")
 elseif(UNIX)
   set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-unknown-linux-gnu.tar.gz")
 else()
   message("Unsupported platform")
 endif()
-
-
 
 FetchContent_Declare(
   skia
@@ -29,7 +28,7 @@ ExternalProject_Add(
     INSTALL_COMMAND ""
     UPDATE_COMMAND
         git sparse-checkout init --cone &&
-        git sparse-checkout set include
+        git sparse-checkout set include modules
     LOG_DOWNLOAD ON
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia-headers
 )
