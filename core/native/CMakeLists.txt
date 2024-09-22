@@ -1,6 +1,6 @@
 if(WIN32)
     # add_subdirectory(windows)
-    add_subdirectory(glfw)
+    add_subdirectory(sdl)
 elseif(APPLE)
     add_subdirectory(macos)
 elseif(UNIX)
