@@ -1,13 +1,13 @@
-set(CMAKE_CXX_STANDARD 11)
+# Set the C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
+# Find SFML package
+#find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
 
-include_directories(${GTKMM_INCLUDE_DIRS})
-link_directories(${GTKMM_LIBRARY_DIRS})
-add_definitions(${GTKMM_CFLAGS_OTHER})
+# Add the executable
+add_executable(sfml_window main.cpp)
 
-add_executable(my_gtkmm_app main.cpp)
-target_link_libraries(my_gtkmm_app ${GTKMM_LIBRARIES} ${skia_SOURCE_DIR}/libskia.a)
-
-add_dependencies(my_gtkmm_app skia_headers)
+# Link SFML libraries to the executable
+target_link_libraries(sfml_window  ${sfml_SOURCE_DIR}/lib/libsfml-window.so ${sfml_SOURCE_DIR}/lib/libsfml-system.so)
+target_include_directories(sfml_window PRIVATE ${sfml_SOURCE_DIR}/include)
