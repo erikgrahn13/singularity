@@ -5,7 +5,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(FetchContent)
 #include(VCPKG)
 #include(SDL)
-include(ASIOSDK)
+if(WIN32)
+    include(ASIOSDK)
+endif()
+
 include(SKIA)
 project(Singularity)
 
