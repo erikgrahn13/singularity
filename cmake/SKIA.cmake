@@ -1,5 +1,5 @@
 if(WIN32)
-  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-pc-windows-msvc-gl.tar.gz")
+  set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-x86_64-pc-windows-msvc.tar.gz")
   set(SKIA_LIB "skia.lib")
 elseif(APPLE)
   set(SKIA_URL "https://github.com/rust-skia/skia-binaries/releases/download/0.78.0/skia-binaries-dc17b3e9b36b91c342ef-aarch64-apple-darwin.tar.gz")

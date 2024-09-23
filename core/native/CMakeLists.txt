@@ -11,5 +11,8 @@
 
 # # Add Skia as a dependency
 # add_dependencies(sdl_window skia_headers)
-
-add_subdirectory(linux)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_subdirectory(windows)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linuc")
+    add_subdirectory(linux)
+endif()
