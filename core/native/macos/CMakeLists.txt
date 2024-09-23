@@ -19,7 +19,7 @@ target_compile_options(cxx-support PRIVATE
 target_include_directories(cxx-support PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}
   ${SINGULARITY_CORE_PATH}
-  ${CMAKE_SOURCE_DIR}/external/skia-headers
+  ${CMAKE_SOURCE_DIR}/external/skia_headers
   )
   target_compile_features(cxx-support PUBLIC cxx_std_20)
 
@@ -42,4 +42,4 @@ target_link_libraries(mainMacos PRIVATE
   "-framework AudioUnit"  # AudioUnit framework (if needed)
 )
 
-add_dependencies(cxx-support skia_headers)
+#add_dependencies(cxx-support skia_headers)
