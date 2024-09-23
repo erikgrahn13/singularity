@@ -1,7 +1,6 @@
 # Disable unused subsystems
 set(SDL_AUDIO OFF CACHE BOOL "Disable SDL audio subsystem")
 set(SDL_VIDEO_VULKAN OFF CACHE BOOL "Disable Vulkan support")
-set(SDL_RENDER OFF CACHE BOOL "Disable SDL renderer subsystem")
 set(SDL_HAPTIC OFF CACHE BOOL "Disable SDL haptic (force feedback) subsystem")
 set(SDL_JOYSTICK OFF CACHE BOOL "Disable SDL joystick subsystem")
 set(SDL_SENSOR OFF CACHE BOOL "Disable SDL sensor subsystem")

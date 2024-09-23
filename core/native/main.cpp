@@ -7,7 +7,6 @@
 #include "include/core/SkImageInfo.h"
 #include "include/core/SkPixmap.h"
 #include "include/core/SkSurface.h"
-#include "include/core/SkSurfaceProps.h"
 
 int main(int argc, char *argv[])
 {
@@ -18,9 +17,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Create an SDL window
+    // Create an SDL window without SDL_WINDOW_SOFTWARE flag (which doesn't exist in SDL2)
     SDL_Window *window = SDL_CreateWindow("SDL + Skia CPU Rendering", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                          640, 480, SDL_WINDOW_SHOWN);
+                                          640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!window)
     {
         std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
@@ -28,19 +27,36 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Get the SDL window surface (this is a CPU-based surface)
-    SDL_Surface *windowSurface = SDL_GetWindowSurface(window);
+    // Create an SDL renderer
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer)
+    {
+        std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
 
-    // Create an Skia ImageInfo that matches the SDL surface format
-    SkImageInfo info =
-        SkImageInfo::Make(windowSurface->w, windowSurface->h, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+    // Create an SDL texture to render the Skia output
+    SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 480);
+    if (!texture)
+    {
+        std::cerr << "Texture could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
 
-    // Wrap the SDL surface's pixel buffer using Skia's WrapPixels function
-    sk_sp<SkSurface> skSurface = SkSurfaces::WrapPixels(info, windowSurface->pixels, windowSurface->pitch);
+    // Create an offscreen Skia surface for CPU rendering
+    SkImageInfo info = SkImageInfo::Make(640, 480, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+    sk_sp<SkSurface> skSurface = SkSurfaces::Raster(info);
 
     if (!skSurface)
     {
         std::cerr << "Failed to create Skia surface!" << std::endl;
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
@@ -73,14 +89,32 @@ int main(int argc, char *argv[])
         paint.setColor(SK_ColorRED);
         canvas->drawRect(SkRect::MakeXYWH(100, 100, 200, 200), paint);
 
-        // Make sure the Skia drawing is flushed to the surface
+        // Flush the Skia canvas to make sure all drawing is completed
         // canvas->flush();
 
-        // Update the SDL window surface with the rendered content
-        SDL_UpdateWindowSurface(window);
+        // Get a pointer to the texture pixel buffer
+        void *pixels = nullptr;
+        int pitch = 0;
+        SDL_LockTexture(texture, NULL, &pixels, &pitch);
+
+        // Copy Skia's pixel data to the SDL texture
+        SkPixmap pixmap;
+        if (skSurface->peekPixels(&pixmap))
+        {
+            memcpy(pixels, pixmap.addr(), pixmap.computeByteSize());
+        }
+
+        SDL_UnlockTexture(texture);
+
+        // Clear the renderer and copy the texture to the screen
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
     }
 
     // Clean up
+    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
