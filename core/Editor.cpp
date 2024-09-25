@@ -14,8 +14,8 @@ Editor::Editor(int width, int height)
 {
     SkGraphics::Init();
 
-#if defined(SK_BUILD_FOR_WIN) && (defined(SK_FONTMGR_GDI_AVAILABLE) || defined(SK_FONTMGR_DIRECTWRITE_AVAILABLE))
-#include "include/ports/SkTypeface_win.h"
+#if defined(SK_BUILD_FOR_WIN)
+    fontMgr = SkFontMgr_New_DirectWrite();
 #endif
 
 #if defined(SK_BUILD_FOR_UNIX)
@@ -45,6 +45,7 @@ void Editor::draw(SkCanvas *canvas)
 
     //     // Define Skia paint object
     SkPaint paint;
+    canvas->clear(SK_ColorWHITE);
 
     // Use Skia predefined colors to test
     paint.setColor(SK_ColorRED);

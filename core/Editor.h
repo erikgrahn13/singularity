@@ -2,11 +2,12 @@
 #define EDITOR_H
 
 #include "include/core/SkCanvas.h" // Skia included in C++ code only
+#include "include/core/SkFontMgr.h"
 #include "include/core/SkFontStyle.h"
 #include "include/core/SkSurface.h"
 #include "include/private/base/SkFeatures.h"
 
-#if defined(SK_BUILD_FOR_WIN) && (defined(SK_FONTMGR_GDI_AVAILABLE) || defined(SK_FONTMGR_DIRECTWRITE_AVAILABLE))
+#if defined(SK_BUILD_FOR_WIN)
 #include "include/ports/SkTypeface_win.h"
 #endif
 #if defined(SK_BUILD_FOR_UNIX)
