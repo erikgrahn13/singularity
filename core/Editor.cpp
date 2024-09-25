@@ -18,9 +18,8 @@ Editor::Editor(int width, int height)
 #include "include/ports/SkTypeface_win.h"
 #endif
 
-#if defined(SK_BUILD_FOR_ANDROID) && defined(SK_FONTMGR_ANDROID_AVAILABLE)
-#include "include/ports/SkFontMgr_android.h"
-#include "src/ports/SkTypeface_FreeType.h"
+#if defined(SK_BUILD_FOR_UNIX)
+    fontMgr = SkFontMgr_New_FontConfig(nullptr);
 #endif
 
 #if (defined(SK_BUILD_FOR_IOS) || defined(SK_BUILD_FOR_MAC))

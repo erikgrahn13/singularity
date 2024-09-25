@@ -6,6 +6,8 @@
 #include <X11/Xutil.h>
 #include <iostream>
 
+#include "EditorLinux.h"
+
 int main()
 {
     Display *display;
@@ -30,16 +32,11 @@ int main()
     XMapWindow(display, window);
 
     // Create Skia surface for CPU rendering
-    SkImageInfo imageInfo = SkImageInfo::MakeN32Premul(800, 600);
-    auto surface = SkSurfaces::Raster(imageInfo);
+    auto editor = std::make_unique<EditorLinux>(800, 600);
 
-    SkCanvas *canvas = surface->getCanvas();
-
-    // Skia drawing (e.g., red circle)
-    SkPaint paint;
-    paint.setColor(SK_ColorRED);
-    canvas->clear(SK_ColorWHITE);
-    canvas->drawCircle(400, 300, 100, paint);
+    // SkCanvas *canvas = surface->getCanvas();
+    auto *canvas = editor->skiaSurface->getCanvas();
+    editor->draw(canvas);
 
     // Event loop
     while (true)
@@ -52,7 +49,7 @@ int main()
 
             // Get the raw pixel buffer from Skia
             SkPixmap pixmap;
-            if (surface->peekPixels(&pixmap))
+            if (editor->skiaSurface->peekPixels(&pixmap))
             {
                 // Convert Skia pixels into XImage format for X11
                 XImage *ximage = XCreateImage(display, DefaultVisual(display, screen), 24, ZPixmap, 0,

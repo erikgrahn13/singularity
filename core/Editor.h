@@ -9,10 +9,8 @@
 #if defined(SK_BUILD_FOR_WIN) && (defined(SK_FONTMGR_GDI_AVAILABLE) || defined(SK_FONTMGR_DIRECTWRITE_AVAILABLE))
 #include "include/ports/SkTypeface_win.h"
 #endif
-
-#if defined(SK_BUILD_FOR_ANDROID) && defined(SK_FONTMGR_ANDROID_AVAILABLE)
-#include "include/ports/SkFontMgr_android.h"
-#include "src/ports/SkTypeface_FreeType.h"
+#if defined(SK_BUILD_FOR_UNIX)
+#include "include/ports/SkFontMgr_fontconfig.h"
 #endif
 
 #if (defined(SK_BUILD_FOR_IOS) || defined(SK_BUILD_FOR_MAC))
