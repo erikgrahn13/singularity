@@ -5,7 +5,7 @@
 #include <CoreGraphics/CoreGraphics.h>
 
 // Return an opaque pointer instead of the actual EditorMac*
-extern "C" void *createEditorMac(int width, int height);
+extern "C" void *createEditorMac();
 extern "C" void destroyEditorMac(void *editor);
 extern "C" void drawEditorMac(void *editor, CGContextRef context);
 

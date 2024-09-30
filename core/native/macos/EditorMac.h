@@ -4,12 +4,15 @@
 #include "Editor.h"
 #include <CoreGraphics/CoreGraphics.h>
 
-class EditorMac : public Editor
+class EditorMac
 {
   public:
-    EditorMac(int width, int height);
+    EditorMac();
     // void initializeSkiaSurface() override;
     void draw(CGContextRef context);
+
+  private:
+    std::unique_ptr<Editor> mEditor;
 };
 
 #endif // EDITORMAC_H

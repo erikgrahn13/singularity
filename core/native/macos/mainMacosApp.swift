@@ -34,7 +34,7 @@ override func draw(_ dirtyRect: NSRect) {
 
     if editor == nil {
         // Create the editor, now returning an opaque pointer (void*)
-        editor = createEditorMac(800, 600)
+        editor = createEditorMac()
     }
 
     drawEditorMac(editor, context);

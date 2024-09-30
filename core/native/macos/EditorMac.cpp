@@ -4,8 +4,9 @@
 #include "include/core/SkPaint.h"
 #include "include/core/SkSurface.h"
 
-EditorMac::EditorMac(int width, int height) : Editor(width, height)
+EditorMac::EditorMac()
 {
+    mEditor = createEditorInstance();
 }
 
 void EditorMac::draw(CGContextRef context)
@@ -30,5 +31,5 @@ void EditorMac::draw(CGContextRef context)
 
     SkCanvas *canvas = surface->getCanvas();
 
-    Editor::draw(canvas);
+    mEditor->draw(canvas);
 }

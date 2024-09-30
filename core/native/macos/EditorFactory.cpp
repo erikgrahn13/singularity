@@ -2,9 +2,9 @@
 #include "EditorFactory.h"
 #include "EditorMac.h" // Include EditorMac in the .cpp file, hidden from Swift
 
-extern "C" void *createEditorMac(int width, int height)
+extern "C" void *createEditorMac()
 {
-    return new EditorMac(width, height); // Return as void*
+    return new EditorMac(); // Return as void*
 }
 
 extern "C" void destroyEditorMac(void *editor)

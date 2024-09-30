@@ -23,7 +23,7 @@ class Editor
   public:
     Editor(int width, int height);
     virtual ~Editor();
-    void draw(SkCanvas *canvas);
+    virtual void draw(SkCanvas *canvas) = 0;
     void loadFont();
 
     sk_sp<SkSurface> skiaSurface;
@@ -50,5 +50,7 @@ class Editor
     int width;
     int height;
 };
+
+std::unique_ptr<Editor> createEditorInstance();
 
 #endif
