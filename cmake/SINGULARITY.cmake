@@ -2,7 +2,37 @@ function(create_standalone target)
 set(target_APP ${target}_APP)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    message("ADD WINDOWS HERE")
+add_executable(${target_APP} WIN32
+${SINGULARITY_CORE_PATH}/native/windows/mainWin.cpp
+${SINGULARITY_CORE_PATH}/native/windows/EditorWin.cpp
+${SINGULARITY_CORE_PATH}/Editor.cpp
+${asiosdk_SOURCE_DIR}/host/pc/asiolist.cpp
+${asiosdk_SOURCE_DIR}/host/asiodrivers.cpp
+${asiosdk_SOURCE_DIR}/common/asio.cpp
+)
+
+target_include_directories(${target_APP} PRIVATE
+    ${SINGULARITY_CORE_PATH}
+    ${asiosdk_SOURCE_DIR}/common
+    ${asiosdk_SOURCE_DIR}/host
+    ${asiosdk_SOURCE_DIR}/host/pc
+    ${skia_headers_SOURCE_DIR}
+)
+
+target_link_libraries(${target_APP} PRIVATE ${skia_SOURCE_DIR}/${SKIA_LIB})
+
+# Configure runtime library options for Debug and Release builds
+if(MSVC)
+    # Force /MD for both Debug and Release builds to match Skia's release runtime
+    target_compile_options(${target_APP} PRIVATE
+        $<$<CONFIG:Debug>:/MD>   # Use /MD (Release runtime) in Debug build
+        $<$<CONFIG:Release>:/MD> # Use /MD (Release runtime) in Release build
+    )
+
+    # Disable _ITERATOR_DEBUG_LEVEL for Debug builds, as Skia was built in Release mode
+    add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
+endif()
+
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message("ADD LINUX HERE")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")

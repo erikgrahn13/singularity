@@ -251,7 +251,10 @@ long asioMessages(long selector, long value, void *message, double *opt)
 
 void initializeAsio()
 {
-    if (loadAsioDriver("Focusrite USB ASIO"))
+    // char driver[] = "Focusrite USB ASIO";
+    std::string driver = "Focusrite USB ASIO";
+
+    if (loadAsioDriver(const_cast<char *>(driver.c_str())))
     {
         auto result = ASIOInit(&mDriverInfo.driverInfo);
         if (result != ASE_OK)
