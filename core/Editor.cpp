@@ -94,25 +94,25 @@ void Editor::draw(SkCanvas *canvas)
     float x = 10, y = 10;
     float textScale = 24;
 
-    for (int i = 0; i < fontMgr->countFamilies(); ++i)
-    {
-        SkString familyName;
-        fontMgr->getFamilyName(i, &familyName);
-        sk_sp<SkFontStyleSet> styleSet(fontMgr->createStyleSet(i));
-        for (int j = 0; j < styleSet->count(); ++j)
-        {
-            SkFontStyle fontStyle;
-            SkString style;
-            styleSet->getStyle(j, &fontStyle, &style);
-            auto s = SkStringPrintf("SkFont font(fontMgr->legacyMakeTypeface(\"%s\", SkFontStyle(%3d, %1d, %-27s), "
-                                    "%g);",
-                                    familyName.c_str(), fontStyle.weight(), fontStyle.width(), tostr(fontStyle.slant()),
-                                    textScale);
-            SkFont font(fontMgr->legacyMakeTypeface(familyName.c_str(), fontStyle), textScale);
-            y += font.getSpacing() * 1.5;
-            canvas->drawString(s, x, y, font, SkPaint());
-        }
-    }
+    // for (int i = 0; i < fontMgr->countFamilies(); ++i)
+    // {
+    //     SkString familyName;
+    //     fontMgr->getFamilyName(i, &familyName);
+    //     sk_sp<SkFontStyleSet> styleSet(fontMgr->createStyleSet(i));
+    //     for (int j = 0; j < styleSet->count(); ++j)
+    //     {
+    //         SkFontStyle fontStyle;
+    //         SkString style;
+    //         styleSet->getStyle(j, &fontStyle, &style);
+    //         auto s = SkStringPrintf("SkFont font(fontMgr->legacyMakeTypeface(\"%s\", SkFontStyle(%3d, %1d, %-27s), "
+    //                                 "%g);",
+    //                                 familyName.c_str(), fontStyle.weight(), fontStyle.width(),
+    //                                 tostr(fontStyle.slant()), textScale);
+    //         SkFont font(fontMgr->legacyMakeTypeface(familyName.c_str(), fontStyle), textScale);
+    //         y += font.getSpacing() * 1.5;
+    //         canvas->drawString(s, x, y, font, SkPaint());
+    //     }
+    // }
 
     // test
 }
