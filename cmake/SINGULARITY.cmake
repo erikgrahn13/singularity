@@ -154,77 +154,131 @@ function(singularity_create_plugin target)
     elseif(WIN32)
         list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.cpp)
 
-        # WebView2 SDK detection - multiple approaches
-        set(WebView2_FOUND FALSE)
+        set(initial_search_dir "$ENV{USERPROFILE}/AppData/Local/PackageManagement/NuGet/Packages")
+        file(GLOB subdirs "${initial_search_dir}/*Microsoft.Web.WebView2*")
 
-        # Method 1: Try to find via environment variables (NuGet packages)
-        if(DEFINED ENV{USERPROFILE})
-            set(NUGET_PACKAGES_DIR "$ENV{USERPROFILE}/.nuget/packages")
-            file(GLOB WebView2_PACKAGE_DIRS "${NUGET_PACKAGES_DIR}/microsoft.web.webview2/*/")
+        if(subdirs)
+            list(GET subdirs 0 search_dir)
+            list(LENGTH subdirs num_webview2_packages)
 
-            foreach(PACKAGE_DIR ${WebView2_PACKAGE_DIRS})
-                if(EXISTS "${PACKAGE_DIR}/build/native/include/WebView2.h")
-                    set(WebView2_INCLUDE_DIR "${PACKAGE_DIR}/build/native/include")
+            if(num_webview2_packages GREATER 1)
+                message(WARNING "Multiple WebView2 packages found in the local NuGet folder. Proceeding with ${search_dir}.")
+            endif()
 
-                    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-                        set(WebView2_LIB_DIR "${PACKAGE_DIR}/build/native/x64")
-                    else()
-                        set(WebView2_LIB_DIR "${PACKAGE_DIR}/build/native/x86")
-                    endif()
+            find_path(WebView2_root_dir build/native/include/WebView2.h HINTS ${search_dir})
 
-                    set(WebView2_FOUND TRUE)
-                    message(STATUS "Found WebView2 via NuGet: ${WebView2_INCLUDE_DIR}")
-                    break()
+            set(WebView2_include_dir "${WebView2_root_dir}/build/native/include")
+
+            if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
+                set(WebView2_arch arm64)
+            else()
+                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                    set(WebView2_arch x64)
+                elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+                    set(WebView2_arch x86)
                 endif()
-            endforeach()
+            endif()
+
+            set(WebView2_library "${WebView2_root_dir}/build/native/${WebView2_arch}/WebView2LoaderStatic.lib")
+        elseif(NOT WebView2_FIND_QUIETLY)
+            message(WARNING
+                "WebView2 wasn't found in the local NuGet folder."
+                "\n"
+                "To install NuGet and the WebView2 package containing the statically linked library, "
+                "open a PowerShell and issue the following commands"
+                "\n"
+                "> Register-PackageSource -provider NuGet -name nugetRepository -location https://www.nuget.org/api/v2\n"
+                "> Install-Package Microsoft.Web.WebView2 -Scope CurrentUser -RequiredVersion 1.0.1901.177 -Source nugetRepository\n"
+                "\n")
         endif()
 
-        # Method 2: Try Windows SDK locations
-        if(NOT WebView2_FOUND)
-            # Check common Windows SDK locations
-            set(WIN_SDK_PATHS
-                "C:/Program Files (x86)/Windows Kits/10/Include"
-                "C:/Program Files/Windows Kits/10/Include"
-            )
+        find_package_handle_standard_args(WebView2 DEFAULT_MSG WebView2_include_dir WebView2_library)
 
-            foreach(SDK_PATH ${WIN_SDK_PATHS})
-                file(GLOB SDK_VERSIONS "${SDK_PATH}/*/")
+        if(WebView2_FOUND)
+            set(WebView2_INCLUDE_DIRS ${WebView2_include_dir})
+            set(WebView2_LIBRARIES ${WebView2_library})
 
-                foreach(VERSION_DIR ${SDK_VERSIONS})
-                    if(EXISTS "${VERSION_DIR}/winrt/WebView2.h")
-                        set(WebView2_INCLUDE_DIR "${VERSION_DIR}/winrt")
-                        set(WebView2_FOUND TRUE)
-                        message(STATUS "Found WebView2 in Windows SDK: ${WebView2_INCLUDE_DIR}")
-                        break()
-                    endif()
-                endforeach()
+            mark_as_advanced(WebView2_library WebView2_include_dir WebView2_root_dir)
 
-                if(WebView2_FOUND)
-                    break()
-                endif()
-            endforeach()
+            if(NOT TARGET singularity_webview2)
+                add_library(singularity_webview2 INTERFACE)
+                add_library(singularity::singularity_webview2 ALIAS singularity_webview2)
+                target_include_directories(singularity_webview2 INTERFACE ${WebView2_INCLUDE_DIRS})
+                target_link_libraries(singularity_webview2 INTERFACE ${WebView2_LIBRARIES})
+            endif()
         endif()
 
-        # # Method 3: vcpkg
-        # if(NOT WebView2_FOUND)
-        # find_package(unofficial-webview2 CONFIG QUIET)
+    # WebView2 SDK detection - multiple approaches
+    # set(WebView2_FOUND FALSE)
 
-        # if(unofficial-webview2_FOUND)
-        # set(WebView2_FOUND TRUE)
-        # set(PLATFORM_LIBS unofficial::webview2::webview2 ole32 oleaut32 user32 gdi32 shlwapi)
-        # message(STATUS "Found WebView2 via vcpkg")
-        # endif()
-        # endif()
+    # # Method 1: Try to find via environment variables (NuGet packages)
+    # if(DEFINED ENV{USERPROFILE})
+    # set(NUGET_PACKAGES_DIR "$ENV{USERPROFILE}/.nuget/packages")
+    # file(GLOB WebView2_PACKAGE_DIRS "${NUGET_PACKAGES_DIR}/microsoft.web.webview2/*/")
 
-        # Configure libraries
-        if(WebView2_FOUND AND DEFINED WebView2_LIB_DIR)
-            set(PLATFORM_LIBS "${WebView2_LIB_DIR}/WebView2Loader.dll.lib" ole32 oleaut32 user32 gdi32 shlwapi)
-        elseif(NOT WebView2_FOUND)
-            message(WARNING "WebView2 SDK not found automatically. Trying fallback...")
-            set(PLATFORM_LIBS webview2loader ole32 oleaut32 user32 gdi32 shlwapi)
-        else()
-            set(PLATFORM_LIBS webview2loader ole32 oleaut32 user32 gdi32)
-        endif()
+    # foreach(PACKAGE_DIR ${WebView2_PACKAGE_DIRS})
+    # if(EXISTS "${PACKAGE_DIR}/build/native/include/WebView2.h")
+    # set(WebView2_INCLUDE_DIR "${PACKAGE_DIR}/build/native/include")
+
+    # if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    # set(WebView2_LIB_DIR "${PACKAGE_DIR}/build/native/x64")
+    # else()
+    # set(WebView2_LIB_DIR "${PACKAGE_DIR}/build/native/x86")
+    # endif()
+
+    # set(WebView2_FOUND TRUE)
+    # message(STATUS "Found WebView2 via NuGet: ${WebView2_INCLUDE_DIR}")
+    # break()
+    # endif()
+    # endforeach()
+    # endif()
+
+    # # Method 2: Try Windows SDK locations
+    # if(NOT WebView2_FOUND)
+    # # Check common Windows SDK locations
+    # set(WIN_SDK_PATHS
+    # "C:/Program Files (x86)/Windows Kits/10/Include"
+    # "C:/Program Files/Windows Kits/10/Include"
+    # )
+
+    # foreach(SDK_PATH ${WIN_SDK_PATHS})
+    # file(GLOB SDK_VERSIONS "${SDK_PATH}/*/")
+
+    # foreach(VERSION_DIR ${SDK_VERSIONS})
+    # if(EXISTS "${VERSION_DIR}/winrt/WebView2.h")
+    # set(WebView2_INCLUDE_DIR "${VERSION_DIR}/winrt")
+    # set(WebView2_FOUND TRUE)
+    # message(STATUS "Found WebView2 in Windows SDK: ${WebView2_INCLUDE_DIR}")
+    # break()
+    # endif()
+    # endforeach()
+
+    # if(WebView2_FOUND)
+    # break()
+    # endif()
+    # endforeach()
+    # endif()
+
+    # # # Method 3: vcpkg
+    # # if(NOT WebView2_FOUND)
+    # # find_package(unofficial-webview2 CONFIG QUIET)
+
+    # # if(unofficial-webview2_FOUND)
+    # # set(WebView2_FOUND TRUE)
+    # # set(PLATFORM_LIBS unofficial::webview2::webview2 ole32 oleaut32 user32 gdi32 shlwapi)
+    # # message(STATUS "Found WebView2 via vcpkg")
+    # # endif()
+    # # endif()
+
+    # # Configure libraries
+    # if(WebView2_FOUND AND DEFINED WebView2_LIB_DIR)
+    # set(PLATFORM_LIBS "${WebView2_LIB_DIR}/WebView2Loader.dll.lib" ole32 oleaut32 user32 gdi32 shlwapi)
+    # elseif(NOT WebView2_FOUND)
+    # message(WARNING "WebView2 SDK not found automatically. Trying fallback...")
+    # set(PLATFORM_LIBS webview2loader ole32 oleaut32 user32 gdi32 shlwapi)
+    # else()
+    # set(PLATFORM_LIBS webview2loader ole32 oleaut32 user32 gdi32)
+    # endif()
     elseif(UNIX)
         list(APPEND SOURCES src/platform/linux/webview_linux.cpp)
         find_package(PkgConfig REQUIRED)
@@ -239,6 +293,7 @@ function(singularity_create_plugin target)
 
     add_library(${target} STATIC ${SOURCES})
     target_include_directories(${target} PRIVATE ${WebView2_INCLUDE_DIR})
+    target_link_libraries(${target} PRIVATE singularity_webview2)
 
     foreach(type IN LISTS FORMATS)
         message("erik4 ${type}")
