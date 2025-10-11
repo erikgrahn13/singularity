@@ -6,22 +6,22 @@ on:
 
 jobs:
   build-singularity-project:
-    runs-on: macos-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Xcode 15.1
-        if: matrix.os == 'macos-latest'
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: "15.1"
+      # - name: Set up Xcode 15.1
+      #   if: matrix.os == 'macos-latest'
+      #   uses: maxim-lobanov/setup-xcode@v1
+      #   with:
+      #     xcode-version: "15.1"
 
-      - name: Install dependencies
-        run: brew install autoconf automake autoconf-archive
+      # - name: Install dependencies
+      #   run: brew install autoconf automake autoconf-archive
 
       - name: Configure CMake
-        run: cmake -G Xcode -S . -B build
+        run: cmake -S . -B build
 
       - name: Build CMake
         run: cmake --build build
