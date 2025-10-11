@@ -19,6 +19,11 @@ jobs:
 
       # - name: Install dependencies
       #   run: brew install autoconf automake autoconf-archive
+      - name: Install dependencies (Windows)
+        run: |
+          # Installing webview
+          Register-PackageSource -ProviderName NuGet -Name nugetRepository -Location https://www.nuget.org/api/v2 -Force
+          Install-Package Microsoft.Web.WebView2 -Scope CurrentUser -RequiredVersion 1.0.1901.177 -Source nugetRepository -Force
 
       - name: Configure CMake
         run: cmake -S . -B build
