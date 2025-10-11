@@ -292,8 +292,8 @@ function(singularity_create_plugin target)
     message("erik99 ${SOURCES}")
 
     add_library(${target} STATIC ${SOURCES})
-    target_include_directories(${target} PRIVATE ${WebView2_INCLUDE_DIR})
-    target_link_libraries(${target} PRIVATE singularity_webview2)
+
+    target_link_libraries(${target} PUBLIC singularity::singularity_webview2)
 
     foreach(type IN LISTS FORMATS)
         message("erik4 ${type}")

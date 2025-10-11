@@ -65,11 +65,12 @@ smtg_target_add_plugin_snapshots(${target_name}
     resource/E6C3724BE53B52308EA0160890E8716D_snapshot_2.0x.png
 )
 
+message("erik7 ${WEBVIEW2_LIBS}")
+
 target_link_libraries(${target_name}
     PRIVATE
     sdk
     ${target}
-    ${WEBVIEW2_LIBS}
 )
 
 smtg_target_configure_version_file(${target_name})
