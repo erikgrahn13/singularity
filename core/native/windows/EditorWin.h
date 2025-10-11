@@ -9,13 +9,21 @@
 
 #include "Editor.h"
 
-class EditorWin : public Editor
+class EditorWin
 {
   public:
     EditorWin(int width, int height);
     // void initializeSkiaSurface() override;
+    void draw(SkCanvas *canvas)
+    {
+        mEditor->draw(canvas);
+    }
 
+    sk_sp<SkSurface> skiaSurface;
     BITMAPINFO bmi;
+
+  private:
+    std::unique_ptr<Editor> mEditor;
 };
 
 #endif

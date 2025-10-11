@@ -16,16 +16,16 @@
       "externalConsole": false,
       "MIMode": "gdb",
       "setupCommands": [
-          {
-              "description": "Enable pretty-printing for gdb",
-              "text": "-enable-pretty-printing",
-              "ignoreFailures": true
-          },
-          {
-              "description": "Set Disassembly Flavor to Intel",
-              "text": "-gdb-set disassembly-flavor intel",
-              "ignoreFailures": true
-          }
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Set Disassembly Flavor to Intel",
+          "text": "-gdb-set disassembly-flavor intel",
+          "ignoreFailures": true
+        }
       ]
     },
     {
@@ -50,6 +50,17 @@
       "cwd": "${fileDirname}",
       "environment": [],
       "console": "newExternalWindow"
+    },
+    {
+      "name": "VST3PluginTestHost Windows",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "C:/Program Files/Steinberg/VST3PluginTestHost/VST3PluginTestHost.exe",
+      "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "console": "newExternalWindow",
+      "preLaunchTask": "CMake: build"
     }
   ]
 }

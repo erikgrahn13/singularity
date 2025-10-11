@@ -1,6 +1,6 @@
 #include "EditorWin.h"
 
-EditorWin::EditorWin(int width, int height) : Editor(width, height)
+EditorWin::EditorWin(int width, int height)
 {
     // Create a Skia surface that matches the window dimensions
     SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600); // Set width/height accordingly
@@ -14,6 +14,8 @@ EditorWin::EditorWin(int width, int height) : Editor(width, height)
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
+
+    mEditor = createEditorInstance();
 }
 
 // void EditorWin::initializeSkiaSurface()
