@@ -13,6 +13,7 @@
 # add_dependencies(sdl_window skia_headers)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_subdirectory(windows)
+    # add_subdirectory(direct2d)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_subdirectory(linux)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")

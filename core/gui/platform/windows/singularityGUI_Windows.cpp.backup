@@ -1,0 +1,311 @@
+// #ifdef _WIN32
+
+#include "singularityGUI_Windows.h"
+#include "../../singularity_ResourceManager.h"
+#include <iostream>
+#include <shlobj.h>
+#include <shlwapi.h>
+
+// Platform-specific factory function implementation    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+void WebViewWindows::createAsChild(void *parentWindow, int width, int height)
+{
+    if (!parentWindow)
+        return;
+
+    m_width = width;
+    m_height = height;
+
+    HWND parentHwnd = static_cast<HWND>(parentWindow);
+
+    // Create child window
+    m_hwnd = CreateWindowEx(0,
+                            L"STATIC", // Use STATIC class for simple child window
+                            L"", WS_CHILD | WS_VISIBLE, 0, 0, width, height, parentHwnd, nullptr,
+                            GetModuleHandle(nullptr), this);
+
+    if (m_hwnd)
+    {
+        createWebView();
+    }
+}
+
+void WebViewWindows::resize(int width, int height)
+{
+    m_width = width;
+    m_height = height;
+
+    if (m_hwnd)
+    {
+        SetWindowPos(m_hwnd, nullptr, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
+        setWebViewBounds();
+    }
+}
+
+void WebViewWindows::run()
+{
+    MSG msg = {};
+    while (GetMessage(&msg, nullptr, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
+void WebViewWindows::close()::unique_ptr<ISingularityGUI> ISingularityGUI::createView()
+{
+    return std::make_unique<WebViewWindows>();
+}
+
+WebViewWindows::WebViewWindows() : m_hwnd(nullptr), m_webviewReady(false), m_width(800), m_height(600)
+{
+}
+
+WebViewWindows::~WebViewWindows()
+{
+    close();
+}
+
+void WebViewWindows::create(int width, int height, const std::string &title)
+{
+    m_width = width;
+    m_height = height;
+
+    // Register window class
+    const char *className = "NativeWebViewWindow";
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = GetModuleHandle(nullptr);
+    wc.lpszClassName = className;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+
+    RegisterClass(&wc);
+
+    // Create window
+    m_hwnd = CreateWindowEx(0, className, title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width,
+                            height, nullptr, nullptr, GetModuleHandle(nullptr), this);
+
+    if (!m_hwnd)
+    {
+        std::cout << "Failed to create window" << std::endl;
+        return;
+    }
+
+    ShowWindow(m_hwnd, SW_SHOW);
+    UpdateWindow(m_hwnd);
+
+    createWebView();
+}
+
+void WebViewWindows::createWebView()
+{
+    // Create WebView2 environment
+    HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
+        nullptr, nullptr, nullptr,
+        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+            [this](HRESULT result, ICoreWebView2Environment *environment) -> HRESULT {
+                if (SUCCEEDED(result) && environment)
+                {
+                    m_environment = environment;
+
+                    // Create controller
+                    m_environment->CreateCoreWebView2Controller(
+                        m_hwnd, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                                    [this](HRESULT result, ICoreWebView2Controller *controller) -> HRESULT {
+                                        if (SUCCEEDED(result) && controller)
+                                        {
+                                            onWebViewCreated(controller);
+                                        }
+                                        return S_OK;
+                                    })
+                                    .Get());
+                }
+                return S_OK;
+            })
+            .Get());
+}
+
+void WebViewWindows::onWebViewCreated(ICoreWebView2Controller *controller)
+{
+    m_controller = controller;
+    m_controller->get_CoreWebView2(&m_webview);
+
+    // Set bounds and make visible
+    setWebViewBounds();
+    m_controller->put_IsVisible(TRUE);
+
+    // Set up resource handler for embedded assets
+    m_webview->AddWebResourceRequestedFilter(L"https://app.local/*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+    m_webview->add_WebResourceRequested(
+        Callback<ICoreWebView2WebResourceRequestedEventHandler>([this](ICoreWebView2 *,
+                                                                       ICoreWebView2WebResourceRequestedEventArgs *args)
+                                                                    -> HRESULT {
+            ComPtr<ICoreWebView2WebResourceRequest> request;
+            args->get_Request(&request);
+
+            LPWSTR uri;
+            request->get_Uri(&uri);
+            std::wstring wuri(uri);
+            CoTaskMemFree(uri);
+
+            // Extract path from app.local URLs
+            if (wuri.find(L"https://app.local/") == 0)
+            {
+                std::wstring wpath = wuri.substr(18); // Remove "https://app.local/"
+                if (wpath.empty())
+                    wpath = L"index.html";
+                if (wpath[0] != L'/')
+                    wpath = L"/" + wpath;
+
+                // Convert to string
+                std::string path;
+                path.reserve(wpath.size());
+                for (wchar_t wc : wpath)
+                {
+                    path += static_cast<char>(wc);
+                }
+
+                // Get resource and serve it
+                auto resource = ResourceManager::getResource(path);
+                if (resource)
+                {
+                    ComPtr<IStream> stream;
+                    stream.Attach(SHCreateMemStream(static_cast<const BYTE *>(resource->data),
+                                                    static_cast<UINT>(resource->size)));
+
+                    if (stream)
+                    {
+                        ComPtr<ICoreWebView2WebResourceResponse> response;
+                        std::string headers = "Content-Type: " + resource->mimeType;
+                        std::wstring wheaders(headers.begin(), headers.end());
+
+                        if (SUCCEEDED(m_environment->CreateWebResourceResponse(stream.Get(), 200, L"OK",
+                                                                               wheaders.c_str(), &response)))
+                        {
+                            args->put_Response(response.Get());
+                        }
+                    }
+                }
+            }
+            return S_OK;
+        }).Get(),
+        nullptr);
+
+    m_webviewReady = true;
+
+    // Navigate to pending URL if we have one
+    if (!m_pendingUrl.empty())
+    {
+        if (m_pendingUrl.find("app://localhost") == 0)
+        {
+            // Convert app:// to our custom scheme
+            std::wstring customUrl = L"https://app.local/index.html";
+            m_webview->Navigate(customUrl.c_str());
+        }
+        else
+        {
+            // Regular URL
+            std::wstring wurl(m_pendingUrl.begin(), m_pendingUrl.end());
+            m_webview->Navigate(wurl.c_str());
+        }
+        m_pendingUrl.clear();
+    }
+}
+
+void WebViewWindows::setWebViewBounds()
+{
+    if (!m_controller || !m_hwnd)
+        return;
+
+    RECT bounds;
+    GetClientRect(m_hwnd, &bounds);
+    m_controller->put_Bounds(bounds);
+}
+
+void WebViewWindows::navigate(const std::string &url)
+{
+    if (m_webviewReady && m_webview)
+    {
+        std::wstring wurl(url.begin(), url.end());
+        m_webview->Navigate(wurl.c_str());
+    }
+    else
+    {
+        m_pendingUrl = url;
+    }
+}
+
+LRESULT CALLBACK WebViewWindows::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    WebViewWindows *pThis = nullptr;
+
+    if (uMsg == WM_NCCREATE)
+    {
+        CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
+        pThis = (WebViewWindows *)pCreate->lpCreateParams;
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
+    }
+    else
+    {
+        pThis = (WebViewWindows *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    }
+
+    if (pThis)
+    {
+        switch (uMsg)
+        {
+        case WM_SIZE:
+            if (pThis->m_controller)
+            {
+                pThis->setWebViewBounds();
+            }
+            break;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        }
+    }
+
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+void WebViewWindows::run()
+{
+    MSG msg = {};
+    while (GetMessage(&msg, nullptr, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
+void WebViewWindows::close()
+{
+    if (m_webview)
+    {
+        m_webview = nullptr;
+    }
+
+    if (m_controller)
+    {
+        m_controller->Close();
+        m_controller = nullptr;
+    }
+
+    if (m_environment)
+    {
+        m_environment = nullptr;
+    }
+
+    if (m_hwnd)
+    {
+        DestroyWindow(m_hwnd);
+        m_hwnd = nullptr;
+    }
+
+    m_webviewReady = false;
+}
+
+// #endif

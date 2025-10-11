@@ -390,10 +390,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     // Create the window.
 
-    HWND hwnd = CreateWindowEx(0,                           // Optional window styles.
-                               CLASS_NAME,                  // Window class
-                               L"Learn to Program Windows", // Window text
-                               WS_OVERLAPPEDWINDOW,         // Window style
+    HWND hwnd = CreateWindowEx(0,                                                        // Optional window styles.
+                               CLASS_NAME,                                               // Window class
+                               L"<Plugin Name>",                                         // Window text
+                               WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, // Window style
 
                                // Size and position
                                CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
@@ -459,33 +459,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
-        // if (!editor->skiaSurface)
-        // {
-        // //     editor->initializeSkiaSurface();
-        // //     // Create a Skia surface that matches the window dimensions
-        // //     // SkImageInfo info = SkImageInfo::MakeN32Premul(800, 600); // Set width/height accordingly
-        // //     // editor->skiaSurface = SkSurfaces::Raster(info);
-
-        // //     // // Initialize GDI bitmap info
-        // //     // memset(&bmi, 0, sizeof(bmi));
-        // //     // bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        // //     // bmi.bmiHeader.biWidth = info.width();
-        // //     // bmi.bmiHeader.biHeight = -info.height(); // Negative for top-down bitmap
-        // //     // bmi.bmiHeader.biPlanes = 1;
-        // //     // bmi.bmiHeader.biBitCount = 32;
-        // //     // bmi.bmiHeader.biCompression = BI_RGB;
-        // // }
-
         auto *canvas = editor->skiaSurface->getCanvas();
         editor->draw(canvas);
-
-        // Get the canvas from the surface
-        // SkCanvas *canvas = editor->skiaSurface->getCanvas();
-
-        // // Draw something with Skia
-        // SkPaint paint;
-        // paint.setColor(SK_ColorRED);
-        // canvas->drawRect(SkRect::MakeXYWH(100, 100, 200, 200), paint); // Draw red rectangle
 
         SkImageInfo info;
         size_t rowBytes;
