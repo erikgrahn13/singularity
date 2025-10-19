@@ -10,9 +10,10 @@ include(FetchContent)
 
 if(WIN32)
     include(ASIOSDK)
+    include(WebView2)
 endif()
 
-# include(SKIA)
+include(Miniz)
 include(VST3)
 include(SINGULARITY)
 

@@ -10,4 +10,6 @@ singularity_create_plugin(${PROJECT_NAME}
     ExampleProcessor.cpp
 
     FORMATS Standalone VST3
+    PLUGIN_WIDTH 200
+    PLUGIN_HEIGHT 600
 )
