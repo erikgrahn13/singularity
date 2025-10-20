@@ -17,5 +17,5 @@ class ISingularityGUI
     virtual void close() = 0;
     virtual void resize(int width, int height) = 0;
 
-    static std::unique_ptr<ISingularityGUI> createView();
+    // static std::unique_ptr<ISingularityGUI> createView();
 };

@@ -3,12 +3,12 @@
 #include "gui/singularity_Webview.h"
 #include <memory>
 
-class SingularityEditor
+class SingularityController
 {
   public:
-    SingularityEditor();
-    SingularityEditor(bool createWindow); // Constructor with window creation control
-    virtual ~SingularityEditor();
+    SingularityController();
+    SingularityController(bool createWindow); // Constructor with window creation control
+    virtual ~SingularityController();
 
     virtual void Initialize() = 0;
 
@@ -26,4 +26,4 @@ class SingularityEditor
     std::unique_ptr<ISingularityGUI> webview;
 };
 
-std::unique_ptr<SingularityEditor> createEditorInstance();
+std::unique_ptr<SingularityController> createControllerInstance();

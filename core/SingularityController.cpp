@@ -1,13 +1,13 @@
-#include "SingularityEditor.h"
+#include "SingularityController.h"
 
-SingularityEditor::SingularityEditor() : SingularityEditor(true)
+SingularityController::SingularityController() : SingularityController(true)
 {
     // Default constructor creates window (for standalone mode)
 }
 
-SingularityEditor::SingularityEditor(bool createWindow)
+SingularityController::SingularityController(bool createWindow)
 {
-    webview = ISingularityGUI::createView();
+    // webview = ISingularityGUI::createView();
 
     if (createWindow)
     {
@@ -20,7 +20,7 @@ SingularityEditor::SingularityEditor(bool createWindow)
     // The window will be created later via createAsChild()
 }
 
-SingularityEditor::~SingularityEditor()
+SingularityController::~SingularityController()
 {
 }
 

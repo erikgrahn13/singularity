@@ -17,6 +17,6 @@ include(Miniz)
 include(VST3)
 include(SINGULARITY)
 
-project(Singularity)
+project(Singularity LANGUAGES CXX Swift)
 
 add_subdirectory(example)

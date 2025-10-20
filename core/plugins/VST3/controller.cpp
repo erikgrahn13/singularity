@@ -7,7 +7,7 @@
 #include "vst3editor.h"
 
 // Forward declaration of createEditorInstanceForVST3 (defined in ExampleEditor.cpp)
-extern std::unique_ptr<SingularityEditor> createEditorInstanceForVST3();
+extern std::unique_ptr<SingularityController> createControllerInstanceForVST3();
 
 using namespace Steinberg;
 
@@ -29,8 +29,8 @@ tresult PLUGIN_API SingularityEffectController::initialize(FUnknown *context)
     }
 
     // Create the audio editor instance before initializing it
-    audioEditor = createEditorInstanceForVST3(); // Use factory function for concrete implementation
-    audioEditor->Initialize();
+    audioController = createControllerInstanceForVST3(); // Use factory function for concrete implementation
+    audioController->Initialize();
 
     // Here you could register some parameters
 
@@ -43,9 +43,9 @@ tresult PLUGIN_API SingularityEffectController::terminate()
     // Here the Plug-in will be de-instantiated, last possibility to remove some memory!
 
     // Clean up the audio editor
-    if (audioEditor)
+    if (audioController)
     {
-        audioEditor.reset();
+        audioController.reset();
     }
 
     //---do not forget to call parent ------
@@ -86,7 +86,7 @@ IPlugView *PLUGIN_API SingularityEffectController::createView(FIDString name)
     if (FIDStringsEqual(name, Vst::ViewType::kEditor))
     {
         // Create VST3-specific editor that uses the shared audioEditor instance
-        return new SingularityVST3Editor(this, audioEditor.get());
+        return new SingularityVST3Editor(this, audioController.get());
     }
     return nullptr;
 }

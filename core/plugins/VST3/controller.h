@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../../SingularityEditor.h"
+#include "../../SingularityController.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
 
 namespace MyCompanyName
@@ -45,7 +45,7 @@ class SingularityEffectController : public Steinberg::Vst::EditControllerEx1
 
     //------------------------------------------------------------------------
   protected:
-    std::unique_ptr<SingularityEditor> audioEditor;
+    std::unique_ptr<SingularityController> audioController;
 };
 
 //------------------------------------------------------------------------

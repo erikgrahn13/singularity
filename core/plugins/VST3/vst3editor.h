@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../SingularityEditor.h"
+#include "../../SingularityController.h"
 #include "../../gui/singularity_Webview.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include <memory>
@@ -17,7 +17,7 @@ namespace MyCompanyName
 class SingularityVST3Editor : public EditorView
 {
   public:
-    SingularityVST3Editor(EditController *controller, SingularityEditor *sharedEditor);
+    SingularityVST3Editor(EditController *controller, SingularityController *sharedController);
     virtual ~SingularityVST3Editor();
 
     // EditorView overrides
@@ -33,7 +33,7 @@ class SingularityVST3Editor : public EditorView
     void navigate(const std::string &url);
 
   protected:
-    SingularityEditor *audioEditor; // Pointer to shared editor instance (not owned by this class)
+    SingularityController *audioController; // Pointer to shared editor instance (not owned by this class)
     // int defaultWidth;
     // int defaultHeight;
 };

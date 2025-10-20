@@ -3,14 +3,14 @@
 using namespace Steinberg;
 
 // Forward declaration of createEditorInstanceForVST3 (defined in ExampleEditor.cpp)
-extern std::unique_ptr<SingularityEditor> createEditorInstanceForVST3();
+extern std::unique_ptr<SingularityController> createControllerInstanceForVST3();
 
 namespace MyCompanyName
 {
 
 //------------------------------------------------------------------------
-SingularityVST3Editor::SingularityVST3Editor(EditController *controller, SingularityEditor *sharedEditor)
-    : EditorView(controller, nullptr), audioEditor(sharedEditor)
+SingularityVST3Editor::SingularityVST3Editor(EditController *controller, SingularityController *sharedController)
+    : EditorView(controller, nullptr), audioController(sharedController)
 {
     // Use the shared editor instance from the controller
     // No need to create a new instance here
@@ -41,11 +41,11 @@ tresult PLUGIN_API SingularityVST3Editor::isPlatformTypeSupported(FIDString type
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::attached(void *parent, FIDString type)
 {
-    if (audioEditor && audioEditor->getWebView())
+    if (audioController && audioController->getWebView())
     {
         // Create WebView as child of host window using the ExampleEditor's webview
-        audioEditor->getWebView()->createAsChild(parent, PLUGIN_WIDTH, PLUGIN_HEIGHT);
-        audioEditor->getWebView()->navigate("http://localhost:5173/");
+        audioController->getWebView()->createAsChild(parent, PLUGIN_WIDTH, PLUGIN_HEIGHT);
+        audioController->getWebView()->navigate("http://localhost:5173/");
         return kResultOk;
     }
     return kResultFalse;
@@ -54,9 +54,9 @@ tresult PLUGIN_API SingularityVST3Editor::attached(void *parent, FIDString type)
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::removed()
 {
-    if (audioEditor && audioEditor->getWebView())
+    if (audioController && audioController->getWebView())
     {
-        audioEditor->getWebView()->close();
+        audioController->getWebView()->close();
     }
     return kResultOk;
 }
@@ -78,11 +78,11 @@ tresult PLUGIN_API SingularityVST3Editor::getSize(ViewRect *size)
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::onSize(ViewRect *newSize)
 {
-    if (newSize && audioEditor && audioEditor->getWebView())
+    if (newSize && audioController && audioController->getWebView())
     {
         int width = newSize->right - newSize->left;
         int height = newSize->bottom - newSize->top;
-        audioEditor->getWebView()->resize(width, height);
+        audioController->getWebView()->resize(width, height);
         return kResultOk;
     }
     return kResultFalse;
@@ -117,9 +117,9 @@ tresult PLUGIN_API SingularityVST3Editor::checkSizeConstraint(ViewRect *rect)
 //------------------------------------------------------------------------
 void SingularityVST3Editor::navigate(const std::string &url)
 {
-    if (audioEditor && audioEditor->getWebView())
+    if (audioController && audioController->getWebView())
     {
-        audioEditor->getWebView()->navigate(url);
+        audioController->getWebView()->navigate(url);
     }
 }
 

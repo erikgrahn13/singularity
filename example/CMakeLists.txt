@@ -4,8 +4,8 @@ project(ExamplePlugin VERSION 0.0.1)
 
 singularity_create_plugin(${PROJECT_NAME}
     SOURCES
-    ExampleEditor.h
-    ExampleEditor.cpp
+    ExampleController.h
+    ExampleController.cpp
     ExampleProcessor.h
     ExampleProcessor.cpp
 

@@ -119,8 +119,8 @@ function(singularity_create_plugin target)
     add_library(${target} STATIC ${SOURCES})
 
     target_sources(${target} PUBLIC
-        ${SINGULARITY_CORE_PATH}/SingularityEditor.h
-        ${SINGULARITY_CORE_PATH}/SingularityEditor.cpp
+        ${SINGULARITY_CORE_PATH}/SingularityController.h
+        ${SINGULARITY_CORE_PATH}/SingularityController.cpp
         ${SINGULARITY_CORE_PATH}/SingularityProcessor.h
         ${SINGULARITY_CORE_PATH}/SingularityProcessor.cpp
         ${SINGULARITY_CORE_PATH}/gui/singularity_Webview.h
@@ -135,13 +135,14 @@ function(singularity_create_plugin target)
     )
 
     if(APPLE)
-        list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/core/gui/platform/macos/webview_macos.mm)
+        # list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/core/gui/platform/macos/webview_macos.mm)
+        # target_sources(${target} PUBLIC ${CMAKE_SOURCE_DIR}/core/gui/platform/macos/main.swift)
         find_library(COCOA_FRAMEWORK Cocoa)
         find_library(WEBKIT_FRAMEWORK WebKit)
         set(PLATFORM_LIBS ${COCOA_FRAMEWORK} ${WEBKIT_FRAMEWORK})
 
-        # Enable ARC for Objective-C++ files
-        set_source_files_properties(src/platform/macos/webview_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+    # Enable ARC for Objective-C++ files
+    # set_source_files_properties(src/platform/macos/webview_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
         target_sources(${target} PUBLIC ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.cpp)
         target_link_libraries(${target} PUBLIC "${webview2_SOURCE_DIR}/build/native/x64/WebView2LoaderStatic.lib")

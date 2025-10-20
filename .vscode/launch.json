@@ -41,6 +41,18 @@
       "MIMode": "lldb"
     },
     {
+      "name": "ExamplePlugin_App (CodeLLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/ExamplePlugin/app/ExamplePlugin_App.app/Contents/MacOS/ExamplePlugin_App",
+      "args": [],
+      "stopOnEntry": false,
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "console": "internalConsole",
+      "preLaunchTask": "CMake: build"
+    },
+    {
       "name": "(Windows) Launch",
       "type": "cppvsdbg",
       "request": "launch",
