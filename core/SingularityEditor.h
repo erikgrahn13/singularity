@@ -7,9 +7,16 @@ class SingularityEditor
 {
   public:
     SingularityEditor();
+    SingularityEditor(bool createWindow); // Constructor with window creation control
     virtual ~SingularityEditor();
-    virtual void draw() = 0;
-    void loadFont();
+
+    virtual void Initialize() = 0;
+
+    // Public access to webview for VST3 integration
+    ISingularityGUI *getWebView() const
+    {
+        return webview.get();
+    }
 
   protected:
     // virtual void initializeSkiaSurface() = 0;

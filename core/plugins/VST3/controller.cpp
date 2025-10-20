@@ -6,6 +6,9 @@
 #include "cids.h"
 #include "vst3editor.h"
 
+// Forward declaration of createEditorInstanceForVST3 (defined in ExampleEditor.cpp)
+extern std::unique_ptr<SingularityEditor> createEditorInstanceForVST3();
+
 using namespace Steinberg;
 
 namespace MyCompanyName
@@ -25,7 +28,10 @@ tresult PLUGIN_API SingularityEffectController::initialize(FUnknown *context)
         return result;
     }
 
-    // audioEditor = createEditorInstance();
+    // Create the audio editor instance before initializing it
+    audioEditor = createEditorInstanceForVST3(); // Use factory function for concrete implementation
+    audioEditor->Initialize();
+
     // Here you could register some parameters
 
     return result;
@@ -35,6 +41,12 @@ tresult PLUGIN_API SingularityEffectController::initialize(FUnknown *context)
 tresult PLUGIN_API SingularityEffectController::terminate()
 {
     // Here the Plug-in will be de-instantiated, last possibility to remove some memory!
+
+    // Clean up the audio editor
+    if (audioEditor)
+    {
+        audioEditor.reset();
+    }
 
     //---do not forget to call parent ------
     return EditControllerEx1::terminate();
@@ -73,8 +85,8 @@ IPlugView *PLUGIN_API SingularityEffectController::createView(FIDString name)
     // Here the Host wants to open your editor (if you have one)
     if (FIDStringsEqual(name, Vst::ViewType::kEditor))
     {
-        // Create VST3-specific editor that wraps the WebView
-        return new SingularityVST3Editor(this);
+        // Create VST3-specific editor that uses the shared audioEditor instance
+        return new SingularityVST3Editor(this, audioEditor.get());
     }
     return nullptr;
 }

@@ -61,6 +61,19 @@
       "cwd": "${workspaceFolder}",
       "console": "newExternalWindow",
       "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Validator Debugging",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [
+        "${command:cmake.buildDirectory}/ExamplePlugin/vst3/VST3/ExamplePlugin.vst3"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      // "console": "newExternalWindow",
+      "preLaunchTask": "CMake: build"
     }
   ]
 }

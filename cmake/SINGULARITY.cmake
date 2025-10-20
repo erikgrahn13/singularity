@@ -116,7 +116,9 @@ function(singularity_create_plugin target)
         set(SOURCES ${PARAMS_UNPARSED_ARGUMENTS})
     endif()
 
-    set(SINGULARITY_SOURCES
+    add_library(${target} STATIC ${SOURCES})
+
+    target_sources(${target} PUBLIC
         ${SINGULARITY_CORE_PATH}/SingularityEditor.h
         ${SINGULARITY_CORE_PATH}/SingularityEditor.cpp
         ${SINGULARITY_CORE_PATH}/SingularityProcessor.h
@@ -126,10 +128,6 @@ function(singularity_create_plugin target)
         ${SINGULARITY_CORE_PATH}/gui/singularity_ResourceManager.h
         ${SINGULARITY_CORE_PATH}/gui/singularity_ResourceManager.cpp
     )
-
-    list(APPEND SOURCES ${SINGULARITY_SOURCES})
-
-    add_library(${target} STATIC ${SOURCES})
 
     target_compile_definitions(${target} PUBLIC
         PLUGIN_WIDTH=${PARAMS_PLUGIN_WIDTH}
@@ -145,13 +143,10 @@ function(singularity_create_plugin target)
         # Enable ARC for Objective-C++ files
         set_source_files_properties(src/platform/macos/webview_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
     elseif(WIN32)
-        list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.cpp)
-
+        target_sources(${target} PUBLIC ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.cpp)
         target_link_libraries(${target} PUBLIC "${webview2_SOURCE_DIR}/build/native/x64/WebView2LoaderStatic.lib")
         target_link_libraries(${target} PUBLIC shlwapi)
         target_include_directories(${target} PUBLIC "${wil_SOURCE_DIR}/include" "${webview2_SOURCE_DIR}/build/native/include")
-
-    # endif()
     elseif(UNIX)
         list(APPEND SOURCES src/platform/linux/webview_linux.cpp)
         find_package(PkgConfig REQUIRED)

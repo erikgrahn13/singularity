@@ -2,24 +2,24 @@
 
 using namespace Steinberg;
 
+// Forward declaration of createEditorInstanceForVST3 (defined in ExampleEditor.cpp)
+extern std::unique_ptr<SingularityEditor> createEditorInstanceForVST3();
+
 namespace MyCompanyName
 {
 
 //------------------------------------------------------------------------
-SingularityVST3Editor::SingularityVST3Editor(EditController *controller, const std::string &url)
-    : EditorView(controller, nullptr), initialUrl(url), defaultWidth(800), defaultHeight(600)
+SingularityVST3Editor::SingularityVST3Editor(EditController *controller, SingularityEditor *sharedEditor)
+    : EditorView(controller, nullptr), audioEditor(sharedEditor)
 {
-    // Create the WebView instance
-    webview = ISingularityGUI::createView();
+    // Use the shared editor instance from the controller
+    // No need to create a new instance here
 }
 
 //------------------------------------------------------------------------
 SingularityVST3Editor::~SingularityVST3Editor()
 {
-    if (webview)
-    {
-        webview->close();
-    }
+    // Don't delete audioEditor - it's owned by the controller
 }
 
 //------------------------------------------------------------------------
@@ -41,11 +41,11 @@ tresult PLUGIN_API SingularityVST3Editor::isPlatformTypeSupported(FIDString type
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::attached(void *parent, FIDString type)
 {
-    if (webview)
+    if (audioEditor && audioEditor->getWebView())
     {
-        // Create WebView as child of host window
-        webview->createAsChild(parent, defaultWidth, defaultHeight);
-        webview->navigate(initialUrl);
+        // Create WebView as child of host window using the ExampleEditor's webview
+        audioEditor->getWebView()->createAsChild(parent, PLUGIN_WIDTH, PLUGIN_HEIGHT);
+        audioEditor->getWebView()->navigate("http://localhost:5173/");
         return kResultOk;
     }
     return kResultFalse;
@@ -54,9 +54,9 @@ tresult PLUGIN_API SingularityVST3Editor::attached(void *parent, FIDString type)
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::removed()
 {
-    if (webview)
+    if (audioEditor && audioEditor->getWebView())
     {
-        webview->close();
+        audioEditor->getWebView()->close();
     }
     return kResultOk;
 }
@@ -68,8 +68,8 @@ tresult PLUGIN_API SingularityVST3Editor::getSize(ViewRect *size)
     {
         size->left = 0;
         size->top = 0;
-        size->right = defaultWidth;
-        size->bottom = defaultHeight;
+        size->right = PLUGIN_WIDTH;
+        size->bottom = PLUGIN_HEIGHT;
         return kResultOk;
     }
     return kResultFalse;
@@ -78,11 +78,11 @@ tresult PLUGIN_API SingularityVST3Editor::getSize(ViewRect *size)
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::onSize(ViewRect *newSize)
 {
-    if (newSize && webview)
+    if (newSize && audioEditor && audioEditor->getWebView())
     {
         int width = newSize->right - newSize->left;
         int height = newSize->bottom - newSize->top;
-        webview->resize(width, height);
+        audioEditor->getWebView()->resize(width, height);
         return kResultOk;
     }
     return kResultFalse;
@@ -97,28 +97,29 @@ tresult PLUGIN_API SingularityVST3Editor::canResize()
 //------------------------------------------------------------------------
 tresult PLUGIN_API SingularityVST3Editor::checkSizeConstraint(ViewRect *rect)
 {
-    if (rect)
-    {
-        // Enforce minimum size
-        int width = rect->right - rect->left;
-        int height = rect->bottom - rect->top;
+    // if (rect)
+    // {
+    //     // Enforce minimum size
+    //     int width = rect->right - rect->left;
+    //     int height = rect->bottom - rect->top;
 
-        if (width < 400)
-            rect->right = rect->left + 400;
-        if (height < 300)
-            rect->bottom = rect->top + 300;
+    //     if (width < 400)
+    //         rect->right = rect->left + 400;
+    //     if (height < 300)
+    //         rect->bottom = rect->top + 300;
 
-        return kResultOk;
-    }
-    return kResultFalse;
+    //     return kResultOk;
+    // }
+    // return kResultFalse;
+    return kResultTrue;
 }
 
 //------------------------------------------------------------------------
 void SingularityVST3Editor::navigate(const std::string &url)
 {
-    if (webview)
+    if (audioEditor && audioEditor->getWebView())
     {
-        webview->navigate(url);
+        audioEditor->getWebView()->navigate(url);
     }
 }
 

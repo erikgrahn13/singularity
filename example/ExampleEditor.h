@@ -2,10 +2,13 @@
 
 #include "../core/SingularityEditor.h"
 
+// Plugin window size configuration
+
 class ExampleEditor : public SingularityEditor
 {
 
   public:
     ExampleEditor();
-    void draw() override;
+    ExampleEditor(bool createWindow); // Constructor for VST3 mode
+    void Initialize() override;
 };

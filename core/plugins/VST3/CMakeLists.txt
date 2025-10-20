@@ -43,14 +43,6 @@ smtg_add_vst3plugin_with_pkgname(${target_name} ${target}
     entry.cpp
     vst3editor.h
     vst3editor.cpp
-    ${CMAKE_SOURCE_DIR}/core/SingularityEditor.cpp
-    ${CMAKE_SOURCE_DIR}/core/SingularityEditor.h
-    ${CMAKE_SOURCE_DIR}/core/gui/singularity_Webview.h
-    ${CMAKE_SOURCE_DIR}/core/gui/singularity_Webview.cpp
-    ${CMAKE_SOURCE_DIR}/core/gui/singularity_ResourceManager.h
-    ${CMAKE_SOURCE_DIR}/core/gui/singularity_ResourceManager.cpp
-    ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.cpp
-    ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.h
 )
 
 target_include_directories(${target_name} PUBLIC
