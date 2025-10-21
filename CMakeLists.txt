@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SINGULARITY_CORE_PATH ${CMAKE_CURRENT_LIST_DIR}/core)
@@ -17,6 +17,10 @@ include(Miniz)
 include(VST3)
 include(SINGULARITY)
 
-project(Singularity LANGUAGES CXX Swift)
+project(Singularity LANGUAGES CXX)
+
+if(APPLE)
+    enable_language(Swift)
+endif()
 
 add_subdirectory(example)

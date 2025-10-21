@@ -20,6 +20,11 @@ void ExampleController::Initialize()
     // Here you should register you parameters
 }
 
+void ExampleController::onViewReady()
+{
+    navigate("http://localhost:5173/");
+}
+
 std::unique_ptr<SingularityController> createControllerInstance()
 {
     return std::make_unique<ExampleController>();

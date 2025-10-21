@@ -134,6 +134,8 @@ function(singularity_create_plugin target)
         PLUGIN_HEIGHT=${PARAMS_PLUGIN_HEIGHT}
     )
 
+    target_include_directories(${target} PUBLIC ${SINGULARITY_CORE_PATH})
+
     if(APPLE)
         # list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/core/gui/platform/macos/webview_macos.mm)
         # target_sources(${target} PUBLIC ${CMAKE_SOURCE_DIR}/core/gui/platform/macos/main.swift)
@@ -143,11 +145,6 @@ function(singularity_create_plugin target)
 
     # Enable ARC for Objective-C++ files
     # set_source_files_properties(src/platform/macos/webview_macos.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
-    elseif(WIN32)
-        target_sources(${target} PUBLIC ${CMAKE_SOURCE_DIR}/core/gui/platform/windows/singularityGUI_Windows.cpp)
-        target_link_libraries(${target} PUBLIC "${webview2_SOURCE_DIR}/build/native/x64/WebView2LoaderStatic.lib")
-        target_link_libraries(${target} PUBLIC shlwapi)
-        target_include_directories(${target} PUBLIC "${wil_SOURCE_DIR}/include" "${webview2_SOURCE_DIR}/build/native/include")
     elseif(UNIX)
         list(APPEND SOURCES src/platform/linux/webview_linux.cpp)
         find_package(PkgConfig REQUIRED)
@@ -155,6 +152,8 @@ function(singularity_create_plugin target)
         set(PLATFORM_LIBS ${WEBKIT_LIBRARIES})
         include_directories(${WEBKIT_INCLUDE_DIRS})
     endif()
+
+    add_subdirectory(${CMAKE_SOURCE_DIR}/core/gui ${CMAKE_BINARY_DIR}/gui)
 
     foreach(type IN LISTS FORMATS)
         message("erik4 ${type}")

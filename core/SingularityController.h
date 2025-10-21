@@ -11,19 +11,28 @@ class SingularityController
     virtual ~SingularityController();
 
     virtual void Initialize() = 0;
+    void navigate(const std::string &url);
 
     // Public access to webview for VST3 integration
     ISingularityGUI *getWebView() const
     {
-        return webview.get();
+        return m_view.get();
     }
 
-  protected:
-    // virtual void initializeSkiaSurface() = 0;
+    virtual void onViewReady() = 0;
+
+  private:
+    friend class WindowsStandalone;
+
+    void setView(std::unique_ptr<ISingularityGUI> view)
+    {
+        m_view = std::move(view);
+        onViewReady();
+    }
 
     int width;
     int height;
-    std::unique_ptr<ISingularityGUI> webview;
+    std::unique_ptr<ISingularityGUI> m_view;
 };
 
 std::unique_ptr<SingularityController> createControllerInstance();

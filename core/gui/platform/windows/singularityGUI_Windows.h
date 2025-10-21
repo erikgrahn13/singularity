@@ -2,17 +2,25 @@
 
 // #ifdef _WIN32
 #include "../../singularity_Webview.h"
-#include <WebView2.h>
+#include "WebView2.h"
+#include <Shlwapi.h>
 #include <string>
+#include <wil/com.h>
 #include <windows.h>
 #include <wrl.h>
 
 using namespace Microsoft::WRL;
 
+// static wil::com_ptr<ICoreWebView2Controller> webviewController;
+// static wil::com_ptr<ICoreWebView2Environment> environment;
+// static wil::com_ptr<ICoreWebView2> webview;
+
+EventRegistrationToken m_webResourceRequestedToken = {};
+
 class WebViewWindows : public ISingularityGUI
 {
   public:
-    WebViewWindows();
+    WebViewWindows(void *windowHandle = nullptr);
     ~WebViewWindows();
 
     // ISingularityGUI interface (standalone + child window support)
@@ -30,9 +38,12 @@ class WebViewWindows : public ISingularityGUI
     void setWebViewBounds();
 
     HWND m_hwnd;
-    ComPtr<ICoreWebView2Environment> m_environment;
-    ComPtr<ICoreWebView2Controller> m_controller;
-    ComPtr<ICoreWebView2> m_webview;
+    // ComPtr<ICoreWebView2Environment> m_environment;
+    // ComPtr<ICoreWebView2Controller> m_controller;
+    // ComPtr<ICoreWebView2> m_webview;
+    wil::com_ptr<ICoreWebView2Controller> m_webviewController;
+    wil::com_ptr<ICoreWebView2Environment> m_environment;
+    wil::com_ptr<ICoreWebView2> m_webview;
 
     std::string m_pendingUrl;
     bool m_webviewReady;
