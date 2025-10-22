@@ -14,9 +14,26 @@ std::unique_ptr<ISingularityGUI> ISingularityGUI::createView(void *windowHandle)
 
 WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(windowHandle))
 {
-    HWND hwnd = m_hwnd;
+    // Get a writable user data folder path
+    std::wstring userDataFolder;
+    PWSTR appDataPath = nullptr;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &appDataPath)))
+    {
+        userDataFolder = std::wstring(appDataPath) + L"\\Singularity\\WebView2";
+        CoTaskMemFree(appDataPath);
+    }
+    else
+    {
+        // Fallback to temp directory
+        wchar_t tempPath[MAX_PATH];
+        GetTempPathW(MAX_PATH, tempPath);
+        userDataFolder = std::wstring(tempPath) + L"SingularityWebView2";
+    }
+
     CreateCoreWebView2EnvironmentWithOptions(
-        nullptr, nullptr, nullptr,
+        nullptr,                // Use default WebView2 runtime
+        userDataFolder.c_str(), // Use writable user data folder
+        nullptr,                // Default options
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([this](HRESULT result,
                                                                                     ICoreWebView2Environment *env)
                                                                                  -> HRESULT {

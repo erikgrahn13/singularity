@@ -63,6 +63,7 @@ target_link_libraries(${target_name}
     PRIVATE
     sdk
     ${target}
+    SingularityView
 )
 
 smtg_target_configure_version_file(${target_name})

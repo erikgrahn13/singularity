@@ -29,8 +29,8 @@ tresult PLUGIN_API SingularityEffectController::initialize(FUnknown *context)
     }
 
     // Create the audio editor instance before initializing it
-    audioController = createControllerInstanceForVST3(); // Use factory function for concrete implementation
-    audioController->Initialize();
+    audioController = createControllerInstance(); // Use factory function for concrete implementation
+    // audioController->Initialize();
 
     // Here you could register some parameters
 
