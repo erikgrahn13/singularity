@@ -8,8 +8,6 @@ class ExampleController : public SingularityController
 {
 
   public:
-    ExampleController();
-    ExampleController(bool createWindow); // Constructor for VST3 mode
+    ExampleController() = default;
     void Initialize() override;
-    void onViewReady() override;
 };

@@ -1,4 +1,5 @@
 // #include "singularity_Webview.h"
+#include "../StandaloneHelper.h"
 #include "SingularityController.h"
 #include <array>
 #include <ios>
@@ -79,10 +80,9 @@ class WindowsStandalone
         UpdateWindow(hWnd);
 
         // Adding view/gui
-        auto view = ISingularityGUI::createView(hWnd);
         auto controller = createControllerInstance();
 
-        controller->setView(std::move(view));
+        StandaloneHelper::initializeView(controller.get(), hWnd);
 
         MSG msg;
         while (GetMessage(&msg, NULL, 0, 0))

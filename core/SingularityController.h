@@ -3,11 +3,19 @@
 #include "gui/singularity_Webview.h"
 #include <memory>
 
+class ISingularityGUI;
+class SingularityController;
+
+namespace Singularity::Internal
+{
+// Internal API - not for users
+void setControllerView(SingularityController *controller, std::unique_ptr<ISingularityGUI> view);
+} // namespace Singularity::Internal
+
 class SingularityController
 {
   public:
     SingularityController();
-    SingularityController(bool createWindow); // Constructor with window creation control
     virtual ~SingularityController();
 
     virtual void Initialize() = 0;
@@ -19,15 +27,14 @@ class SingularityController
         return m_view.get();
     }
 
-    virtual void onViewReady() = 0;
-
   private:
-    friend class WindowsStandalone;
+    // Only friend the internal namespace function
+    friend void Singularity::Internal::setControllerView(SingularityController *, std::unique_ptr<ISingularityGUI>);
 
     void setView(std::unique_ptr<ISingularityGUI> view)
     {
         m_view = std::move(view);
-        onViewReady();
+        Initialize();
     }
 
     int width;

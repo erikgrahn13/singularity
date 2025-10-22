@@ -25,18 +25,13 @@ class WebViewWindows : public ISingularityGUI
 
     // ISingularityGUI interface (standalone + child window support)
     void create(int width, int height, const std::string &title) override;
-    void createAsChild(void *parentWindow, int width, int height) override;
+    void createAsChild(void *parentWindow, int width, int height) {};
     void navigate(const std::string &url) override;
     void run() override;
     void close() override;
     void resize(int width, int height) override;
 
   private:
-    static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    void createWebView();
-    void onWebViewCreated(ICoreWebView2Controller *controller);
-    void setWebViewBounds();
-
     HWND m_hwnd;
     // ComPtr<ICoreWebView2Environment> m_environment;
     // ComPtr<ICoreWebView2Controller> m_controller;
