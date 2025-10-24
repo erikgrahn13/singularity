@@ -1,10 +1,7 @@
 #include "vst3editor.h"
-#include "Windows.h"
+#include "platform/VST3Window.h"
 
 using namespace Steinberg;
-
-// Forward declaration of createEditorInstanceForVST3 (defined in ExampleEditor.cpp)
-extern std::unique_ptr<SingularityController> createControllerInstanceForVST3();
 
 namespace MyCompanyName
 {
@@ -45,18 +42,7 @@ tresult PLUGIN_API SingularityVST3Editor::attached(void *parent, FIDString type)
     if (audioController)
     {
         // Create WebView as child of host window using the ExampleEditor's webview
-        // audioController->getWebView()->createAsChild(parent, PLUGIN_WIDTH, PLUGIN_HEIGHT);
-        // audioController->getWebView()->navigate("http://localhost:5173/");
-
-        HWND childWindow = CreateWindowEx(0,         // No extended styles
-                                          L"STATIC", // Simple window class
-                                          L"",       // No title needed
-                                          WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0,
-                                          0,                           // Position at top-left of parent
-                                          PLUGIN_WIDTH, PLUGIN_HEIGHT, // Size you specified in getSize()
-                                          (HWND)parent,                // Parent HWND from the host
-                                          nullptr, GetModuleHandle(nullptr), nullptr);
-
+        void *childWindow = VST3Window::createPlatformWindow(parent);
         auto view = ISingularityGUI::createView(childWindow);
         Singularity::Internal::setControllerView(audioController, std::move(view));
         return kResultOk;

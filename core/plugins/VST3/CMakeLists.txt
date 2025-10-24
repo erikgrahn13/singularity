@@ -45,9 +45,18 @@ smtg_add_vst3plugin_with_pkgname(${target_name} ${target}
     vst3editor.cpp
 )
 
+if(WIN32)
+elseif(APPLE)
+    target_sources(${target_name} PRIVATE
+        platform/macos/VST3WindowMacos.cpp
+    )
+elseif(UNIX)
+endif()
+
 target_include_directories(${target_name} PUBLIC
     ${CMAKE_BINARY_DIR}/${PROJECT_NAME}/vst3
     ${CMAKE_SOURCE_DIR}/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform
 )
 
 # -------------------
