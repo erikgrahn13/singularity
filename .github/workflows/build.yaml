@@ -19,6 +19,11 @@ jobs:
 
       # - name: Install dependencies
       #   run: brew install autoconf automake autoconf-archive
+      - name: Enter MSVC dev environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
       - name: Configure CMake
         run: cmake --preset Debug
