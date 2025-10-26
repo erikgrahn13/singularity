@@ -46,6 +46,9 @@ smtg_add_vst3plugin_with_pkgname(${target_name} ${target}
 )
 
 if(WIN32)
+    target_sources(${target_name} PRIVATE
+        platform/windows/VST3WindowWindows.cpp
+    )
 elseif(APPLE)
     target_sources(${target_name} PRIVATE
         platform/macos/VST3WindowMacos.cpp

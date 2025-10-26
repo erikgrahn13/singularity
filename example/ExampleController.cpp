@@ -12,10 +12,3 @@ std::unique_ptr<SingularityController> createControllerInstance()
 {
     return std::make_unique<ExampleController>();
 }
-
-// Factory function for VST3 mode (no window creation)
-std::unique_ptr<SingularityController> createControllerInstanceForVST3()
-{
-    // return std::make_unique<ExampleController>(false); // false = don't create window
-    return nullptr;
-}

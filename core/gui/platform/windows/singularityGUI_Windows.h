@@ -30,6 +30,7 @@ class WebViewWindows : public ISingularityGUI
     void run() override;
     void close() override;
     void resize(int width, int height) override;
+    void executeScript(const std::string &script);
 
   private:
     HWND m_hwnd;

@@ -18,6 +18,7 @@ namespace Singularity::Internal
 {
 void setControllerView(SingularityController *controller, std::unique_ptr<ISingularityGUI> view)
 {
+    view->setViewReady([controller]() { controller->Initialize(); });
     controller->setView(std::move(view));
 }
 } // namespace Singularity::Internal

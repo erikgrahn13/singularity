@@ -49,6 +49,11 @@ WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(wi
                         m_webviewController->get_CoreWebView2(&m_webview);
                     }
 
+                    if (m_webview == nullptr)
+                    {
+                        return S_OK;
+                    }
+
                     wil::com_ptr<ICoreWebView2Settings> settings;
                     m_webview->get_Settings(&settings);
                     settings->put_IsScriptEnabled(TRUE);
@@ -59,96 +64,43 @@ WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(wi
                     GetClientRect(m_hwnd, &bounds);
                     m_webviewController->put_Bounds(bounds);
 
-                    /********************************************************************** */
-                    // webview->AddWebResourceRequestedFilter(L"https://app.local/*",
-                    //                                        COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-
-                    // webview->add_WebResourceRequested(
-                    //     Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                    //         [this](ICoreWebView2 *webview,
-                    //                ICoreWebView2WebResourceRequestedEventArgs *args) -> HRESULT {
-                    //             // Get the requested URL
-                    //             wil::com_ptr<ICoreWebView2WebResourceRequest> request;
-                    //             args->get_Request(&request);
-
-                    //             wil::unique_cotaskmem_string uri;
-                    //             request->get_Uri(&uri);
-
-                    //             // Convert URL to file path
-                    //             std::wstring url_wide(uri.get());
-                    //             std::string url(url_wide.begin(), url_wide.end());
-
-                    //             std::string filepath = "dist/";
-                    //             size_t pos = url.find("https://app.local");
-                    //             if (pos != std::string::npos)
-                    //             {
-                    //                 std::string path = url.substr(pos + 17); // Length of "https://app.local"
-                    //                 if (path.empty() || path == "/")
-                    //                 {
-                    //                     filepath += "index.html"; // Default to index.html
-                    //                 }
-                    //                 else
-                    //                 {
-                    //                     if (path.starts_with("/"))
-                    //                         path = path.substr(1);
-                    //                     filepath += path;
-                    //                 }
-                    //             }
-
-                    //             // Extract all files and find the requested one
-                    //             auto erik = extractAllFilesFromZip();
-                    //             auto it = erik.find(filepath);
-
-                    //             if (it == erik.end())
-                    //             {
-                    //                 // File not found - return 404
-                    //                 std::println("File not found: {}", filepath);
-                    //                 wil::com_ptr<ICoreWebView2WebResourceResponse> response;
-                    //                 environment->CreateWebResourceResponse(nullptr, 404, L"Not Found", L"",
-                    //                 &response); args->put_Response(response.get()); return S_OK;
-                    //             }
-
-                    //             std::println("Serving: {} ({} bytes)", filepath, it->second.size());
-
-                    //             // Create stream from file data
-                    //             auto stream = SHCreateMemStream((BYTE *)it->second.data(), (UINT)it->second.size());
-
-                    //             // Get correct content type
-                    //             std::string content_type = getContentType(filepath);
-                    //             std::wstring headers =
-                    //                 L"Content-Type: " + std::wstring(content_type.begin(), content_type.end());
-
-                    //             wil::com_ptr<ICoreWebView2WebResourceResponse> response;
-                    //             environment->CreateWebResourceResponse(stream, 200, L"OK", headers.c_str(),
-                    //             &response); args->put_Response(response.get()); return S_OK;
-                    //         })
-                    //         .Get(),
-                    //     &m_webResourceRequestedToken);
-                    // webview->Navigate(L"https://app.local/");
-                    /********************************************************************** */
-
-                    // if (!m_pendingUrl.empty())
+                    // Add init scripts to execute on document creation
+                    // for (const auto &script : m_initScripts)
                     // {
-                    // std::wstring wideUrl(m_pendingUrl.begin(), m_pendingUrl.end());
-                    // m_webview->Navigate(wideUrl.c_str());
-                    //     m_pendingUrl.clear();
+                    //     std::wstring wideScript(script.begin(), script.end());
+                    //     m_webview->AddScriptToExecuteOnDocumentCreated(wideScript.c_str(), nullptr);
+                    // }
+                    // if (m_webviewReady)
+                    // {
+                    //     m_viewReadyCallback();
                     // }
 
-                    // Check and navigate to pending URL
+                    m_webview->AddScriptToExecuteOnDocumentCreated(
+                        L"window.requestAudioDevicesFromCpp = function() { /* C++ callback here */ }", nullptr);
 
-                    std::wstring wideUrl(m_pendingUrl.begin(), m_pendingUrl.end());
-                    m_webview->Navigate(wideUrl.c_str());
+                    // Add navigation completed handler
+                    m_webview->add_NavigationCompleted(
+                        Callback<ICoreWebView2NavigationCompletedEventHandler>(
+                            [this](ICoreWebView2 *sender, ICoreWebView2NavigationCompletedEventArgs *args) -> HRESULT {
+                                // // NOW send the message - page is loaded
+                                // std::wstring message = L"{\"name\": \"John\", \"age\": 30}";
+                                // m_webview->PostWebMessageAsJson(message.c_str());
 
-                    m_webview->AddScriptToExecuteOnDocumentCreated(L"Object.freeze(Object);", nullptr);
-                    // Schedule an async task to get the document URL
-                    m_webview->ExecuteScript(
-                        L"window.document.URL;",
-                        Callback<ICoreWebView2ExecuteScriptCompletedHandler>([](HRESULT errorCode,
-                                                                                LPCWSTR resultObjectAsJson) -> HRESULT {
-                            LPCWSTR URL = resultObjectAsJson;
-                            // doSomethingWithURL(URL);
-                            return S_OK;
-                        }).Get());
+                                for (const auto &script : m_pendingScripts)
+                                {
+                                    std::wstring wideScript(script.begin(), script.end());
+                                    m_webview->ExecuteScript(wideScript.c_str(), nullptr);
+                                }
+                                m_pendingScripts.clear();
+                                return S_OK;
+                            })
+                            .Get(),
+                        nullptr);
+
+                    if (m_webview)
+                    {
+                        m_viewReadyCallback();
+                    }
 
                     return S_OK;
                 }).Get());
@@ -159,6 +111,19 @@ WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(wi
 WebViewWindows::~WebViewWindows()
 {
     // close();
+}
+
+void WebViewWindows::executeScript(const std::string &script)
+{
+    if (m_webview)
+    {
+        std::wstring wideScript(script.begin(), script.end());
+        m_webview->ExecuteScript(wideScript.c_str(), nullptr);
+    }
+    else
+    {
+        m_pendingScripts.push_back(script);
+    }
 }
 
 void WebViewWindows::create(int width, int height, const std::string &title)
@@ -238,7 +203,11 @@ void WebViewWindows::create(int width, int height, const std::string &title)
 
 void WebViewWindows::navigate(const std::string &url)
 {
-    m_pendingUrl = url;
+    if (m_webview)
+    {
+        std::wstring wideUrl(url.begin(), url.end());
+        m_webview->Navigate(wideUrl.c_str());
+    }
 }
 
 void WebViewWindows::resize(int width, int height)

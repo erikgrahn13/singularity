@@ -6,9 +6,6 @@
 #include "cids.h"
 #include "vst3editor.h"
 
-// Forward declaration of createEditorInstanceForVST3 (defined in ExampleEditor.cpp)
-extern std::unique_ptr<SingularityController> createControllerInstanceForVST3();
-
 using namespace Steinberg;
 
 namespace MyCompanyName

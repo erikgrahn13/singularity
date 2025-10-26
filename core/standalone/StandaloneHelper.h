@@ -1,6 +1,8 @@
 #pragma once
 
+#include "AudioManager.h"
 #include "SingularityController.h"
+#include <sstream>
 
 class StandaloneHelper
 {
@@ -9,5 +11,9 @@ class StandaloneHelper
     {
         auto view = ISingularityGUI::createView(window);
         Singularity::Internal::setControllerView(controller, std::move(view));
+    }
+
+    static void initializeAudio(SingularityController *controller)
+    {
     }
 };

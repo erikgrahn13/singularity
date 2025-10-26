@@ -1,7 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 class ISingularityGUI
 {
@@ -16,6 +18,16 @@ class ISingularityGUI
     virtual void run() = 0;
     virtual void close() = 0;
     virtual void resize(int width, int height) = 0;
+    virtual void executeScript(const std::string &script) = 0;
+
+    void setViewReady(std::function<void()> callback)
+    {
+        m_viewReadyCallback = callback;
+    }
 
     static std::unique_ptr<ISingularityGUI> createView(void *windowHandle = nullptr);
+    std::vector<std::string> m_pendingScripts;
+
+  protected:
+    std::function<void()> m_viewReadyCallback;
 };

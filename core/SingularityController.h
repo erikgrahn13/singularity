@@ -5,6 +5,12 @@
 
 class ISingularityGUI;
 class SingularityController;
+class SingularityVST3Controller;
+
+namespace MyCompanyName
+{
+class SingularityVST3Editor;
+}
 
 namespace Singularity::Internal
 {
@@ -21,24 +27,22 @@ class SingularityController
     virtual void Initialize() = 0;
     void navigate(const std::string &url);
 
-    // Public access to webview for VST3 integration
+  private:
+    // Only friend the internal namespace function
+    friend void Singularity::Internal::setControllerView(SingularityController *, std::unique_ptr<ISingularityGUI>);
+    friend class SingularityVST3Controller;
+    friend class MyCompanyName::SingularityVST3Editor;
+
     ISingularityGUI *getWebView() const
     {
         return m_view.get();
     }
 
-  private:
-    // Only friend the internal namespace function
-    friend void Singularity::Internal::setControllerView(SingularityController *, std::unique_ptr<ISingularityGUI>);
-
     void setView(std::unique_ptr<ISingularityGUI> view)
     {
         m_view = std::move(view);
-        Initialize();
     }
 
-    int width;
-    int height;
     std::unique_ptr<ISingularityGUI> m_view;
 };
 
