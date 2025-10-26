@@ -21,7 +21,7 @@ jobs:
       #   run: brew install autoconf automake autoconf-archive
 
       - name: Configure CMake
-        run: cmake -S . -B build
+        run: cmake --preset Debug
 
       - name: Build CMake
         run: cmake --build build
