@@ -114,11 +114,6 @@ void WebViewWindows::initialize()
         }).Get());
 }
 
-WebViewWindows::~WebViewWindows()
-{
-    // close();
-}
-
 void WebViewWindows::executeScript(const std::string &script)
 {
     if (m_webview)
