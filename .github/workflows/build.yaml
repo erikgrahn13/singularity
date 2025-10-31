@@ -25,12 +25,6 @@ jobs:
         with:
           arch: x64
 
-      - name: Configure CMake
-        run: cmake --preset Debug
-
-      - name: Build CMake
-        run: cmake --build build
-
       - name: Cache ASIO
         uses: actions/cache@v4
         with:
@@ -48,3 +42,9 @@ jobs:
         with:
           path: external/vst3sdk
           key: vst3sdk-${{ runner.os }}-${{ hashFiles('cmake/VST3.cmake') }}
+
+      - name: Configure CMake
+        run: cmake --preset Debug
+
+      - name: Build CMake
+        run: cmake --build build
