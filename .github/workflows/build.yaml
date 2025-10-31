@@ -30,3 +30,21 @@ jobs:
 
       - name: Build CMake
         run: cmake --build build
+
+      - name: Cache ASIO
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/asiosdk-src
+          key: asio-${{ runner.os }}-${{ hashFiles('cmake/ASIOSDK.cmake') }}
+
+      - name: Cache Miniz
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/miniz-src
+          key: miniz-${{ runner.os }}-${{ hashFiles('cmake/Miniz.cmake') }}
+
+      - name: Cache VST3 SDK
+        uses: actions/cache@v4
+        with:
+          path: external/vst3sdk
+          key: vst3sdk-${{ runner.os }}-${{ hashFiles('cmake/VST3.cmake') }}
