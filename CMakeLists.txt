@@ -21,6 +21,7 @@ project(Singularity LANGUAGES CXX)
 
 if(APPLE)
     enable_language(Swift)
+    include(AddSwift)
 endif()
 
 add_subdirectory(example)

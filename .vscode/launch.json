@@ -44,7 +44,7 @@
       "name": "ExamplePlugin_App (CodeLLDB)",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/ExamplePlugin/app/ExamplePlugin_App.app/Contents/MacOS/ExamplePlugin_App",
+      "program": "${workspaceFolder}/build/ExamplePlugin/app/macos/ExamplePlugin_App.app/Contents/MacOS/ExamplePlugin_App",
       "args": [],
       "stopOnEntry": false,
       "cwd": "${workspaceFolder}",
@@ -73,6 +73,17 @@
       "cwd": "${workspaceFolder}",
       "console": "newExternalWindow",
       "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "VST3PluginTestHost Mac",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "/Applications/VST3PluginTestHost.app",
+      "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: build",
+      "MIMode": "lldb"
     },
     {
       "name": "Validator Debugging",

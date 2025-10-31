@@ -45,13 +45,18 @@ smtg_add_vst3plugin_with_pkgname(${target_name} ${target}
     vst3editor.cpp
 )
 
+# Explicitly set this as a C++ target (not Swift)
+set_target_properties(${target_name} PROPERTIES
+    LINKER_LANGUAGE CXX
+)
+
 if(WIN32)
     target_sources(${target_name} PRIVATE
         platform/windows/VST3WindowWindows.cpp
     )
 elseif(APPLE)
     target_sources(${target_name} PRIVATE
-        platform/macos/VST3WindowMacos.cpp
+        platform/macos/VST3WindowMacosAdapter.cpp
     )
 elseif(UNIX)
 endif()

@@ -20,7 +20,7 @@ EventRegistrationToken m_webResourceRequestedToken = {};
 class WebViewWindows : public ISingularityGUI
 {
   public:
-    WebViewWindows(void *windowHandle = nullptr);
+    WebViewWindows(void *windowHandle = nullptr, std::function<void()> onReady = nullptr);
     ~WebViewWindows();
 
     // ISingularityGUI interface (standalone + child window support)
@@ -31,6 +31,7 @@ class WebViewWindows : public ISingularityGUI
     void close() override;
     void resize(int width, int height) override;
     void executeScript(const std::string &script);
+    void initialize() override;
 
   private:
     HWND m_hwnd;

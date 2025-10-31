@@ -6,13 +6,23 @@
 #include <shlobj.h>
 #include <shlwapi.h>
 
-// Platform-specific factory function implementation
-std::unique_ptr<ISingularityGUI> ISingularityGUI::createView(void *windowHandle)
+std::unique_ptr<ISingularityGUI> ISingularityGUI::createView(void *windowHandle, std::function<void()> onReady)
 {
-    return std::make_unique<WebViewWindows>(windowHandle);
+    auto view = std::make_unique<WebViewWindows>(windowHandle, onReady);
+    return view;
 }
 
-WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(windowHandle))
+WebViewWindows::WebViewWindows(void *windowHandle, std::function<void()> onReady)
+    : m_hwnd(static_cast<HWND>(windowHandle))
+{
+    m_viewReadyCallback = onReady;
+}
+
+WebViewWindows::~WebViewWindows()
+{
+}
+
+void WebViewWindows::initialize()
 {
     // Get a writable user data folder path
     std::wstring userDataFolder;
@@ -82,10 +92,6 @@ WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(wi
                     m_webview->add_NavigationCompleted(
                         Callback<ICoreWebView2NavigationCompletedEventHandler>(
                             [this](ICoreWebView2 *sender, ICoreWebView2NavigationCompletedEventArgs *args) -> HRESULT {
-                                // // NOW send the message - page is loaded
-                                // std::wstring message = L"{\"name\": \"John\", \"age\": 30}";
-                                // m_webview->PostWebMessageAsJson(message.c_str());
-
                                 for (const auto &script : m_pendingScripts)
                                 {
                                     std::wstring wideScript(script.begin(), script.end());
@@ -97,10 +103,10 @@ WebViewWindows::WebViewWindows(void *windowHandle) : m_hwnd(static_cast<HWND>(wi
                             .Get(),
                         nullptr);
 
-                    if (m_webview)
-                    {
-                        m_viewReadyCallback();
-                    }
+                    // Call OnWebViewReady() after WebView2 is fully initialized.
+                    // This follows iPlug2's pattern where OnWebViewReady() is called
+                    // asynchronously on Windows (since WebView2 creation is async).
+                    OnWebViewReady();
 
                     return S_OK;
                 }).Get());

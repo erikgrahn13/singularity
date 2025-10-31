@@ -43,7 +43,7 @@ tresult PLUGIN_API SingularityVST3Editor::attached(void *parent, FIDString type)
     {
         // Create WebView as child of host window using the ExampleEditor's webview
         void *childWindow = VST3Window::createPlatformWindow(parent);
-        auto view = ISingularityGUI::createView(childWindow);
+        auto view = ISingularityGUI::createView(childWindow, [this]() { audioController->Initialize(); });
         Singularity::Internal::setControllerView(audioController, std::move(view));
         return kResultOk;
     }
