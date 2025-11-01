@@ -23,10 +23,16 @@ jobs:
       # - name: Install dependencies
       #   run: brew install autoconf automake autoconf-archive
       - name: Enter MSVC dev environment
-        if: matrix.os == 'Windows'
+        if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install libwebkit2gtk-4.1-dev
 
       - name: Cache ASIO
         uses: actions/cache@v4
