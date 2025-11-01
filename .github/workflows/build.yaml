@@ -6,7 +6,10 @@ on:
 
 jobs:
   build-singularity-project:
-    runs-on: windows-latest
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,7 +23,7 @@ jobs:
       # - name: Install dependencies
       #   run: brew install autoconf automake autoconf-archive
       - name: Enter MSVC dev environment
-        if: runner.os == 'Windows'
+        if: matrix.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
@@ -29,19 +32,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/_deps/asiosdk-src
-          key: asio-${{ runner.os }}-${{ hashFiles('cmake/ASIOSDK.cmake') }}
+          key: asio-${{ matrix.os }}-${{ hashFiles('cmake/ASIOSDK.cmake') }}
 
       - name: Cache Miniz
         uses: actions/cache@v4
         with:
           path: build/_deps/miniz-src
-          key: miniz-${{ runner.os }}-${{ hashFiles('cmake/Miniz.cmake') }}
+          key: miniz-${{ matrix.os }}-${{ hashFiles('cmake/Miniz.cmake') }}
 
       - name: Cache VST3 SDK
         uses: actions/cache@v4
         with:
           path: external/vst3sdk
-          key: vst3sdk-${{ runner.os }}-${{ hashFiles('cmake/VST3.cmake') }}
+          key: vst3sdk-${{ matrix.os }}-${{ hashFiles('cmake/VST3.cmake') }}
 
       - name: Configure CMake
         run: cmake --preset Debug
