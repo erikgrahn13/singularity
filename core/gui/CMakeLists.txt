@@ -19,4 +19,13 @@ elseif(APPLE)
 
     _swift_generate_cxx_header(SingularityView
         SingularityView/SingularityView-swift.h)
+elseif(UNIX)
+    # find_package(PkgConfig REQUIRED)
+    # pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)
+    target_sources(SingularityView PRIVATE platform/linux/singularity_Webview_Linux.cpp)
+    target_include_directories(SingularityView PUBLIC ${WEBKIT_INCLUDE_DIRS})
+    target_link_libraries(SingularityView PUBLIC ${PLATFORM_LIBS})
+    set_target_properties(SingularityView PROPERTIES
+        LINKER_LANGUAGE CXX
+    )
 endif()

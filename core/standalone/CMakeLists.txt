@@ -14,5 +14,8 @@ if(WIN32)
 elseif(APPLE)
     add_subdirectory(macos)
 elseif(UNIX)
-    # add_subdirectory(linux)
+    add_subdirectory(linux)
+    set_target_properties(SingularityAudio PROPERTIES
+        LINKER_LANGUAGE CXX
+    )
 endif()
