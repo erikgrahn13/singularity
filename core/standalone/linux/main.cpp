@@ -1,30 +1,17 @@
 #include "../StandaloneHelper.h"
-#include <gtk/gtk.h>
-#include <webkit/webkit.h>
-
-static void activate(GtkApplication *app, gpointer user_data)
-{
-    GtkWidget *window;
-
-    window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(window), "Hello");
-    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
-
-    auto controller = createControllerInstance();
-    StandaloneHelper::initializeView(controller.get(), window);
-
-    gtk_window_present(GTK_WINDOW(window));
-}
+#include "singularity_Webview.h"
+#include <sys/wait.h>
 
 int main(int argc, char **argv)
 {
-    GtkApplication *app;
+    auto controller = createControllerInstance();
+
+    // Pass nullptr for standalone mode - WebViewLinux will create its own GtkWindow
+    StandaloneHelper::initializeView(controller.get(), nullptr);
+
+    // Wait for child process to exit (blocks here until window is closed)
     int status;
+    wait(&status);
 
-    app = gtk_application_new("org.gtk.example", G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
-    status = g_application_run(G_APPLICATION(app), argc, argv);
-    g_object_unref(app);
-
-    return status;
+    return 0;
 }

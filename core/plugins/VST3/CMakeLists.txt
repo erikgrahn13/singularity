@@ -59,6 +59,9 @@ elseif(APPLE)
         platform/macos/VST3WindowMacosAdapter.cpp
     )
 elseif(UNIX)
+    target_sources(${target_name} PRIVATE
+        platform/linux/VST3WindowLinux.cpp
+    )
 endif()
 
 target_include_directories(${target_name} PUBLIC

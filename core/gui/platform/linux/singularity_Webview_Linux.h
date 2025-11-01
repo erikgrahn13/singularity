@@ -1,10 +1,7 @@
 #pragma once
 
 #include "../../singularity_Webview.h"
-#include <gtk/gtk.h>
-#include <memory>
 #include <string>
-#include <webkit/webkit.h>
 
 class WebViewLinux : public ISingularityGUI
 {
@@ -22,6 +19,8 @@ class WebViewLinux : public ISingularityGUI
     void initialize() override;
 
   private:
-    GtkWidget *m_window;
-    GtkWidget *m_webView;
+    void *m_window; // Parent X11 Window ID
+    int m_childPid = 0;
+    int m_pipeToChild[2] = {-1, -1};
+    unsigned long m_childWindowId = 0;
 };
