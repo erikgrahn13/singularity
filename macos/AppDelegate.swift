@@ -5,13 +5,12 @@ class CanvasView: NSView {
     var graphics: SingularityGraphics?
 
     override func draw(_ dirtyRect: NSRect) {
-        guard let g = graphics,
-              let ctx = NSGraphicsContext.current?.cgContext,
-              let pixelData = g.getPixels() else { return }
+        guard let ctx = NSGraphicsContext.current?.cgContext,
+              let pixelData = graphics?.getPixels() else { return }
 
-        let width    = Int(g.getWidth())
-        let height   = Int(g.getHeight())
-        let rowBytes = g.getRowBytes()
+        let width    = Int(graphics!.getWidth())
+        let height   = Int(graphics!.getHeight())
+        let rowBytes = graphics!.getRowBytes()
 
         guard let provider = CGDataProvider(
             dataInfo: nil,
@@ -39,6 +38,16 @@ class CanvasView: NSView {
 
         ctx.draw(image, in: bounds)
     }
+
+    // Mouse
+    override func mouseDown(with event: NSEvent)      { print("left mouse clicked") }
+    override func mouseUp(with event: NSEvent)        { /* left button released */ }
+    override func mouseDragged(with event: NSEvent)   { /* left button held + moved */ }
+    override func mouseMoved(with event: NSEvent)     { /* moved (needs acceptsFirstResponder) */ }
+    override func rightMouseDown(with event: NSEvent) { /* right button */ }
+    override func scrollWheel(with event: NSEvent)    { /* scroll / trackpad */ }
+    
+
 }
 
 @main

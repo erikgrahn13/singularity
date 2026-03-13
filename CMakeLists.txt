@@ -17,13 +17,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(skia)
 
+FetchContent_Declare(
+    quickjs
+    URL https://github.com/quickjs-ng/quickjs/archive/refs/tags/v0.12.1.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+FetchContent_MakeAvailable(quickjs)
+
 if(WIN32)
     add_executable(main WIN32 windows/main.cpp SingularityGraphics.cpp)
     target_compile_definitions(main PRIVATE NOMINMAX)
     set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
 else()
-    add_executable(main AppDelegate.swift)
+    add_executable(main macos/AppDelegate.swift SingularityGraphics.cpp)
     target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
     target_compile_options(main PRIVATE
         $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
@@ -31,12 +39,18 @@ else()
     
     set_target_properties(main PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/Info.plist
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/macos/Info.plist
     )
 endif()
 
+target_compile_definitions(main PRIVATE
+    JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
+)
+
+target_link_libraries(main PRIVATE qjs-libc)
 target_compile_features(main PRIVATE cxx_std_23)
 target_include_directories(main PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${skia_SOURCE_DIR}/include
+    ${quickjs_SOURCE_DIR}
 )

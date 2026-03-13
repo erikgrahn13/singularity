@@ -2,6 +2,14 @@
 
 #include "include/core/SkSurface.h"
 #include "include/core/SkCanvas.h"
+// #include <quickjs.h>  // already included by quickjs-libc.h
+#include <quickjs-libc.h>
+#include <iostream>
+#include <string>
+
+#ifndef JS_SCRIPTS_DIR
+#  define JS_SCRIPTS_DIR ""
+#endif
 
 #if __has_include(<swift/bridging>)
 #  include <swift/bridging>
@@ -71,28 +79,24 @@ namespace Singularity {
 
 class SingularityGraphics {
     public:
-    SingularityGraphics()
-    {
-        SkImageInfo info = SkImageInfo::MakeN32Premul(300, 200);
-        skiaSurface = SkSurfaces::Raster(info);
+    SingularityGraphics();
+    SingularityGraphics(const std::string& jsPath);
 
-        SkCanvas* canvas = skiaSurface->getCanvas();
-        canvas->drawColor(SK_ColorGREEN);
-    }
+    SingularityGraphics(const SingularityGraphics&) = delete;
+    SingularityGraphics& operator=(const SingularityGraphics&) = delete;
 
-    SWIFT_RETURNS_INDEPENDENT_VALUE const void* getPixels() const {
-        SkPixmap pixmap;
-        skiaSurface->peekPixels(&pixmap);
-        return pixmap.addr();
-    }
-    int getWidth()     const { return skiaSurface->width(); }
-    int getHeight()    const { return skiaSurface->height(); }
-    size_t getRowBytes() const {
-        SkPixmap pixmap;
-        skiaSurface->peekPixels(&pixmap);
-        return pixmap.rowBytes();
-    }
+    SingularityGraphics(SingularityGraphics&& other) noexcept;
+    ~SingularityGraphics();
+
+    SWIFT_RETURNS_INDEPENDENT_VALUE const void* getPixels() const;
+    int getWidth()       const;
+    int getHeight()      const;
+    size_t getRowBytes() const;
+
+    static JSValue js_hello(JSContext* ctx, JSValue this_val, int argc, JSValue* argv);
 
     private:
     sk_sp<SkSurface> skiaSurface;
+    JSRuntime* rt = nullptr;
+    JSContext* ctx = nullptr;
 };
