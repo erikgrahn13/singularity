@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(Singularity LANGUAGES Swift CXX)
+project(Singularity LANGUAGES CXX)
 
 include(FetchContent)
 if(WIN32)
@@ -8,6 +8,15 @@ if(WIN32)
 else()
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-mac-universal-gpu-release.zip)
 endif()
+
+FetchContent_Declare(
+    dmon
+    GIT_REPOSITORY https://github.com/septag/dmon.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_Populate(dmon)
 
 FetchContent_Declare(
     skia
@@ -25,12 +34,16 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(quickjs)
 
+
 if(WIN32)
     add_executable(main WIN32 windows/main.cpp SingularityGraphics.cpp)
     target_compile_definitions(main PRIVATE NOMINMAX)
     set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    set_property(TARGET qjs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    set_property(TARGET qjs-libc PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
 else()
+    enable_language(Swift)
     add_executable(main macos/AppDelegate.swift SingularityGraphics.cpp)
     target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
     target_compile_options(main PRIVATE
@@ -53,4 +66,5 @@ target_include_directories(main PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${skia_SOURCE_DIR}/include
     ${quickjs_SOURCE_DIR}
+    ${dmon_SOURCE_DIR}
 )
