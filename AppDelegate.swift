@@ -72,6 +72,10 @@ class AppDelegate : NSObject, NSApplicationDelegate {
         NSApp.activate()
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
     }
 }
