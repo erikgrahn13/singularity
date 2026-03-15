@@ -4,6 +4,12 @@
 #include "include/core/SkRect.h"
 #include "include/core/SkColor.h"
 #include "include/core/SkBlendMode.h"
+#include "include/core/SkFont.h"
+#include "include/core/SkFontMgr.h"
+#include "include/core/SkFontStyle.h"
+#ifdef _WIN32
+#  include "include/ports/SkTypeface_win.h"
+#endif
 #include <iostream>
 #include <cstdio>
 #include <cmath>
@@ -121,16 +127,32 @@ SingularityGraphics::SingularityGraphics()
     : SingularityGraphics(JS_SCRIPTS_DIR "/hello.js")
 {}
 
-SingularityGraphics::SingularityGraphics(const std::string& jsPath)
-    : jsPath(jsPath)
+void SingularityGraphics::setupJS()
 {
-    SkImageInfo info = SkImageInfo::Make(300, 200, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
-    skiaSurface = SkSurfaces::Raster(info);
+    // Tear down existing runtime. Modules are cached per-runtime, so we
+    // recreate it entirely to ensure hot-reload always re-executes all imports.
+    if (ctx) { JS_FreeContext(ctx); ctx = nullptr; }
+    if (rt)  { JS_FreeRuntime(rt);  rt  = nullptr; }
 
+    // Reset canvas
     SkCanvas* canvas = skiaSurface->getCanvas();
+    canvas->restoreToCount(1);
     canvas->drawColor(SK_ColorGREEN);
 
+    // Reset draw state
+    fillStyle   = SK_ColorBLACK;
+    strokeStyle = SK_ColorBLACK;
+    lineWidth   = 1.0f;
+    globalAlpha = 1.0f;
+    fontSize    = 12.0f;
+    lineCap     = SkPaint::kRound_Cap;
+    lineJoin    = SkPaint::kRound_Join;
+    currentPath = SkPathBuilder();
+    stateStack.clear();
+
+    // Create runtime + register ES module loader
     rt = JS_NewRuntime();
+    JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader, js_module_check_attributes, nullptr);
     ctx = JS_NewContext(rt);
 
     js_std_add_helpers(ctx, 0, nullptr);
@@ -178,30 +200,53 @@ SingularityGraphics::SingularityGraphics(const std::string& jsPath)
     JS_SetPropertyStr(ctx, ctx_obj, "rotate",           JS_NewCFunction(ctx, js_rotate,           "rotate",           1));
     JS_SetPropertyStr(ctx, ctx_obj, "scale",            JS_NewCFunction(ctx, js_scale,            "scale",            2));
 
+    JS_SetPropertyStr(ctx, ctx_obj, "fillText",          JS_NewCFunction(ctx, js_fillText,          "fillText",          3));
+
     // properties
     defProp("fillStyle",   js_getFillStyle,   js_setFillStyle);
     defProp("strokeStyle", js_getStrokeStyle, js_setStrokeStyle);
     defProp("lineWidth",   js_getLineWidth,   js_setLineWidth);
     defProp("globalAlpha", js_getGlobalAlpha, js_setGlobalAlpha);
     defProp("lineCap",     js_getLineCap,     js_setLineCap);
+    defProp("fontSize",    js_getFontSize,    js_setFontSize);
 
     JS_SetPropertyStr(ctx, global, "ctx", ctx_obj);
     JS_FreeValue(ctx, global);
 
+    // Evaluate the entry point as an ES module (imports resolved via module loader)
     if (!jsPath.empty()) {
         size_t buf_len = 0;
         uint8_t* buf = js_load_file(ctx, &buf_len, jsPath.c_str());
         if (buf) {
-            JSValue result = JS_Eval(ctx, (const char*)buf, buf_len, jsPath.c_str(), JS_EVAL_TYPE_GLOBAL);
-            if (JS_IsException(result)) {
+            JSValue result = JS_Eval(ctx, (const char*)buf, buf_len, jsPath.c_str(), JS_EVAL_TYPE_MODULE);
+            if (JS_IsException(result))
                 js_std_dump_error(ctx);
-            }
             JS_FreeValue(ctx, result);
             js_free(ctx, buf);
+            // drain any pending microtasks created during module evaluation
+            JSContext* pjCtx;
+            while (JS_ExecutePendingJob(rt, &pjCtx) > 0) {}
         } else {
-            std::cerr << "[SingularityGraphics] Could not load JS file: " << jsPath << std::endl;
+            std::cerr << "[setupJS] Could not load: " << jsPath << "\n";
         }
     }
+}
+
+SingularityGraphics::SingularityGraphics(const std::string& jsPath)
+    : jsPath(jsPath)
+{
+    SkImageInfo info = SkImageInfo::Make(300, 200, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+    skiaSurface = SkSurfaces::Raster(info);
+
+    // Acquire the platform default typeface once — used by fillText
+#ifdef _WIN32
+    {
+        auto mgr = SkFontMgr_New_DirectWrite();
+        defaultTypeface = mgr->legacyMakeTypeface(nullptr, SkFontStyle());
+    }
+#endif
+
+    setupJS();
 
     dmon_init();
     dmon_watch(JS_SCRIPTS_DIR, watch_callback, DMON_WATCHFLAGS_RECURSIVE, this);
@@ -209,6 +254,7 @@ SingularityGraphics::SingularityGraphics(const std::string& jsPath)
 
 SingularityGraphics::SingularityGraphics(SingularityGraphics&& other) noexcept
     : skiaSurface(std::move(other.skiaSurface)),
+      defaultTypeface(std::move(other.defaultTypeface)),
       rt(other.rt), ctx(other.ctx)
 {
     other.rt = nullptr;
@@ -226,34 +272,7 @@ void SingularityGraphics::reloadScript()
 {
     if (!scriptDirty) return;
     scriptDirty = false;
-
-    // reset canvas state
-    SkCanvas* canvas = skiaSurface->getCanvas();
-    canvas->restoreToCount(1);  // pop any leftover save() calls
-    canvas->drawColor(SK_ColorGREEN);
-
-    fillStyle   = SK_ColorBLACK;
-    strokeStyle = SK_ColorBLACK;
-    lineWidth   = 1.0f;
-    globalAlpha = 1.0f;
-    lineCap     = SkPaint::kRound_Cap;
-    lineJoin    = SkPaint::kRound_Join;
-    currentPath  = SkPathBuilder();
-    stateStack.clear();
-
-    if (!jsPath.empty()) {
-        size_t buf_len = 0;
-        uint8_t* buf = js_load_file(ctx, &buf_len, jsPath.c_str());
-        if (buf) {
-            JSValue result = JS_Eval(ctx, (const char*)buf, buf_len, jsPath.c_str(), JS_EVAL_TYPE_GLOBAL);
-            if (JS_IsException(result))
-                js_std_dump_error(ctx);
-            JS_FreeValue(ctx, result);
-            js_free(ctx, buf);
-        } else {
-            std::cerr << "[reloadScript] Could not load: " << jsPath << "\n";
-        }
-    }
+    setupJS();
 }
 
 // ---- fillStyle ---------------------------------------------------------------
@@ -344,6 +363,38 @@ JSValue SingularityGraphics::js_setLineCap(JSContext* ctx, JSValue, int argc, JS
     else if (std::string(str) == "square") self->lineCap = SkPaint::kSquare_Cap;
     else                                   self->lineCap = SkPaint::kRound_Cap;
     JS_FreeCString(ctx, str);
+    return JS_UNDEFINED;
+}
+
+// ---- text --------------------------------------------------------------------
+JSValue SingularityGraphics::js_fillText(JSContext* ctx, JSValue, int argc, JSValue* argv)
+{
+    auto* self = (SingularityGraphics*)JS_GetContextOpaque(ctx);
+    if (!self || argc < 3) return JS_UNDEFINED;
+    const char* text = JS_ToCString(ctx, argv[0]);
+    if (!text) return JS_UNDEFINED;
+    double x, y;
+    JS_ToFloat64(ctx, &x, argv[1]);
+    JS_ToFloat64(ctx, &y, argv[2]);
+    SkFont font(self->defaultTypeface, self->fontSize);
+    font.setEdging(SkFont::Edging::kAntiAlias);
+    auto paint = self->makeFillPaint();
+    self->skiaSurface->getCanvas()->drawString(text, (float)x, (float)y, font, paint);
+    JS_FreeCString(ctx, text);
+    return JS_UNDEFINED;
+}
+JSValue SingularityGraphics::js_getFontSize(JSContext* ctx, JSValue, int, JSValue*)
+{
+    auto* self = (SingularityGraphics*)JS_GetContextOpaque(ctx);
+    if (!self) return JS_UNDEFINED;
+    return JS_NewFloat64(ctx, self->fontSize);
+}
+JSValue SingularityGraphics::js_setFontSize(JSContext* ctx, JSValue, int argc, JSValue* argv)
+{
+    auto* self = (SingularityGraphics*)JS_GetContextOpaque(ctx);
+    if (!self || argc < 1) return JS_UNDEFINED;
+    double v; JS_ToFloat64(ctx, &v, argv[0]);
+    self->fontSize = (float)v;
     return JS_UNDEFINED;
 }
 

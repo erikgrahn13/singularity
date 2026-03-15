@@ -4,6 +4,7 @@
 #include "include/core/SkCanvas.h"
 #include "include/core/SkPathBuilder.h"
 #include "include/core/SkPaint.h"
+#include "include/core/SkTypeface.h"
 // #include <quickjs.h>  // already included by quickjs-libc.h
 #include <quickjs-libc.h>
 #include <iostream>
@@ -146,6 +147,11 @@ class SingularityGraphics {
     static JSValue js_getLineCap(JSContext*, JSValue, int, JSValue*);
     static JSValue js_setLineCap(JSContext*, JSValue, int, JSValue*);
 
+    // text
+    static JSValue js_fillText(JSContext*, JSValue, int, JSValue*);
+    static JSValue js_getFontSize(JSContext*, JSValue, int, JSValue*);
+    static JSValue js_setFontSize(JSContext*, JSValue, int, JSValue*);
+
     private:
     struct DrawState {
         SkColor fillStyle;
@@ -159,10 +165,10 @@ class SingularityGraphics {
     // helpers
     SkPaint makeFillPaint()   const;
     SkPaint makeStrokePaint() const;
+    void setupJS();   // creates/recreates the JS runtime, registers all bindings, evals jsPath
 
     // surface & JS runtime
-    sk_sp<SkSurface> skiaSurface;
-    JSRuntime* rt  = nullptr;
+    sk_sp<SkSurface> skiaSurface;    sk_sp<SkTypeface>  defaultTypeface;    JSRuntime* rt  = nullptr;
     JSContext* ctx = nullptr;
 
     // canvas state
@@ -170,6 +176,7 @@ class SingularityGraphics {
     SkColor            strokeStyle = SK_ColorBLACK;
     float              lineWidth   = 1.0f;
     float              globalAlpha = 1.0f;
+    float              fontSize    = 12.0f;
     SkPaint::Cap       lineCap     = SkPaint::kRound_Cap;
     SkPaint::Join      lineJoin    = SkPaint::kRound_Join;
     SkPathBuilder     currentPath;

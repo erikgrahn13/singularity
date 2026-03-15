@@ -41,7 +41,8 @@ if(WIN32)
     set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     set_property(TARGET qjs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     set_property(TARGET qjs-libc PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
-    target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
+    target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib
+                                       dwrite.lib)  # DirectWrite — required by Skia's DirectWrite font manager
 else()
     enable_language(Swift)
     add_executable(main macos/AppDelegate.swift SingularityGraphics.cpp)
