@@ -13,7 +13,8 @@
 
 #include <functional>
 #include <atomic>
-#include "dmon.h"
+// #include "dmon.h"
+#include "IFileWatcher.h"
 
 #ifndef JS_SCRIPTS_DIR
 #  define JS_SCRIPTS_DIR ""
@@ -24,63 +25,6 @@
 #else
 #  define SWIFT_RETURNS_INDEPENDENT_VALUE
 #endif
-
-namespace Singularity {
-    class Rect {
-        public:
-        Rect(float width, float height, float x, float y){
-            left = x;
-            top = y;
-            right = x + width;
-            bottom = y - height;
-        }
-
-        private:
-        float left;
-        float right;
-        float bottom;
-        float top;
-    };
-}
-
-// class SingularityGraphics {
-
-//     public:
-//     SingularityGraphics();
-//     void DrawRectangle();
-
-//     // state
-//     void setFillStyle(const char* color);
-//     void setStrokeStyle(const char* color);
-//     void setLineWidth(float width);
-//     void setFont(const char* font);
-
-//     // paths
-//     void beginPath();
-//     void moveTo(float x, float y);
-//     void lineTo(float x, float y);
-//     void arc(float x, float y, float radius, float startAngle, float endAngle);
-//     void closePath();
-//     void fill();
-//     void stroke();
-
-//     // rectangles
-//     void fillRect(float x, float y, float w, float h);
-//     void strokeRect(float x, float y, float w, float h);
-//     void clearRect(float x, float y, float w, float h);
-
-//     // text
-//     void fillText(const char* text, float x, float y);
-//     void strokeText(const char* text, float x, float y);
-
-
-
-//     private:
-//     sk_sp<SkSurface> skiaSurface;
-
-//     friend class SingularityGraphicsWin;
-
-// };
 
 class SingularityGraphics {
     public:
@@ -100,6 +44,8 @@ class SingularityGraphics {
     int getWidth()    const;
     int getHeight()   const;
     size_t getRowBytes() const;
+
+
 
     // --- JS bindings ---
     static JSValue js_hello(JSContext*, JSValue, int, JSValue*);
@@ -183,9 +129,10 @@ class SingularityGraphics {
     std::vector<DrawState> stateStack;
 
     // hot reload
+    std::unique_ptr<IFileWatcher> watcher;
     std::string            jsPath;
     std::function<void()>  onFileChanged;
     std::atomic<bool>      scriptDirty { false };
 
-    static void watch_callback(dmon_watch_id, dmon_action, const char*, const char*, const char*, void*);
+    // static void watch_callback(dmon_watch_id, dmon_action, const char*, const char*, const char*, void*);
 };

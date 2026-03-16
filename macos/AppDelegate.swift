@@ -5,12 +5,14 @@ class CanvasView: NSView {
     var graphics: SingularityGraphics?
 
     override func draw(_ dirtyRect: NSRect) {
+        let renderer = graphics?.getRenderData()
         guard let ctx = NSGraphicsContext.current?.cgContext,
-              let pixelData = graphics?.getPixels() else { return }
+              let pixelData = renderer!.contentAddres else { return }
 
-        let width    = Int(graphics!.getWidth())
-        let height   = Int(graphics!.getHeight())
-        let rowBytes = graphics!.getRowBytes()
+        let width = Int(renderer!.width)
+        let height = Int(renderer!.height)
+        
+        let rowBytes = renderer!.contentBytes
 
         guard let provider = CGDataProvider(
             dataInfo: nil,
@@ -19,7 +21,6 @@ class CanvasView: NSView {
             releaseData: { _, _, _ in }
         ) else { return }
 
-        // Skia kN32 = BGRA_8888 premul → premultipliedFirst + byteOrder32Little
         let bitmapInfo = CGBitmapInfo(rawValue:
             CGImageAlphaInfo.premultipliedFirst.rawValue |
             CGBitmapInfo.byteOrder32Little.rawValue

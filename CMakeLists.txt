@@ -45,7 +45,7 @@ if(WIN32)
                                        dwrite.lib)  # DirectWrite — required by Skia's DirectWrite font manager
 else()
     enable_language(Swift)
-    add_executable(main macos/AppDelegate.swift SingularityGraphics.cpp)
+    add_executable(main macos/AppDelegate.swift)
     target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
     target_compile_options(main PRIVATE
         $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
@@ -56,6 +56,13 @@ else()
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/macos/Info.plist
     )
 endif()
+
+target_sources(main PRIVATE 
+    SingularityGraphics2.cpp
+    dmonFileWatcher.cpp
+    SkiaRenderer.cpp
+    QuickJSEngine.cpp
+)
 
 target_compile_definitions(main PRIVATE
     JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"

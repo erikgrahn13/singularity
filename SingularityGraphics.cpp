@@ -1,5 +1,5 @@
-#define DMON_IMPL
-#include "dmon.h"
+// #define DMON_IMPL
+// #include "dmon.h"
 #include "SingularityGraphics.h"
 #include "include/core/SkRect.h"
 #include "include/core/SkColor.h"
@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <algorithm>
 #include <cctype>
+
+#include "dmonFileWatcher.h"
 
 static SkColor parseColor(const std::string& s)
 {
@@ -110,18 +112,18 @@ SkPaint SingularityGraphics::makeStrokePaint() const
     return p;
 }
 
-void SingularityGraphics::watch_callback(dmon_watch_id watch_id, dmon_action action, const char* rootdir,
-                                         const char* filepath, const char* oldfilepath, void* user)
-{
-    if (action == DMON_ACTION_MODIFY) {
-        std::cout << "Modified: " << filepath << "\n";
-        SingularityGraphics* self = (SingularityGraphics*)user;
-        if (self) {
-            self->scriptDirty = true;
-            if (self->onFileChanged) self->onFileChanged();
-        }
-    }
-}
+// void SingularityGraphics::watch_callback(dmon_watch_id watch_id, dmon_action action, const char* rootdir,
+//                                          const char* filepath, const char* oldfilepath, void* user)
+// {
+//     if (action == DMON_ACTION_MODIFY) {
+//         std::cout << "Modified: " << filepath << "\n";
+//         SingularityGraphics* self = (SingularityGraphics*)user;
+//         if (self) {
+//             self->scriptDirty = true;
+//             if (self->onFileChanged) self->onFileChanged();
+//         }
+//     }
+// }
 
 SingularityGraphics::SingularityGraphics()
     : SingularityGraphics(JS_SCRIPTS_DIR "/hello.js")
@@ -248,8 +250,13 @@ SingularityGraphics::SingularityGraphics(const std::string& jsPath)
 
     setupJS();
 
-    dmon_init();
-    dmon_watch(JS_SCRIPTS_DIR, watch_callback, DMON_WATCHFLAGS_RECURSIVE, this);
+    watcher = std::make_unique<DmonFileWatcher>(JS_SCRIPTS_DIR,
+        [this](const std::string& path) {
+        scriptDirty = true;
+        if (onFileChanged) onFileChanged();
+    });
+    // dmon_init();
+    // dmon_watch(JS_SCRIPTS_DIR, watch_callback, DMON_WATCHFLAGS_RECURSIVE, this);
 }
 
 SingularityGraphics::SingularityGraphics(SingularityGraphics&& other) noexcept
@@ -265,7 +272,7 @@ SingularityGraphics::~SingularityGraphics()
 {
     if (ctx) JS_FreeContext(ctx);
     if (rt) JS_FreeRuntime(rt);
-    dmon_deinit();
+    // dmon_deinit();
 }
 
 void SingularityGraphics::reloadScript()

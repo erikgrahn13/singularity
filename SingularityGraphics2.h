@@ -1,0 +1,29 @@
+#pragma once
+
+#if __has_include(<swift/bridging>)
+#  include <swift/bridging>
+#else
+#  define SWIFT_RETURNS_INDEPENDENT_VALUE
+#endif
+
+#include <memory>
+
+// Include interface headers - they're lightweight (just virtual functions)
+#include "IRenderer.h"
+#include "IJSEngine.h"
+#include "IFileWatcher.h"
+
+class SingularityGraphics {
+
+
+    public:
+    SingularityGraphics();
+
+    SWIFT_RETURNS_INDEPENDENT_VALUE
+    DrawingContent getRenderData();
+
+    private:
+    std::unique_ptr<IRenderer> renderer;
+    std::unique_ptr<IJSEngine> jsEngine;
+    std::unique_ptr<IFileWatcher> fileWatcher;
+};
