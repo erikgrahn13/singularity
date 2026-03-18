@@ -5,7 +5,7 @@
 #include <windows.h>
 
 #include "include/core/SkPixmap.h"
-#include "../SingularityGraphics.h"
+#include "../SingularityGraphics2.h"
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -56,9 +56,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     auto graphics = std::make_unique<SingularityGraphics>();
     SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)graphics.get());
 
-    graphics->setOnFileChanged([hwnd]() {
-        InvalidateRect(hwnd, nullptr, FALSE);
-    });
+    // graphics->setOnFileChanged([hwnd]() {
+    //     InvalidateRect(hwnd, nullptr, FALSE);
+    // });
 
     // Run the message loop.
 
@@ -86,7 +86,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_PAINT:
         {
-            graphics->reloadScript(); // no-op if nothing changed
+            // graphics->reloadScript(); // no-op if nothing changed
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
@@ -95,18 +95,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
 
             // blit Skia surface to window
-            if (graphics->getPixels()) {
+            auto render = graphics->getRenderData();
+            if (render.contentAddres) {
                 BITMAPINFO bmi = {};
                 bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-                bmi.bmiHeader.biWidth       = graphics->getWidth();
-                bmi.bmiHeader.biHeight      = -graphics->getHeight(); // top-down
+                bmi.bmiHeader.biWidth       = render.width;
+                bmi.bmiHeader.biHeight      = -render.height; // top-down
                 bmi.bmiHeader.biPlanes      = 1;
                 bmi.bmiHeader.biBitCount    = 32;
                 bmi.bmiHeader.biCompression = BI_RGB;
                 SetDIBitsToDevice(hdc,
-                    0, 0, graphics->getWidth(), graphics->getHeight(),
-                    0, 0, 0, graphics->getHeight(),
-                    graphics->getPixels(), &bmi, DIB_RGB_COLORS);
+                    0, 0, render.width, render.height,
+                    0, 0, 0, render.height,
+                    render.contentAddres, &bmi, DIB_RGB_COLORS);
             }
 
 

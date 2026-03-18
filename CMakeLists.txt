@@ -10,10 +10,30 @@ else()
 endif()
 
 FetchContent_Declare(
+    sdl
+    URL https://github.com/libsdl-org/SDL/releases/download/release-3.4.2/SDL3-3.4.2.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+set(SDL_AUDIO         OFF CACHE BOOL "" FORCE)
+set(SDL_JOYSTICK      OFF CACHE BOOL "" FORCE)
+set(SDL_HAPTIC        OFF CACHE BOOL "" FORCE)
+set(SDL_HIDAPI        OFF CACHE BOOL "" FORCE)
+set(SDL_POWER         OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER        OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR        OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA        OFF CACHE BOOL "" FORCE)
+set(SDL_DIALOG        OFF CACHE BOOL "" FORCE)
+set(SDL_GPU           OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC        ON CACHE BOOL "" FORCE)
+set(SDL_SHARED        OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(sdl)
+
+FetchContent_Declare(
     dmon
     GIT_REPOSITORY https://github.com/septag/dmon.git
     GIT_TAG master
     GIT_SHALLOW TRUE
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/dmon
 )
 
 FetchContent_Populate(dmon)
@@ -22,6 +42,7 @@ FetchContent_Declare(
     skia
     URL ${SKIA_URL}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia
 )
 
 FetchContent_MakeAvailable(skia)
@@ -30,13 +51,14 @@ FetchContent_Declare(
     quickjs
     URL https://github.com/quickjs-ng/quickjs/archive/refs/tags/v0.12.1.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/quickjs
 )
 
 FetchContent_MakeAvailable(quickjs)
 
 
 if(WIN32)
-    add_executable(main WIN32 windows/main.cpp SingularityGraphics.cpp)
+    add_executable(main WIN32 windows/main.cpp)
     target_compile_definitions(main PRIVATE NOMINMAX)
     set_property(TARGET main PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     set_property(TARGET qjs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
@@ -76,3 +98,7 @@ target_include_directories(main PRIVATE
     ${quickjs_SOURCE_DIR}
     ${dmon_SOURCE_DIR}
 )
+
+add_executable(hello WIN32 standalone/main.cpp)
+
+target_link_libraries(hello PRIVATE SDL3::SDL3)

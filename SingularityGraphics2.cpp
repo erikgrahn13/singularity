@@ -18,7 +18,7 @@ SingularityGraphics::SingularityGraphics()
     jsEngine = createJSEngine();
 
     // TODO: fix this function
-    fileWatcher = createFileWatcher("./", [](const std::string &filePath){
+    fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [](const std::string &filePath){
         std::cout << "File has been modified" << std::endl;
     });
 }
