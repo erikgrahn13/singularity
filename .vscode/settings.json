@@ -1,0 +1,7 @@
+{
+    "search.useIgnoreFiles": false, // Disable respecting .gitignore
+    "search.exclude": {
+        "**/build": true,
+        "**/external": false
+    },
+}

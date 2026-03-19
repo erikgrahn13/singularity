@@ -17,7 +17,7 @@ class SingularityGraphics {
 
 
     public:
-    SingularityGraphics();
+    SingularityGraphics(int width, int height);
 
     SWIFT_RETURNS_INDEPENDENT_VALUE
     DrawingContent getRenderData();

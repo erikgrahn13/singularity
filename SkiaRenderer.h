@@ -6,7 +6,7 @@
 
 class SkiaRenderer : public IRenderer {
     public:
-    SkiaRenderer();
+    SkiaRenderer(int width, int height);
 
     DrawingContent getDrawingContent() override;
 

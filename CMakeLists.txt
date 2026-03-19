@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.20)
 project(Singularity LANGUAGES CXX)
 
 include(FetchContent)
+
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+endif()
+
 if(WIN32)
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-win-x64-gpu-release.zip)
 else()
@@ -19,7 +24,7 @@ set(SDL_JOYSTICK      OFF CACHE BOOL "" FORCE)
 set(SDL_HAPTIC        OFF CACHE BOOL "" FORCE)
 set(SDL_HIDAPI        OFF CACHE BOOL "" FORCE)
 set(SDL_POWER         OFF CACHE BOOL "" FORCE)
-set(SDL_RENDER        OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER        ON CACHE BOOL "" FORCE)
 set(SDL_SENSOR        OFF CACHE BOOL "" FORCE)
 set(SDL_CAMERA        OFF CACHE BOOL "" FORCE)
 set(SDL_DIALOG        OFF CACHE BOOL "" FORCE)
@@ -37,6 +42,16 @@ FetchContent_Declare(
 )
 
 FetchContent_Populate(dmon)
+
+FetchContent_Declare(
+    choc
+    GIT_REPOSITORY https://github.com/Tracktion/choc.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/choc
+)
+FetchContent_MakeAvailable(choc)
+
 
 FetchContent_Declare(
     skia
@@ -100,17 +115,21 @@ target_include_directories(main PRIVATE
 )
 
 if(WIN32)
-    add_executable(hello WIN32 standalone/main.cpp)
+    add_executable(hello standalone/main.cpp)
+    target_compile_definitions(hello PRIVATE NOMINMAX)
+    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
+    # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
+    target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
 else()
     add_executable(hello standalone/main.cpp)
 endif()
 
 target_link_libraries(hello PRIVATE 
     SDL3::SDL3
-    ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
     qjs-libc
+    choc::choc
 )
 
 target_include_directories(hello PRIVATE
@@ -126,7 +145,8 @@ target_compile_definitions(hello PRIVATE
 
 target_sources(hello PRIVATE 
     SingularityGraphics2.cpp
-    dmonFileWatcher.cpp
+    # dmonFileWatcher.cpp
+    chocFileWatcher.cpp
     SkiaRenderer.cpp
     QuickJSEngine.cpp
 )

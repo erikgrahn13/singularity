@@ -8,13 +8,13 @@
 #include <iostream>
 
 // Factory function declarations (C++-only, Swift never sees .cpp)
-std::unique_ptr<IRenderer> createRenderer();
+std::unique_ptr<IRenderer> createRenderer(int width, int height);
 std::unique_ptr<IFileWatcher> createFileWatcher(const std::string &directory, std::function<void(const std::string &filePath)> onChange);
 std::unique_ptr<IJSEngine> createJSEngine();
 
-SingularityGraphics::SingularityGraphics()
+SingularityGraphics::SingularityGraphics(int width, int height)
 {
-    renderer = createRenderer();
+    renderer = createRenderer(width, height);
     jsEngine = createJSEngine();
 
     // TODO: fix this function
