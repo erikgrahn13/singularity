@@ -2,6 +2,8 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
 
+#include "../SingularityGraphics2.h"
+
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 
@@ -13,6 +15,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    auto graphics = std::make_unique<SingularityGraphics>();
+
     return SDL_APP_CONTINUE;
 }
 

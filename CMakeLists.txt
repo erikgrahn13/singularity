@@ -99,6 +99,36 @@ target_include_directories(main PRIVATE
     ${dmon_SOURCE_DIR}
 )
 
-add_executable(hello WIN32 standalone/main.cpp)
+if(WIN32)
+    add_executable(hello WIN32 standalone/main.cpp)
+elseif(APPLE)
+    add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
+else()
+    add_executable(hello standalone/main.cpp)
+endif()
 
-target_link_libraries(hello PRIVATE SDL3::SDL3)
+target_link_libraries(hello PRIVATE 
+    SDL3::SDL3
+    ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
+    qjs-libc
+)
+
+target_include_directories(hello PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${skia_SOURCE_DIR}/include
+    ${quickjs_SOURCE_DIR}
+    ${dmon_SOURCE_DIR}
+)
+
+target_compile_definitions(hello PRIVATE
+    JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
+)
+
+target_sources(hello PRIVATE 
+    SingularityGraphics2.cpp
+    dmonFileWatcher.cpp
+    SkiaRenderer.cpp
+    QuickJSEngine.cpp
+)
+
+target_compile_features(hello PRIVATE cxx_std_23)
