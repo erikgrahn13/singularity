@@ -98,7 +98,8 @@ target_sources(main PRIVATE
     SingularityGraphics2.cpp
     dmonFileWatcher.cpp
     SkiaRenderer.cpp
-    QuickJSEngine.cpp
+    # QuickJSEngine.cpp
+    chocQuickJSEngine.cpp
 )
 
 target_compile_definitions(main PRIVATE
@@ -121,7 +122,7 @@ if(WIN32)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
-    target_link_libraries(main PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
+    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
 else()
     add_executable(hello standalone/main.cpp)
 endif()
@@ -148,7 +149,8 @@ target_sources(hello PRIVATE
     # dmonFileWatcher.cpp
     chocFileWatcher.cpp
     SkiaRenderer.cpp
-    QuickJSEngine.cpp
+    # QuickJSEngine.cpp
+    chocQuickJSEngine.cpp
 )
 
 target_compile_features(hello PRIVATE cxx_std_23)

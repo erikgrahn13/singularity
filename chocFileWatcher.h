@@ -1,18 +1,17 @@
 #pragma once
 
 #include "IFileWatcher.h"
+#include "choc/platform/choc_FileWatcher.h"
 
 #include <functional>
-#include <string>
 #include <filesystem>
 
 class ChocFileWatcher : public IFileWatcher
 {
     public:
-    ChocFileWatcher(std::filesystem::path fileOrFolderToWatch, std::function<void(const std::string& filePath)> onChange);
+    ChocFileWatcher(std::filesystem::path fileOrFolderToWatch, std::function<void(const choc::file::Watcher::Event&)> onChange);
     ~ChocFileWatcher();
 
     private:
-    struct Impl;
-    std::unique_ptr<Impl> pImpl;
+    choc::file::Watcher watcher;
 };

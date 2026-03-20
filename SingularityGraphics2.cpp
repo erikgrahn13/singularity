@@ -17,13 +17,23 @@ SingularityGraphics::SingularityGraphics(int width, int height)
     renderer = createRenderer(width, height);
     jsEngine = createJSEngine();
 
+    jsEngine->bindRenderer(renderer.get());
+
     // TODO: fix this function
-    fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [](const std::string &filePath){
-        std::cout << "File has been modified" << std::endl;
+    fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [this](const std::string &filePath){
+        // jsEngine->hotReload();
+        pendingReload = true;
+        // std::cout << "File has been modified" << std::endl;
     });
 }
 
 DrawingContent SingularityGraphics::getRenderData()
 {
     return renderer->getDrawingContent();
+}
+
+void SingularityGraphics::hotReload()
+{
+    renderer->clear();
+    jsEngine->hotReload();
 }

@@ -7,7 +7,7 @@
 #endif
 
 #include <memory>
-
+#include <atomic>
 // Include interface headers - they're lightweight (just virtual functions)
 #include "IRenderer.h"
 #include "IJSEngine.h"
@@ -21,6 +21,10 @@ class SingularityGraphics {
 
     SWIFT_RETURNS_INDEPENDENT_VALUE
     DrawingContent getRenderData();
+
+    void hotReload();
+
+    std::atomic<bool> pendingReload { true };
 
     private:
     std::unique_ptr<IRenderer> renderer;
