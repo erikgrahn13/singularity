@@ -1,13 +1,14 @@
 #pragma once
 
-#if __has_include(<swift/bridging>)
-#  include <swift/bridging>
-#else
-#  define SWIFT_SELF_CONTAINED
-#  define SWIFT_RETURNS_INDEPENDENT_VALUE
-#endif
+// #if __has_include(<swift/bridging>)
+// #  include <swift/bridging>
+// #else
+// #  define SWIFT_SELF_CONTAINED
+// #  define SWIFT_RETURNS_INDEPENDENT_VALUE
+// #endif
 
 #include <memory>
+#include <string>
 
     struct DrawingContent {
         const void* contentAddres{nullptr};
@@ -19,7 +20,17 @@
 class IRenderer {
     public:
     virtual void clear() = 0;
+
+    // Drawing State
+    virtual void save() = 0;
+    virtual void restore() = 0;
+    virtual void setGlobalAlpha(float alpha) = 0;
+
     virtual void setFillStyle(const std::string& color) = 0;
+    virtual void setStrokeStyle(const std::string& color) = 0;
+    virtual void setLineWidth(float lineWidth) = 0;
+    virtual void setLineCap(const std::string& cap) = 0;
+
     virtual void fillRect(float x, float y, float width, float height) = 0;
     virtual void beginPath() = 0;
     virtual void stroke() = 0;

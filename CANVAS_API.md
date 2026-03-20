@@ -1,0 +1,54 @@
+# Canvas API Implementation Tracker
+
+## Drawing State
+- [x] `save()`
+- [x] `restore()`
+- [x] `globalAlpha` (property)
+
+## Styles & Colors
+- [x] `fillStyle` (property)
+- [x] `strokeStyle` (property)
+- [x] `lineWidth` (property)
+- [ ] `lineCap` (property) — `'butt'`, `'round'`, `'square'`
+- [ ] `lineJoin` (property) — `'miter'`, `'round'`, `'bevel'`
+
+## Rectangles
+- [x] `fillRect(x, y, w, h)`
+- [ ] `strokeRect(x, y, w, h)`
+- [ ] `clearRect(x, y, w, h)`
+- [ ] `roundRect(x, y, w, h, radii)` *(nice to have)*
+
+## Paths
+- [x] `beginPath()`
+- [x] `arc(x, y, r, startAngle, endAngle, ccw?)` — missing 6th `ccw` boolean
+- [ ] `fill()`
+- [x] `stroke()`
+- [ ] `moveTo(x, y)`
+- [ ] `lineTo(x, y)`
+- [ ] `closePath()`
+- [ ] `quadraticCurveTo(cpx, cpy, x, y)`
+- [ ] `bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)`
+- [ ] `arcTo(x1, y1, x2, y2, r)`
+- [ ] `ellipse(x, y, rx, ry, rotation, startAngle, endAngle, ccw?)`
+- [ ] `rect(x, y, w, h)`
+
+## Text
+- [ ] `fillText(text, x, y)`
+- [ ] `strokeText(text, x, y)`
+- [ ] `measureText(text)` — returns `{ width }`
+- [ ] `font` (property)
+- [ ] `textAlign` (property) — `'left'`, `'center'`, `'right'`
+- [ ] `textBaseline` (property) — `'top'`, `'middle'`, `'bottom'`, `'alphabetic'`
+
+## Transforms
+- [ ] `save()` / `restore()` — also covers transform state
+- [ ] `translate(x, y)`
+- [ ] `rotate(angle)`
+- [ ] `scale(x, y)`
+- [ ] `setTransform(a, b, c, d, e, f)`
+- [ ] `resetTransform()`
+
+## Gradients *(nice to have)*
+- [ ] `createLinearGradient(x0, y0, x1, y1)`
+- [ ] `createRadialGradient(x0, y0, r0, x1, y1, r1)`
+- [ ] `gradient.addColorStop(offset, color)`

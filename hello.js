@@ -37,8 +37,14 @@
 // new Button(buttonRow.x + 1 * buttonRow.spacing, buttonRow.y, 55, 18, false, { ...theme, label: 'OFF' });
 // ctx.fillStyle("#ffaabb")
 // hello()
-ctx.fillStyle = "#ffd900ba"
-ctx.fillRect(0, 0, 200,200)
-
+// ctx.globalAlpha = 0.1
 ctx.fillStyle = "#ff0000ba"
-ctx.arc(200, 200, 100, 0, 360)
+ctx.fillRect(0, 0, 300,300)
+
+ctx.fillStyle = "#00ff0dba"
+ctx.strokeStyle = "#1eff00ba"
+ctx.lineWidth = 10;
+ctx.lineCap = 'butt'
+ctx.beginPath()
+ctx.arc(100, 75, 50, 0, 2* Math.PI -1);
+ctx.stroke()

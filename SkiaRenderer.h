@@ -10,21 +10,37 @@
 class SkiaRenderer : public IRenderer {
     public:
 
-    // struct DrawState {
-    //     SkColor strokeStyle = SK_ColorBLACK;
-    //     float lineWidth = 1.0f;
-    //     float globalAlpha = 1.0f;
-    //     SkPaint::Cap lineCap = SkPaint::kRound_Cap;
-    //     SkPaint::Join lineJoin = SkPaint::kRound_Join;
-    // };
-    
-    // DrawState currentState;
-    // std::vector<DrawState> stateStack;
-    
+    struct DrawState {
+        // Colors
+        SkColor fillStyle = SK_ColorBLACK;
+        SkColor strokeStyle = SK_ColorBLACK;
+
+        // Stroke properties
+        float lineWidth = 1.0f;
+        SkPaint::Cap lineCap = SkPaint::kButt_Cap;
+        SkPaint::Join lineJoin = SkPaint::kMiter_Join;
+        float miterLimit = 10.0f;
+        
+        // Transparency
+        float globalAlpha = 1.0f;
+
+        // Text
+        std::string font = "10px sans-serif";
+    };
+
     SkiaRenderer(int width, int height);
     
     void clear() override;
+
+    void save() override;
+    void restore() override;
+    void setGlobalAlpha(float alpha) override;
+
     void setFillStyle(const std::string& color) override;
+    void setStrokeStyle(const std::string &color) override;
+    void setLineWidth(float lineWidth) override;
+    void setLineCap(const std::string& cap) override;
+
     void fillRect(float x, float y, float width, float height) override;
     void beginPath() override;
     void stroke() override;
@@ -35,7 +51,13 @@ class SkiaRenderer : public IRenderer {
     DrawingContent getDrawingContent() override;
     
     private:
-    SkColor fillStyle = SK_ColorRED;
+
+    // helper functions
+    SkColor applyAlpha(SkColor color) const;
+
+
     SkPathBuilder     currentPath;
     sk_sp<SkSurface> skiaSurface;
+    std::vector<DrawState> stateStack;
+    DrawState currentState;
 };
