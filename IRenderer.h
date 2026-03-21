@@ -21,6 +21,9 @@ class IRenderer {
     public:
     virtual void clear() = 0;
 
+    virtual void renderBackground(float t) = 0;
+
+
     // Drawing State
     virtual void save() = 0;
     virtual void restore() = 0;
@@ -39,8 +42,20 @@ class IRenderer {
     virtual void stroke() = 0;
     virtual void fill() = 0;
     virtual void moveTo(float x, float y) = 0;
-
+    virtual void lineTo(float x, float y) = 0;
+    virtual void closePath() = 0;
+    virtual void quadraticCurveTo(float cpx, float cpy, float x, float y) = 0;
+    virtual void bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y) = 0;
+    virtual void arcTo(float x1, float y1, float x2, float y2, float radius) = 0;
+    virtual void ellipse(float x, float y, float radiusX, float radiusY, float rotation, float startAngle, float endAngle) = 0;
+    virtual void rect(float x, float y, float width, float height) = 0;
     virtual void arc(float x, float y, float radius, float startAngle, float endAngle) = 0;
+
+    virtual void fillText(const std::string& text, float x, float y) = 0;
+    virtual void strokeText(const std::string& text, float x, float y) = 0;
+    virtual float measureText(const std::string& text) = 0;
+    virtual void font(const std::string& text) = 0;
+    virtual void textAlign(const std::string& align) = 0;
 
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;

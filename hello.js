@@ -42,21 +42,58 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 ctx.strokeStyle = "#ff0000ba"
-ctx.lineWidth = 10;
+// ctx.lineWidth = 10;
 // ctx.lineCap = 'square'
 // ctx.lineJoin = 'round'
 
-ctx.fillStyle = "#00ff0dba"
+ctx.fillStyle = "#66ff00ba"
 
 ctx.beginPath()
-ctx.roundRect(0, 0, 300,300, 20)
+ctx.roundRect(0, 0, 300,300,20)
 ctx.fill()
 
+ctx.strokeStyle = "#000000ba"
+
+// TEST CODE BELOW
+
+// Define the points as {x, y}
+let start = { x: 50, y: 20 };
+let cp1 = { x: 230, y: 30 };
+let cp2 = { x: 150, y: 80 };
+let end = { x: 250, y: 100 };
+
+// Cubic Bézier curve
+ctx.beginPath();
+ctx.moveTo(start.x, start.y);
+ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y);
+ctx.stroke();
+
+// Start and end points
+ctx.fillStyle = "blue";
+ctx.beginPath();
+ctx.arc(start.x, start.y, 5, 0, 2 * Math.PI); // Start point
+ctx.arc(end.x, end.y, 5, 0, 2 * Math.PI); // End point
+ctx.fill();
+
+// Control points
+ctx.fillStyle = "red";
+ctx.beginPath();
+ctx.arc(cp1.x, cp1.y, 5, 0, 2 * Math.PI); // Control point one
+ctx.arc(cp2.x, cp2.y, 5, 0, 2 * Math.PI); // Control point two
+ctx.fill();
+
+// TEST CODE ABOVE
+
 ctx.fillStyle = "#00ff0dba"
-ctx.strokeStyle = "#1eff00ba"
+ctx.strokeStyle = "#000000ba"
 ctx.lineWidth = 10;
-ctx.lineCap = 'butt'
+ctx.lineCap = 'round'
 ctx.lineJoin = 'bevel'
-ctx.beginPath()
-ctx.arc(100, 75, 50, 0, 2* Math.PI -1);
-ctx.stroke()
+//ctx.beginPath()
+//ctx.arc(100, 75, 50, 140* Math.PI/180, 400*Math.PI/180);
+//ctx.stroke()
+ctx.fillStyle = "#1010c0"
+ctx.font = "32px"
+ctx.strokeText("Erik Grahn", 100, 100)
+let text = ctx.measureText("Hello world");
+console.log(text.width);

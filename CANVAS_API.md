@@ -24,19 +24,19 @@
 - [x] `fill()`
 - [x] `stroke()`
 - [x] `moveTo(x, y)`
-- [ ] `lineTo(x, y)`
-- [ ] `closePath()`
-- [ ] `quadraticCurveTo(cpx, cpy, x, y)`
-- [ ] `bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)`
-- [ ] `arcTo(x1, y1, x2, y2, r)`
-- [ ] `ellipse(x, y, rx, ry, rotation, startAngle, endAngle, ccw?)`
-- [ ] `rect(x, y, w, h)`
+- [x] `lineTo(x, y)`
+- [x] `closePath()`
+- [x] `quadraticCurveTo(cpx, cpy, x, y)`
+- [x] `bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)`
+- [x] `arcTo(x1, y1, x2, y2, r)`
+- [x] `ellipse(x, y, rx, ry, rotation, startAngle, endAngle, ccw?)`
+- [x] `rect(x, y, w, h)`
 
 ## Text
-- [ ] `fillText(text, x, y)`
-- [ ] `strokeText(text, x, y)`
-- [ ] `measureText(text)` — returns `{ width }`
-- [ ] `font` (property)
+- [x] `fillText(text, x, y)`
+- [x] `strokeText(text, x, y)`
+- [x] `measureText(text)` — returns `{ width }`
+- [x] `font` (property)
 - [ ] `textAlign` (property) — `'left'`, `'center'`, `'right'`
 - [ ] `textBaseline` (property) — `'top'`, `'middle'`, `'bottom'`, `'alphabetic'`
 
@@ -52,3 +52,6 @@
 - [ ] `createLinearGradient(x0, y0, x1, y1)`
 - [ ] `createRadialGradient(x0, y0, r0, x1, y1, r1)`
 - [ ] `gradient.addColorStop(offset, color)`
+
+## Examples
+- [] `Create examples of all the primitives from the Canvas API docs`

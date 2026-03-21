@@ -24,6 +24,9 @@ class SingularityGraphics {
 
     void hotReload();
 
+    // tmp
+    void renderFrame(float t);
+
     std::atomic<bool> pendingReload { true };
 
     private:

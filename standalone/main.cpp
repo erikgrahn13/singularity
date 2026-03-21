@@ -53,10 +53,15 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 {
     AppState* state = static_cast<AppState*>(appstate);
 
+    //     float t = SDL_GetTicks() / 1000.0f;
+    // state->graphics->renderFrame(t);
+
     if(state->graphics->pendingReload.exchange(false))
     {
         state->graphics->hotReload();
     }
+
+
 
     DrawingContent dc = state->graphics->getRenderData();
 

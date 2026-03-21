@@ -1,13 +1,32 @@
+#include "tmpshader.h"
 #include "SkiaRenderer.h"
+#include "include/core/SkFontMgr.h"
 #include "include/core/SkCanvas.h"
+#include "include/core/SkFont.h"
+
+#ifdef _WIN32
+#  include "include/ports/SkTypeface_win.h"
+#elif __APPLE__
+#  include "include/ports/SkFontMgr_mac_ct.h"
+#else
+#  include "include/ports/SkFontMgr_fontconfig.h"
+#endif
 
 SkiaRenderer::SkiaRenderer(int width, int height)
 {
     skiaSurface = SkSurfaces::Raster(SkImageInfo::MakeN32Premul(width, height));
 
-    SkCanvas* canvas = skiaSurface->getCanvas();
-    canvas->drawColor(SK_ColorGREEN);
+    const char* fontFamily;
+    SkFontStyle fonStyle;
 
+#ifdef _WIN32
+        fontMgr = SkFontMgr_New_DirectWrite();
+#elif __APPLE__
+        fontMgr = SkFontMgr_New_CoreText(nullptr);
+#else
+        fontMgr = SkFontMgr_New_FontConfig(nullptr);
+#endif
+    defaultTypeface = fontMgr->legacyMakeTypeface(nullptr, SkFontStyle());
 }
 
 DrawingContent SkiaRenderer::getDrawingContent()
@@ -197,11 +216,142 @@ void SkiaRenderer::moveTo(float x, float y)
     currentPath.moveTo(x, y);
 }
 
+void SkiaRenderer::lineTo(float x, float y)
+{
+    currentPath.lineTo(x, y);
+}
+
+void SkiaRenderer::closePath()
+{
+    currentPath.close();
+}
+
+void SkiaRenderer::quadraticCurveTo(float cpx, float cpy, float x, float y)
+{
+    currentPath.quadTo(cpx, cpy, x, y);
+}
+
+void SkiaRenderer::bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y)
+{
+    currentPath.cubicTo(cp1x, cp1y, cp2x, cp2y, x, y);
+}
+
+void SkiaRenderer::arcTo(float x1, float y1, float x2, float y2, float radius)
+{
+    currentPath.arcTo(SkPoint::Make(x1, y1), SkPoint::Make(x2, y2), radius);
+}
+
+void SkiaRenderer::ellipse(float x, float y, float radiusX, float radiusY, float rotation, float startAngle, float endAngle)
+{
+    // Build arc centered at origin (no rotation yet)
+    SkRect oval = SkRect::MakeXYWH(-radiusX, -radiusY, radiusX * 2, radiusY * 2);
+    float startDeg = startAngle * (180.f / SK_FloatPI);
+    float sweepDeg = (endAngle - startAngle) * (180.f / SK_FloatPI);
+
+    SkPathBuilder tmp;
+    tmp.addArc(oval, startDeg, sweepDeg);
+
+    // Rotate around origin, then translate to (x, y)
+    SkMatrix matrix;
+    matrix.setRotate(rotation * (180.f / SK_FloatPI));
+    matrix.postTranslate(x, y);
+
+    currentPath.addPath(tmp.snapshot(), matrix);
+}
+
+void SkiaRenderer::rect(float x, float y, float width, float height)
+{
+    currentPath.addRect(SkRect::MakeXYWH(x, y, width, height));
+}
+
 void SkiaRenderer::arc(float x, float y, float radius, float startAngle, float endAngle)
 {
     SkRect oval = SkRect::MakeXYWH(x - radius, y - radius, radius * 2, radius *2);
     float sweepDeg = (endAngle - startAngle) * (180.f / SK_FloatPI);
     currentPath.addArc(oval, startAngle * (180.f / SK_FloatPI), sweepDeg);
+}
+
+void SkiaRenderer::fillText(const std::string &text, float x, float y)
+{
+    SkFont font(defaultTypeface, currentState.fontSize);
+
+    float width = font.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
+
+    if(currentState.textAlign == "center")
+    {
+        x -= width / 2.f;
+    }
+    else if(currentState.textAlign == "right" || currentState.textAlign == "end")
+    {
+        x -= width;
+    }
+
+
+    SkPaint paint;
+    paint.setStyle(SkPaint::kFill_Style);
+    paint.setColor(applyAlpha(currentState.fillStyle));
+    paint.setAntiAlias(true);
+    skiaSurface->getCanvas()->drawString(text.c_str(), x, y, font, paint);
+}
+
+void SkiaRenderer::strokeText(const std::string &text, float x, float y)
+{
+    SkFont font(defaultTypeface, currentState.fontSize);
+    float width = font.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
+
+    if(currentState.textAlign == "center")
+    {
+        x -= width / 2.f;
+    }
+    else if(currentState.textAlign == "right" || currentState.textAlign == "end")
+    {
+        x -= width;
+    }
+
+    SkPaint paint;
+    paint.setStyle(SkPaint::kStroke_Style);
+    paint.setColor(applyAlpha(currentState.strokeStyle));
+    paint.setAntiAlias(true);
+    skiaSurface->getCanvas()->drawString(text.c_str(), x, y, font, paint);
+}
+
+float SkiaRenderer::measureText(const std::string &text)
+{
+    SkFont font(defaultTypeface, currentState.fontSize);
+    return font.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
+}
+
+void SkiaRenderer::font(const std::string &text)
+{
+    auto pxPos = text.find("px");
+    if (pxPos == std::string::npos) return; // not a valid font string
+
+    size_t sizeStart = pxPos;
+    while (sizeStart > 0 && (std::isdigit((unsigned char)text[sizeStart - 1]) || text[sizeStart - 1] == '.'))
+        --sizeStart;
+
+    // 3. Extract the size number e.g. "16"
+    currentState.fontSize = std::stof(text.substr(sizeStart, pxPos - sizeStart));
+
+    // 4. Everything after "px " is the font family e.g. "Arial"
+    currentState.fontFamily = (pxPos + 3 <= text.size()) ? text.substr(pxPos + 3) : "";
+
+    // 5. Check for "bold" / "italic" in the prefix
+    std::string prefix = text.substr(0, sizeStart);
+    bool bold   = prefix.find("bold")   != std::string::npos;
+    bool italic = prefix.find("italic") != std::string::npos;
+    currentState.fontStyle = SkFontStyle(
+        bold   ? SkFontStyle::kBold_Weight  : SkFontStyle::kNormal_Weight,
+        SkFontStyle::kNormal_Width,
+        italic ? SkFontStyle::kItalic_Slant : SkFontStyle::kUpright_Slant
+    );
+
+    defaultTypeface = fontMgr->legacyMakeTypeface(currentState.fontFamily.c_str(), currentState.fontStyle);
+}
+
+void SkiaRenderer::textAlign(const std::string &align)
+{
+    currentState.textAlign = align;
 }
 
 int SkiaRenderer::getWidth() const  { return skiaSurface->width(); }
@@ -210,4 +360,10 @@ int SkiaRenderer::getHeight() const { return skiaSurface->height(); }
 std::unique_ptr<IRenderer> createRenderer(int width, int height)
 {
     return std::make_unique<SkiaRenderer>(width, height);
+}
+
+void SkiaRenderer::renderBackground(float t)
+{
+    SkCanvas* canvas = skiaSurface->getCanvas();
+    DrawMetaballsBackground(canvas, skiaSurface->width(), skiaSurface->height(), t);
 }

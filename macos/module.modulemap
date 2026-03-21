@@ -1,4 +1,0 @@
-module SingularityGraphics {
-    header "../SingularityGraphics2.h"
-    export *
-}
