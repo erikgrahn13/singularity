@@ -9,21 +9,21 @@
 - [x] `fillStyle` (property)
 - [x] `strokeStyle` (property)
 - [x] `lineWidth` (property)
-- [ ] `lineCap` (property) — `'butt'`, `'round'`, `'square'`
-- [ ] `lineJoin` (property) — `'miter'`, `'round'`, `'bevel'`
+- [X] `lineCap` (property) — `'butt'`, `'round'`, `'square'`
+- [x] `lineJoin` (property) — `'miter'`, `'round'`, `'bevel'`
 
 ## Rectangles
 - [x] `fillRect(x, y, w, h)`
-- [ ] `strokeRect(x, y, w, h)`
+- [x] `strokeRect(x, y, w, h)`
 - [ ] `clearRect(x, y, w, h)`
-- [ ] `roundRect(x, y, w, h, radii)` *(nice to have)*
+- [x] `roundRect(x, y, w, h, radii)` *(nice to have)*
 
 ## Paths
 - [x] `beginPath()`
 - [x] `arc(x, y, r, startAngle, endAngle, ccw?)` — missing 6th `ccw` boolean
-- [ ] `fill()`
+- [x] `fill()`
 - [x] `stroke()`
-- [ ] `moveTo(x, y)`
+- [x] `moveTo(x, y)`
 - [ ] `lineTo(x, y)`
 - [ ] `closePath()`
 - [ ] `quadraticCurveTo(cpx, cpy, x, y)`

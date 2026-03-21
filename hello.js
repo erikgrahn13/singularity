@@ -38,13 +38,25 @@
 // ctx.fillStyle("#ffaabb")
 // hello()
 // ctx.globalAlpha = 0.1
-ctx.fillStyle = "#ff0000ba"
-ctx.fillRect(0, 0, 300,300)
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+ctx.strokeStyle = "#ff0000ba"
+ctx.lineWidth = 10;
+// ctx.lineCap = 'square'
+// ctx.lineJoin = 'round'
+
+ctx.fillStyle = "#00ff0dba"
+
+ctx.beginPath()
+ctx.roundRect(0, 0, 300,300, 20)
+ctx.fill()
 
 ctx.fillStyle = "#00ff0dba"
 ctx.strokeStyle = "#1eff00ba"
 ctx.lineWidth = 10;
 ctx.lineCap = 'butt'
+ctx.lineJoin = 'bevel'
 ctx.beginPath()
 ctx.arc(100, 75, 50, 0, 2* Math.PI -1);
 ctx.stroke()

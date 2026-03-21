@@ -40,15 +40,26 @@ class SkiaRenderer : public IRenderer {
     void setStrokeStyle(const std::string &color) override;
     void setLineWidth(float lineWidth) override;
     void setLineCap(const std::string& cap) override;
+    void setLineJoin(const std::string& join) override;
+
 
     void fillRect(float x, float y, float width, float height) override;
+    void strokeRect(float x, float y, float width, float height) override;
+    void roundRect(float x, float y, float width, float height, float radii) override;
+
+
     void beginPath() override;
     void stroke() override;
+    void fill() override;
+    void moveTo(float x, float y) override;
+
 
     void arc(float x, float y, float radius, float startAngle, float endAngle) override;
     
     
     DrawingContent getDrawingContent() override;
+    int getWidth() const override;
+    int getHeight() const override;
     
     private:
 

@@ -122,11 +122,48 @@ void SkiaRenderer::setLineCap(const std::string &cap)
     }
 }
 
+void SkiaRenderer::setLineJoin(const std::string &join)
+{
+    if(join == "miter")
+    {
+        currentState.lineJoin = SkPaint::kMiter_Join;
+    }
+    else if(join == "round")
+    {
+        currentState.lineJoin = SkPaint::kRound_Join;
+    }
+    else if(join == "bevel")
+    {
+        currentState.lineJoin = SkPaint::kBevel_Join;
+    }
+}
+
 void SkiaRenderer::fillRect(float x, float y, float width, float height)
 {
     SkPaint paint;
     paint.setColor(applyAlpha(currentState.fillStyle));
+    paint.setStyle(SkPaint::kFill_Style);
+    paint.setAntiAlias(true); 
     skiaSurface->getCanvas()->drawRect(SkRect::MakeXYWH(x, y, width, height), paint);
+}
+
+void SkiaRenderer::strokeRect(float x, float y, float width, float height)
+{
+    SkPaint paint;
+    paint.setColor(applyAlpha(currentState.strokeStyle));
+    paint.setStyle(SkPaint::kStroke_Style);
+    paint.setStrokeWidth(currentState.lineWidth);
+    paint.setStrokeCap(currentState.lineCap);
+    paint.setStrokeJoin(currentState.lineJoin);
+    paint.setAntiAlias(true); 
+    skiaSurface->getCanvas()->drawRect(SkRect::MakeXYWH(x, y, width, height), paint);
+}
+
+void SkiaRenderer::roundRect(float x, float y, float width, float height, float radii)
+{
+    SkRRect roundRect;
+    roundRect.setRectXY(SkRect::MakeXYWH(x, y, width, height), radii, radii);
+    currentPath.addRRect(roundRect);
 }
 
 void SkiaRenderer::beginPath()
@@ -142,9 +179,23 @@ void SkiaRenderer::stroke()
     paint.setStrokeWidth(currentState.lineWidth);
     paint.setStrokeCap(currentState.lineCap);
     paint.setStrokeJoin(currentState.lineJoin);
+    paint.setAntiAlias(true); 
     skiaSurface->getCanvas()->drawPath(currentPath.snapshot(), paint);
 }
 
+void SkiaRenderer::fill()
+{
+    SkPaint paint;
+    paint.setStyle(SkPaint::kFill_Style);
+    paint.setColor(applyAlpha(currentState.fillStyle));
+    paint.setAntiAlias(true);
+    skiaSurface->getCanvas()->drawPath(currentPath.snapshot(), paint);
+}
+
+void SkiaRenderer::moveTo(float x, float y)
+{
+    currentPath.moveTo(x, y);
+}
 
 void SkiaRenderer::arc(float x, float y, float radius, float startAngle, float endAngle)
 {
@@ -153,7 +204,8 @@ void SkiaRenderer::arc(float x, float y, float radius, float startAngle, float e
     currentPath.addArc(oval, startAngle * (180.f / SK_FloatPI), sweepDeg);
 }
 
-
+int SkiaRenderer::getWidth() const  { return skiaSurface->width(); }
+int SkiaRenderer::getHeight() const { return skiaSurface->height(); }
 
 std::unique_ptr<IRenderer> createRenderer(int width, int height)
 {
