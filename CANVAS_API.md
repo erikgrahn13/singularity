@@ -37,8 +37,8 @@
 - [x] `strokeText(text, x, y)`
 - [x] `measureText(text)` — returns `{ width }`
 - [x] `font` (property)
-- [ ] `textAlign` (property) — `'left'`, `'center'`, `'right'`
-- [ ] `textBaseline` (property) — `'top'`, `'middle'`, `'bottom'`, `'alphabetic'`
+- [x] `textAlign` (property) — `'left'`, `'center'`, `'right'`
+- [x] `textBaseline` (property) — `'top'`, `'middle'`, `'bottom'`, `'alphabetic'`
 
 ## Transforms
 - [ ] `save()` / `restore()` — also covers transform state

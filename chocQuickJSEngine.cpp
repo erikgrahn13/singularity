@@ -218,6 +218,12 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
         return {};
     });
 
+    ctx.registerFunction("__textBaseline", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->textBaseline(std::string(args[0]->getString()));
+        return {};
+    });
+
 
     auto bootstrap = std::format(R"(
         const _ctx = (() => {{
@@ -229,6 +235,7 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
             let _lineJoin = 'miter'; 
             let _font = '10px sans-serif';
             let _textAlign = 'start';
+            let _textBaseline = 'alphabetic';
             
             const obj = {{
                 fillRect: (x, y, w, h) => __fillRect(x, y, w, h),
@@ -283,6 +290,10 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
             Object.defineProperty(obj, 'textAlign', {{
                 get: ()  => _textAlign,
                 set: (v) => {{ _textAlign = v; __textAlign(v); }},
+            }});
+            Object.defineProperty(obj, 'textBaseline', {{
+                get: ()  => _textBaseline,
+                set: (v) => {{ _textBaseline = v; __textBaseline(v); }},
             }});
             return obj;
         }})();

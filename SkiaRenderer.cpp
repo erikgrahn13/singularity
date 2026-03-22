@@ -3,6 +3,8 @@
 #include "include/core/SkFontMgr.h"
 #include "include/core/SkCanvas.h"
 #include "include/core/SkFont.h"
+#include "include/core/SkFontMetrics.h"
+#include "include/utils/SkTextUtils.h"
 
 #ifdef _WIN32
 #  include "include/ports/SkTypeface_win.h"
@@ -273,46 +275,66 @@ void SkiaRenderer::arc(float x, float y, float radius, float startAngle, float e
 
 void SkiaRenderer::fillText(const std::string &text, float x, float y)
 {
+    SkTextUtils::Align align = SkTextUtils::kLeft_Align;
+    if (currentState.textAlign == "center") 
+    {
+        align = SkTextUtils::kCenter_Align;
+    }
+    else if (currentState.textAlign == "right" || currentState.textAlign == "end")
+    {
+        align = SkTextUtils::kRight_Align;
+    }
+    
+    SkFontMetrics metrics;
     SkFont font(defaultTypeface, currentState.fontSize);
+    font.getMetrics(&metrics);
 
-    float width = font.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
-
-    if(currentState.textAlign == "center")
-    {
-        x -= width / 2.f;
-    }
-    else if(currentState.textAlign == "right" || currentState.textAlign == "end")
-    {
-        x -= width;
-    }
-
+    if (currentState.textBaseline == "top")
+        y -= metrics.fAscent;           // fAscent is negative, so this moves y down
+    else if (currentState.textBaseline == "middle")
+        y -= (metrics.fAscent + metrics.fDescent) / 2.f;
+    else if (currentState.textBaseline == "bottom")
+        y -= metrics.fDescent;
+    else if (currentState.textBaseline == "hanging")
+        y += metrics.fCapHeight;
 
     SkPaint paint;
     paint.setStyle(SkPaint::kFill_Style);
     paint.setColor(applyAlpha(currentState.fillStyle));
     paint.setAntiAlias(true);
-    skiaSurface->getCanvas()->drawString(text.c_str(), x, y, font, paint);
+    SkTextUtils::DrawString(skiaSurface->getCanvas(), text.c_str(), x, y, font, paint, align);
 }
 
 void SkiaRenderer::strokeText(const std::string &text, float x, float y)
 {
+    SkTextUtils::Align align = SkTextUtils::kLeft_Align;
+    if (currentState.textAlign == "center") 
+    {
+        align = SkTextUtils::kCenter_Align;
+    }
+    else if (currentState.textAlign == "right" || currentState.textAlign == "end")
+    {
+        align = SkTextUtils::kRight_Align;
+    }
+    
+    SkFontMetrics metrics;
     SkFont font(defaultTypeface, currentState.fontSize);
-    float width = font.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
+    font.getMetrics(&metrics);
 
-    if(currentState.textAlign == "center")
-    {
-        x -= width / 2.f;
-    }
-    else if(currentState.textAlign == "right" || currentState.textAlign == "end")
-    {
-        x -= width;
-    }
+    if (currentState.textBaseline == "top")
+        y -= metrics.fAscent;           // fAscent is negative, so this moves y down
+    else if (currentState.textBaseline == "middle")
+        y -= (metrics.fAscent + metrics.fDescent) / 2.f;
+    else if (currentState.textBaseline == "bottom")
+        y -= metrics.fDescent;
+    else if (currentState.textBaseline == "hanging")
+        y += metrics.fCapHeight;
 
     SkPaint paint;
     paint.setStyle(SkPaint::kStroke_Style);
     paint.setColor(applyAlpha(currentState.strokeStyle));
     paint.setAntiAlias(true);
-    skiaSurface->getCanvas()->drawString(text.c_str(), x, y, font, paint);
+    SkTextUtils::DrawString(skiaSurface->getCanvas(), text.c_str(), x, y, font, paint, align);
 }
 
 float SkiaRenderer::measureText(const std::string &text)
@@ -352,6 +374,11 @@ void SkiaRenderer::font(const std::string &text)
 void SkiaRenderer::textAlign(const std::string &align)
 {
     currentState.textAlign = align;
+}
+
+void SkiaRenderer::textBaseline(const std::string &baseline)
+{
+    currentState.textBaseline = baseline;
 }
 
 int SkiaRenderer::getWidth() const  { return skiaSurface->width(); }

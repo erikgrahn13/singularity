@@ -29,8 +29,8 @@ class SkiaRenderer : public IRenderer {
         float fontSize = 10.0f;
         std::string fontFamily = "";
         std::string textAlign = "start";
+        std::string textBaseline = "alphabetic";
         SkFontStyle fontStyle = SkFontStyle();
-        // std::string font = "10px sans-serif";
     };
 
     SkiaRenderer(int width, int height);
@@ -72,6 +72,7 @@ class SkiaRenderer : public IRenderer {
     float measureText(const std::string& text) override;
     void font(const std::string& text) override;
     void textAlign(const std::string& align) override;
+    void textBaseline(const std::string &baseline) override;
 
 
     

@@ -86,14 +86,38 @@ ctx.fill();
 
 ctx.fillStyle = "#00ff0dba"
 ctx.strokeStyle = "#000000ba"
-ctx.lineWidth = 10;
+// ctx.lineWidth = 10;
 ctx.lineCap = 'round'
 ctx.lineJoin = 'bevel'
 //ctx.beginPath()
 //ctx.arc(100, 75, 50, 140* Math.PI/180, 400*Math.PI/180);
 //ctx.stroke()
-ctx.fillStyle = "#1010c0"
-ctx.font = "32px"
-ctx.strokeText("Erik Grahn", 100, 100)
-let text = ctx.measureText("Hello world");
-console.log(text.width);
+// ctx.fillStyle = "#1010c0"
+// ctx.font = "16px"
+// ctx.textAlign = "end"
+// ctx.strokeText("Erik Grahn2", 100, 100)
+// let text = ctx.measureText("Hello world");
+const baselines = [
+  "top",
+  "hanging",
+  "middle",
+  "alphabetic",
+  "ideographic",
+  "bottom",
+];
+ctx.font = "36px serif";
+ctx.strokeStyle = "#ff0000";
+
+baselines.forEach((baseline, index) => {
+  ctx.textBaseline = baseline;
+  const y = 75 + index * 75;
+  ctx.beginPath();
+  ctx.moveTo(0, y + 0.5);
+  ctx.lineTo(550, y + 0.5);
+  ctx.stroke();
+  ctx.fillText(`Abcdefghijklmnop (${baseline})`, 0, y);
+});
+
+
+
+// console.log(text.width);

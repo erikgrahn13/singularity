@@ -56,6 +56,7 @@ class IRenderer {
     virtual float measureText(const std::string& text) = 0;
     virtual void font(const std::string& text) = 0;
     virtual void textAlign(const std::string& align) = 0;
+    virtual void textBaseline(const std::string &baseline) = 0;
 
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;
