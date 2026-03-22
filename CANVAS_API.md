@@ -41,17 +41,22 @@
 - [x] `textBaseline` (property) — `'top'`, `'middle'`, `'bottom'`, `'alphabetic'`
 
 ## Transforms
-- [ ] `save()` / `restore()` — also covers transform state
-- [ ] `translate(x, y)`
-- [ ] `rotate(angle)`
-- [ ] `scale(x, y)`
-- [ ] `setTransform(a, b, c, d, e, f)`
-- [ ] `resetTransform()`
+- [x] `save()` / `restore()` — also covers transform state
+- [x] `translate(x, y)`
+- [x] `rotate(angle)`
+- [x] `scale(x, y)`
+- [x] `resetTransform()`
 
 ## Gradients *(nice to have)*
-- [ ] `createLinearGradient(x0, y0, x1, y1)`
-- [ ] `createRadialGradient(x0, y0, r0, x1, y1, r1)`
-- [ ] `gradient.addColorStop(offset, color)`
+- [x] `createLinearGradient(x0, y0, x1, y1)`
+- [x] `createRadialGradient(x0, y0, r0, x1, y1, r1)`
+- [x] `gradient.addColorStop(offset, color)`
+
+## Shadows / Glow
+- [x] `shadowColor` (property)
+- [x] `shadowBlur` (property)
+- [x] `shadowOffsetX` (property)
+- [x] `shadowOffsetY` (property)
 
 ## Examples
 - [] `Create examples of all the primitives from the Canvas API docs`

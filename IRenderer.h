@@ -28,12 +28,24 @@ class IRenderer {
     virtual void save() = 0;
     virtual void restore() = 0;
     virtual void setGlobalAlpha(float alpha) = 0;
+    virtual void translate(float x, float y) = 0;
+    virtual void rotate(float angle) = 0;
+    virtual void scale(float x, float y) = 0;
+    virtual void resetTransform() = 0;
 
     virtual void setFillStyle(const std::string& color) = 0;
     virtual void setStrokeStyle(const std::string& color) = 0;
     virtual void setLineWidth(float lineWidth) = 0;
     virtual void setLineCap(const std::string& cap) = 0;
     virtual void setLineJoin(const std::string& join) = 0;
+    virtual void setShadowColor(const std::string& color) = 0;
+    virtual void setShadowBlur(float blur) = 0;
+    virtual void setShadowOffsetX(float offsetX) = 0;
+    virtual void setShadowOffsetY(float offsetY) = 0;
+    virtual int createLinearGradient(float x0, float y0, float x1, float y1) = 0;
+    virtual int createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1) = 0; 
+    virtual void addColorStop(int id, float offset, const std::string& color) = 0;
+    virtual void setFillStyleGradient(int i) = 0;
 
     virtual void fillRect(float x, float y, float width, float height) = 0;
     virtual void strokeRect(float x, float y, float width, float height) = 0;
@@ -57,6 +69,9 @@ class IRenderer {
     virtual void font(const std::string& text) = 0;
     virtual void textAlign(const std::string& align) = 0;
     virtual void textBaseline(const std::string &baseline) = 0;
+
+    virtual void registerImage(const std::string& name, const uint8_t *data, size_t size) = 0;
+    virtual void drawImage(const std::string& name, float dx, float dy, float dw, float dh) = 0;
 
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;

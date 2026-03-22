@@ -41,82 +41,74 @@
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-ctx.strokeStyle = "#ff0000ba"
+// ctx.strokeStyle = "#ff0000ba"
 // ctx.lineWidth = 10;
 // ctx.lineCap = 'square'
 // ctx.lineJoin = 'round'
 
-ctx.fillStyle = "#66ff00ba"
+// ctx.fillStyle = "#1eff00ba"
 
-ctx.beginPath()
-ctx.roundRect(0, 0, 300,300,20)
-ctx.fill()
+// // ctx.translate(20, 20)
+// // ctx.rotate(10)
+// ctx.beginPath()
+// ctx.lineWidth = 10
+// ctx.shadowColor = "#0011ff"
+// ctx.shadowOffsetY = 5;
+// ctx.shadowOffsetX = 5;
+// ctx.roundRect(0, 0, 300,300,20)
 
-ctx.strokeStyle = "#000000ba"
+// ctx.shadowBlur = 25
+// ctx.fill()
 
-// TEST CODE BELOW
+// ctx.resetTransform()
 
-// Define the points as {x, y}
-let start = { x: 50, y: 20 };
-let cp1 = { x: 230, y: 30 };
-let cp2 = { x: 150, y: 80 };
-let end = { x: 250, y: 100 };
+// ctx.strokeStyle = "#000000ba"
 
-// Cubic Bézier curve
-ctx.beginPath();
-ctx.moveTo(start.x, start.y);
-ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y);
-ctx.stroke();
+// // TEST CODE BELOW
 
-// Start and end points
-ctx.fillStyle = "blue";
-ctx.beginPath();
-ctx.arc(start.x, start.y, 5, 0, 2 * Math.PI); // Start point
-ctx.arc(end.x, end.y, 5, 0, 2 * Math.PI); // End point
-ctx.fill();
+const gradient = ctx.createLinearGradient(20, 0, 220, 0);
 
-// Control points
-ctx.fillStyle = "red";
-ctx.beginPath();
-ctx.arc(cp1.x, cp1.y, 5, 0, 2 * Math.PI); // Control point one
-ctx.arc(cp2.x, cp2.y, 5, 0, 2 * Math.PI); // Control point two
-ctx.fill();
+// Add three color stops
+gradient.addColorStop(0, "#1f8628");
+gradient.addColorStop(0.5, "#00ffd5");
+gradient.addColorStop(1, "#1f8628");
 
-// TEST CODE ABOVE
+// Set the fill style and draw a rectangle
+ctx.fillStyle = gradient;
+ctx.fillRect(20, 20, 200, 100);
 
-ctx.fillStyle = "#00ff0dba"
-ctx.strokeStyle = "#000000ba"
-// ctx.lineWidth = 10;
-ctx.lineCap = 'round'
-ctx.lineJoin = 'bevel'
-//ctx.beginPath()
-//ctx.arc(100, 75, 50, 140* Math.PI/180, 400*Math.PI/180);
-//ctx.stroke()
-// ctx.fillStyle = "#1010c0"
-// ctx.font = "16px"
-// ctx.textAlign = "end"
-// ctx.strokeText("Erik Grahn2", 100, 100)
-// let text = ctx.measureText("Hello world");
-const baselines = [
-  "top",
-  "hanging",
-  "middle",
-  "alphabetic",
-  "ideographic",
-  "bottom",
-];
-ctx.font = "36px serif";
-ctx.strokeStyle = "#ff0000";
 
-baselines.forEach((baseline, index) => {
-  ctx.textBaseline = baseline;
-  const y = 75 + index * 75;
-  ctx.beginPath();
-  ctx.moveTo(0, y + 0.5);
-  ctx.lineTo(550, y + 0.5);
-  ctx.stroke();
-  ctx.fillText(`Abcdefghijklmnop (${baseline})`, 0, y);
-});
+const gradient2 = ctx.createLinearGradient(20, 0, 220, 0);
+
+
+// Add three color stops
+gradient2.addColorStop(0, "#ff0000");
+gradient2.addColorStop(0.5, "#ff00ff");
+gradient2.addColorStop(1, "#ff0000");
+
+// Set the fill style and draw a rectangle
+ctx.fillStyle = gradient2;
+ctx.fillRect(20, 220, 200, 100);
+
+
+const gradient3 = ctx.createRadialGradient(100, 500, 10, 100, 500, 80);
+
+// Add three color stops
+gradient3.addColorStop(0, "#ff00ff");
+gradient3.addColorStop(0.9, "#ffffff");
+gradient3.addColorStop(1, "#1f8628");
+
+// Set the fill style and draw a rectangle
+ctx.fillStyle = gradient3;
+ctx.fillRect(20, 420, 160, 160);
+
+// const img = { _id: 0 };  // id 0 = first registered image
+
+// ctx.drawImage('logo', 50, 50, 200, 200);
+
+// // TEST CODE ABOVE
+
+
 
 
 

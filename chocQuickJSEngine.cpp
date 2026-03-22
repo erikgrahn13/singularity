@@ -224,8 +224,93 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
         return {};
     });
 
+    ctx.registerFunction("__translate", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->translate(args[0]->getFloat64(), args[1]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__rotate", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->rotate(args[0]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__scale", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->scale(args[0]->getFloat64(), args[1]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__resetTransform", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->resetTransform();
+        return {};
+    });
+
+    ctx.registerFunction("__setShadowColor", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->setShadowColor(std::string(args[0]->getString()));
+        return {};
+    });
+
+    ctx.registerFunction("__setShadowBlur", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->setShadowBlur(args[0]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__setShadowOffsetX", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->setShadowOffsetX(args[0]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__setShadowOffsetY", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->setShadowOffsetY(args[0]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__createLinearGradient", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        auto gradient = renderer->createLinearGradient(args[0]->getFloat64(), args[1]->getFloat64(),
+                                       args[2]->getFloat64(), args[3]->getFloat64());
+        return choc::value::Value(gradient);
+    });
+
+    ctx.registerFunction("__createRadialGradient", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        auto gradient = renderer->createRadialGradient(args[0]->getFloat64(), args[1]->getFloat64(),
+                                                       args[2]->getFloat64(), args[3]->getFloat64(),
+                                                       args[4]->getFloat64(), args[5]->getFloat64());
+        return choc::value::Value(gradient);
+    });
+
+    ctx.registerFunction("__addColorStop", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->addColorStop(args[0]->getFloat64(), args[1]->getFloat64(),
+                               std::string(args[2]->getString()));
+        return {};
+    });
+
+    ctx.registerFunction("__setFillStyleGradient", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->setFillStyleGradient(args[0]->getFloat64());
+        return {};
+    });
+
+    ctx.registerFunction("__drawImage", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
+    {
+        renderer->drawImage(std::string(args[0]->getString()), args[1]->getFloat64(),
+                            args[2]->getFloat64(), args[3]->getFloat64(), args[4]->getFloat64());
+        return {};
+    });
 
     auto bootstrap = std::format(R"(
+        const _addColorStop = __addColorStop;
+        __addColorStop = undefined;
+
         const _ctx = (() => {{
             let _fillStyle = '#000000';
             let _globalAlpha = 1.0;
@@ -236,6 +321,10 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
             let _font = '10px sans-serif';
             let _textAlign = 'start';
             let _textBaseline = 'alphabetic';
+            let _shadowColor = 'transparent';
+            let _shadowBlur = 0.0;
+            let _shadowOffsetX = 0.0;
+            let _shadowOffsetY = 0.0;
             
             const obj = {{
                 fillRect: (x, y, w, h) => __fillRect(x, y, w, h),
@@ -258,10 +347,29 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
                 fillText: (text, x, y) => __fillText(text, x, y),
                 strokeText: (text, x, y) => __strokeText(text, x, y),
                 measureText: (text) => ({{ width: __measureText(text) }}),
+                translate: (x, y) => __translate(x, y),
+                rotate: (angle) => __rotate(angle),
+                scale: (x, y) => __scale(x, y),
+                resetTransform: () => __resetTransform(),
+                drawImage: (name, dx, dy, dw, dh) => __drawImage(name, dx, dy, dw, dh),
+                createLinearGradient: (x0, y0, x1, y1) => {{
+                    const id = __createLinearGradient(x0, y0, x1, y1);
+                    return {{
+                        _id: id,
+                        addColorStop: (offset, color) => _addColorStop(id, offset, color)
+                    }};
+                }},
+                createRadialGradient: (x0, y0, r0, x1, y1, r1) => {{
+                    const id = __createRadialGradient(x0, y0, r0, x1, y1, r1);
+                    return {{
+                        _id: id,
+                        addColorStop: (offset, color) => _addColorStop(id, offset, color)
+                    }};
+                }},
             }};
             Object.defineProperty(obj, 'fillStyle', {{
                 get: ()  => _fillStyle,
-                set: (v) => {{ _fillStyle = v; __setFillStyle(v); }},
+                set: (v) => {{ _fillStyle = v; if (typeof v === 'object' && v._id !== undefined) __setFillStyleGradient(v._id); else __setFillStyle(v); }},
             }});
             Object.defineProperty(obj, 'globalAlpha', {{
                 get: ()  => _globalAlpha,
@@ -294,6 +402,22 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
             Object.defineProperty(obj, 'textBaseline', {{
                 get: ()  => _textBaseline,
                 set: (v) => {{ _textBaseline = v; __textBaseline(v); }},
+            }});
+            Object.defineProperty(obj, 'shadowColor', {{
+                get: ()  => _shadowColor,
+                set: (v) => {{ _shadowColor = v; __setShadowColor(v); }},
+            }});
+            Object.defineProperty(obj, 'shadowBlur', {{
+                get: ()  => _shadowBlur,
+                set: (v) => {{ _shadowBlur = v; __setShadowBlur(v); }},
+            }});
+            Object.defineProperty(obj, 'shadowOffsetX', {{
+                get: ()  => _shadowOffsetX,
+                set: (v) => {{ _shadowOffsetX = v; __setShadowOffsetX(v); }},
+            }});
+            Object.defineProperty(obj, 'shadowOffsetY', {{
+                get: ()  => _shadowOffsetY,
+                set: (v) => {{ _shadowOffsetY = v; __setShadowOffsetY(v); }},
             }});
             return obj;
         }})();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <map>
 #include "IRenderer.h"
 
 #include "include/core/SkSurface.h"
@@ -15,6 +16,11 @@ class SkiaRenderer : public IRenderer {
         // Colors
         SkColor fillStyle = SK_ColorBLACK;
         SkColor strokeStyle = SK_ColorBLACK;
+        SkColor shadowColor = SK_ColorTRANSPARENT;
+        float shadowBlur = 0.0f;
+        float shadowOffsetX = 0.0f;
+        float shadowOffsetY = 0.0f;
+        int fillGradientId = -1;
 
         // Stroke properties
         float lineWidth = 1.0f;
@@ -31,6 +37,14 @@ class SkiaRenderer : public IRenderer {
         std::string textAlign = "start";
         std::string textBaseline = "alphabetic";
         SkFontStyle fontStyle = SkFontStyle();
+
+    };
+
+    struct GradientData {
+        enum class Type { Linear, Radial } type = Type::Linear;
+        float x0, y0, x1, y1;
+        float r0 = 0.0f, r1 = 0.0f;
+        std::vector<std::pair<float, SkColor>> colorStops;
     };
 
     SkiaRenderer(int width, int height);
@@ -42,18 +56,32 @@ class SkiaRenderer : public IRenderer {
     void save() override;
     void restore() override;
     void setGlobalAlpha(float alpha) override;
+    void translate(float x, float y) override;
+    void rotate(float angle) override;
+    void scale(float x, float y) override;
+    void resetTransform() override;
 
     void setFillStyle(const std::string& color) override;
     void setStrokeStyle(const std::string &color) override;
     void setLineWidth(float lineWidth) override;
     void setLineCap(const std::string& cap) override;
     void setLineJoin(const std::string& join) override;
+    void setShadowColor(const std::string& color) override;
+    void setShadowBlur(float blur) override;
+    void setShadowOffsetX(float offsetX) override;
+    void setShadowOffsetY(float offsetY) override;
+    int createLinearGradient(float x0, float y0, float x1, float y1);
+    int createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1);
+    void addColorStop(int id, float offset, const std::string& color) override;
+    void setFillStyleGradient(int i) override;
 
 
     void fillRect(float x, float y, float width, float height) override;
     void strokeRect(float x, float y, float width, float height) override;
     void roundRect(float x, float y, float width, float height, float radii) override;
 
+    void registerImage(const std::string& name, const uint8_t *data, size_t size) override;
+    void drawImage(const std::string& name, float dx, float dy, float dw, float dh) override;
 
     void beginPath() override;
     void stroke() override;
@@ -74,9 +102,6 @@ class SkiaRenderer : public IRenderer {
     void textAlign(const std::string& align) override;
     void textBaseline(const std::string &baseline) override;
 
-
-    
-    
     DrawingContent getDrawingContent() override;
     int getWidth() const override;
     int getHeight() const override;
@@ -85,12 +110,16 @@ class SkiaRenderer : public IRenderer {
 
     // helper functions
     SkColor applyAlpha(SkColor color) const;
-
+    void applyShadowAndBlur(SkPaint& paint) const;
+    void applyGradient(SkPaint& paint) const;
+    SkColor parseColor(const std::string& color);
 
     SkPathBuilder     currentPath;
     sk_sp<SkSurface> skiaSurface;
     sk_sp<SkTypeface> defaultTypeface;
     sk_sp<SkFontMgr> fontMgr;
     std::vector<DrawState> stateStack;
+    std::vector<GradientData> gradients;
+    std::map<std::string, sk_sp<SkImage>> images;
     DrawState currentState;
 };
