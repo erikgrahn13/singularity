@@ -18,18 +18,39 @@ ChocQuickJSEngine::ChocQuickJSEngine()
 
 void ChocQuickJSEngine::hotReload()
 {
-    std::println("HOT RELOAD");
-    auto code = choc::file::loadFileAsString(JS_SCRIPTS_DIR"/hello.js");
-    auto wrapped = "(() => {\n" + code + "\n})();";
+    // std::println("HOT RELOAD");
+    // ctx.run("_clearWidgets();");
+    // auto code = choc::file::loadFileAsString(JS_SCRIPTS_DIR"/hello.js");
+    // auto wrapped = "(() => {\n" + code + "\n})();";
 
-    ctx.run(wrapped, [](const std::string& error, const choc::value::ValueView&) {
-    if (!error.empty())
-        std::println("JS error: {}", error);
+    // ctx.run(wrapped, [](const std::string& error, const choc::value::ValueView&) {
+    // if (!error.empty())
+    //     std::println("JS error: {}", error);
+    // });
+
+    std::println("HOT RELOAD");
+    ctx = choc::javascript::createQuickJSContext();
+    bindRenderer(currentRenderer);
+    auto code = choc::file::loadFileAsString(JS_SCRIPTS_DIR "/hello.js");
+
+    ctx.runModule(code, [](std::string_view path) -> std::optional<std::string> {
+        // path will be something like "./widgets/knob.js"
+        auto fullPath = std::string(JS_SCRIPTS_DIR) + "/" + std::string(path);
+        try {
+            return choc::file::loadFileAsString(fullPath);
+        } catch (...) {
+            return std::nullopt;
+        }
+    },
+    [](const std::string& error, const choc::value::ValueView&) {
+        if (!error.empty())
+            std::println("JS error: {}", error);
     });
 }
 
 void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
 {
+    currentRenderer = renderer;
     choc::javascript::registerConsoleFunctions(ctx);
 
     ctx.registerFunction("__fillRect", [renderer](choc::javascript::ArgumentList args) -> choc::value::Value
@@ -308,6 +329,14 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
     });
 
     auto bootstrap = std::format(R"(
+        let _widgets = [];
+        function _registerWidget(w) {{ _widgets.push(w); }}
+        function _clearWidgets() {{ _widgets = []; }}
+        function _onMouseDown(x, y) {{
+            for (const w of _widgets)
+                if (w.hitTest?.(x, y)) {{ w.onMouseDown?.(x, y); break; }}
+        }};
+
         const _addColorStop = __addColorStop;
         __addColorStop = undefined;
 
@@ -431,8 +460,20 @@ void ChocQuickJSEngine::bindRenderer(IRenderer *renderer)
         const document = {{
             getElementById: (id) => _canvas,
         }};
+
+        globalThis._registerWidget = _registerWidget;
+        globalThis._clearWidgets = _clearWidgets;
+        globalThis._onMouseDown = _onMouseDown;
+        globalThis.document = document;
+        globalThis.canvas = _canvas;
+        globalThis.ctx = _ctx;
     )", renderer->getWidth(), renderer->getHeight());
 
     ctx.run(bootstrap);
 }
 
+void ChocQuickJSEngine::onMouseDown(float x, float y)
+{
+    std::println("JSEngine    x:{}    y:{}", x, y);
+    ctx.run(std::format("if (typeof _onMouseDown === 'function') _onMouseDown({}, {});", x, y));
+}

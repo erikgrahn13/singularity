@@ -27,6 +27,7 @@ export class Knob {
             trackWidth: radius * 0.13,  // relative to radius by default
             ...theme
         };
+        _registerWidget();
         this.draw();
     }
 

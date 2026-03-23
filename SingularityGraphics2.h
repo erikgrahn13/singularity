@@ -24,8 +24,13 @@ class SingularityGraphics {
 
     void hotReload();
 
+    // Events
+    void onMouseDown(float x, float y);
+
     // tmp
     void renderFrame(float t);
+
+
 
     std::atomic<bool> pendingReload { true };
 

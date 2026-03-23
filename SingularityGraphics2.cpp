@@ -40,6 +40,12 @@ void SingularityGraphics::hotReload()
     jsEngine->hotReload();
 }
 
+void SingularityGraphics::onMouseDown(float x, float y)
+{
+    // std::println("onMouseDown1 x:{}    y:{}", x, y);
+    jsEngine->onMouseDown(x, y);
+}
+
 void SingularityGraphics::renderFrame(float t)
 {
     renderer->renderBackground(t);  // draws metaballs

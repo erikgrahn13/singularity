@@ -15,15 +15,16 @@ export class Button {
      * @param {boolean} active - Whether the button is pressed / on
      * @param {object}  theme  - Optional visual overrides
      */
-    constructor(x, y, width, height, active = false, theme = {}) {
+    constructor(ctx, x, y, width, height, active = false, theme = {}) {
         this.x = x;
         this.y = y;
+        this.ctx = ctx;
         this.width = width;
         this.height = height;
         this.active = active;
         this.theme = {
             activeColor:      '#00d4ff',
-            inactiveColor:    '#1e1e2e',
+            inactiveColor:    '#ff0000',
             activeBorder:     '#00a8cc',
             inactiveBorder:   '#3a3a5c',
             activeHighlight:  '#80efff55',
@@ -34,12 +35,28 @@ export class Button {
             label:            '',
             ...theme
         };
+        _registerWidget(this);
         this.draw();
+    }
+
+    hitTest(x, y) {
+        console.log("Javascript hittest");
+
+        return x >= this.x && x <= this.x + this.width &&
+               y >= this.y && y <= this.y + this.height;
+    }
+
+    onMouseDown(x, y) {
+    // handle the click, e.g. toggle state and redraw
+        this.active = !this.active;
+        this.draw();
+        console.log("Javascript Button Clicked");
+        
     }
 
     draw() {
         const { x, y, width, height, active } = this;
-        const r = height * 0.25; // corner radius approximated via arc
+        const ctx = this.ctx;
 
         ctx.save();
 
@@ -65,7 +82,7 @@ export class Button {
 
         // Label
         if (this.theme.label) {
-            ctx.fontSize = this.theme.fontSize;
+            ctx.font = `${this.theme.fontSize}px sans-serif`;
             ctx.fillStyle = active ? this.theme.activeLabelColor : this.theme.labelColor;
             ctx.fillText(this.theme.label,
                 x + width  / 2 - this.theme.label.length * this.theme.fontSize * 0.3,

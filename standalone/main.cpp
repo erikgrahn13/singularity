@@ -34,13 +34,23 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 /* This function runs when a new event (mouse input, keypresses, etc) occurs. */
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
+    AppState* state = static_cast<AppState*>(appstate);
+    
     switch (event->type)
     {
     case SDL_EVENT_QUIT:
         return SDL_APP_SUCCESS;
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        SDL_Log("Mouse clicked");
+        // SDL_Log("Mouse clicked x: %f   y: %f", event->button.x, event->button.y);
+        state->graphics->onMouseDown(event->button.x, event->button.y);
+        
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        break;
+    case SDL_EVENT_MOUSE_MOTION:
+        break;
+    case SDL_EVENT_MOUSE_WHEEL:
         break;
     default:
         break;
