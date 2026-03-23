@@ -28,7 +28,15 @@ class QuickJSEngine : public IJSEngine {
     static JSValue js_arcTo(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_ellipse(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_rect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
-
+    static JSValue js_fillText(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_strokeText(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_measureText(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_rotate(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_translate(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_scale(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_resetTransform(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_createLinearGradient(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    
     // Properties
     static JSValue js_fillStyle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_strokeStyle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
@@ -36,9 +44,18 @@ class QuickJSEngine : public IJSEngine {
     static JSValue js_lineWidth(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_lineCap(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_lineJoin(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_font(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_textAlign(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_textBaseline(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_shadowColor(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_shadowBlur(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_shadowOffsetX(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_shadowOffsetY(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
     private:
+    static JSValue js_addColorStop(JSContext* ctx, JSValue this_val, int argc, JSValue* argv);
     JSRuntime *rt;
     JSContext *ctx;
+    JSClassID gradientClassId = 0;
     IRenderer* currentRenderer = nullptr;
 };

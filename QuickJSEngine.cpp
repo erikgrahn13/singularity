@@ -9,13 +9,16 @@ std::unique_ptr<IJSEngine> createJSEngine()
 QuickJSEngine::QuickJSEngine()
 {
     rt = JS_NewRuntime();
+    JS_NewClassID(rt, &gradientClassId);
+    JSClassDef gradientClass = { "CanvasGradient"};
+    JS_NewClass(rt, gradientClassId, &gradientClass);
+    
+    JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader, js_module_check_attributes, nullptr);
     ctx =  JS_NewContext(rt);
+    js_std_add_helpers(ctx, 0, nullptr);
+    JS_SetContextOpaque(ctx, this);
 
     std::println("QuickJSEngine init {}/hello.js",JS_SCRIPTS_DIR);
-
-
-
-
 }
 
 QuickJSEngine::~QuickJSEngine()
@@ -32,6 +35,10 @@ void QuickJSEngine::hotReload()
     JS_FreeRuntime(rt);
 
     rt = JS_NewRuntime();
+    JS_NewClassID(rt, &gradientClassId);
+    JSClassDef gradientClass = { "CanvasGradient" };
+    JS_NewClass(rt, gradientClassId, &gradientClass);
+
     JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader, js_module_check_attributes, nullptr);
     ctx = JS_NewContext(rt);
     js_std_add_helpers(ctx, 0, nullptr);
@@ -71,6 +78,17 @@ void QuickJSEngine::bindRenderer(IRenderer *renderer)
     JS_SetPropertyStr(ctx, obj, "arcTo", JS_NewCFunction(ctx, js_arcTo, "arcTo", 5));
     JS_SetPropertyStr(ctx, obj, "ellipse", JS_NewCFunction(ctx, js_ellipse, "ellipse", 7));
     JS_SetPropertyStr(ctx, obj, "rect", JS_NewCFunction(ctx, js_rect, "rect", 4));
+    JS_SetPropertyStr(ctx, obj, "fillText", JS_NewCFunction(ctx, js_fillText, "fillText", 3));
+    JS_SetPropertyStr(ctx, obj, "strokeText", JS_NewCFunction(ctx, js_strokeText, "strokeText", 3));
+    JS_SetPropertyStr(ctx, obj, "measureText", JS_NewCFunction(ctx, js_measureText, "measureText", 1));
+    JS_SetPropertyStr(ctx, obj, "lineTo", JS_NewCFunction(ctx, js_lineTo, "lineTo", 2));
+    JS_SetPropertyStr(ctx, obj, "closePath", JS_NewCFunction(ctx, js_closePath, "closePath", 1));
+    JS_SetPropertyStr(ctx, obj, "rotate", JS_NewCFunction(ctx, js_rotate, "rotate", 1));
+    JS_SetPropertyStr(ctx, obj, "translate", JS_NewCFunction(ctx, js_translate, "translate", 2));
+    JS_SetPropertyStr(ctx, obj, "scale", JS_NewCFunction(ctx, js_scale, "scale", 2));
+    JS_SetPropertyStr(ctx, obj, "resetTranform", JS_NewCFunction(ctx, js_resetTransform, "resetTransform", 1));
+    JS_SetPropertyStr(ctx, obj, "createLinearGradient", JS_NewCFunction(ctx, js_createLinearGradient, "createLinearGradient", 4));
+
 
     // Properties
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "fillStyle"), JS_UNDEFINED, JS_NewCFunction(ctx, js_fillStyle, "fillStyle", 1), JS_PROP_CONFIGURABLE);
@@ -79,6 +97,13 @@ void QuickJSEngine::bindRenderer(IRenderer *renderer)
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineWidth"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineWidth, "lineWidth", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineCap"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineCap, "lineCap", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineJoin"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineJoin, "lineJoin", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "font"), JS_UNDEFINED, JS_NewCFunction(ctx, js_font, "font", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "textAlign"), JS_UNDEFINED, JS_NewCFunction(ctx, js_textAlign, "textAlign", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "textBaseline"), JS_UNDEFINED, JS_NewCFunction(ctx, js_textBaseline, "textBaseline", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowColor"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowColor, "shadowColor", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowBlur"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowBlur, "shadowBlur", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetX"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetX, "shadowOffsetX", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetY"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetY, "shadowOffsetY", 1), JS_PROP_CONFIGURABLE);
     
     JS_SetPropertyStr(ctx, global_obj, "ctx", obj);
     JS_FreeValue(ctx, global_obj);
@@ -208,7 +233,7 @@ JSValue QuickJSEngine::js_lineTo(JSContext *ctx, JSValue this_val, int argc, JSV
 JSValue QuickJSEngine::js_closePath(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
 {
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
-    self->currentRenderer->fill();
+    self->currentRenderer->closePath();
 
     return JS_UNDEFINED;
 }
@@ -284,6 +309,125 @@ JSValue QuickJSEngine::js_rect(JSContext *ctx, JSValue this_val, int argc, JSVal
     return JS_UNDEFINED;
 }
 
+JSValue QuickJSEngine::js_fillText(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y;
+    auto text = JS_ToCString(ctx, argv[0]);
+    JS_ToFloat64(ctx, &x, argv[1]);
+    JS_ToFloat64(ctx, &y, argv[2]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->fillText(text, x, y);
+
+    JS_FreeCString(ctx, text);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_strokeText(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y;
+    auto text = JS_ToCString(ctx, argv[0]);
+    JS_ToFloat64(ctx, &x, argv[1]);
+    JS_ToFloat64(ctx, &y, argv[2]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->strokeText(text, x, y);
+
+    JS_FreeCString(ctx, text);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_measureText(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto text = JS_ToCString(ctx, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    auto width = self->currentRenderer->measureText(text);
+
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "width", JS_NewFloat64(ctx, width));
+    JS_FreeCString(ctx, text);
+    return obj;
+}
+
+JSValue QuickJSEngine::js_rotate(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double angle;
+    JS_ToFloat64(ctx, &angle, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->rotate(angle);
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_translate(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->translate(x, y);
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_scale(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->scale(x, y);
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_resetTransform(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->resetTransform();
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_addColorStop(JSContext* ctx, JSValue this_val, int argc, JSValue* argv) {
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    int id = (int)(intptr_t)JS_GetOpaque(this_val, self->gradientClassId);
+
+    double offset;
+    JS_ToFloat64(ctx, &offset, argv[0]);
+    auto color = JS_ToCString(ctx, argv[1]);
+
+    self->currentRenderer->addColorStop(id, offset, color);
+
+    JS_FreeCString(ctx, color);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_createLinearGradient(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x0, y0, x1, y1;
+    JS_ToFloat64(ctx, &x0, argv[0]);
+    JS_ToFloat64(ctx, &y0, argv[1]);
+    JS_ToFloat64(ctx, &x1, argv[2]);
+    JS_ToFloat64(ctx, &y1, argv[3]);
+
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    int id = self->currentRenderer->createLinearGradient(x0, y0, x1, y1);
+
+    JSValue obj = JS_NewObjectClass(ctx, self->gradientClassId);
+    JS_SetOpaque(obj, (void*)(intptr_t)id);
+    JS_SetPropertyStr(ctx, obj, "addColorStop", JS_NewCFunction(ctx, js_addColorStop, "addColorStop", 2));
+    return obj;
+}
+
+JSValue QuickJSEngine::js_font(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto font = JS_ToCString(ctx, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->font(font);
+
+    JS_FreeCString(ctx, font);
+    return JS_UNDEFINED;
+}
+
 JSValue QuickJSEngine::js_fillStyle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv)
 {
     auto color = JS_ToCString(ctx, argv[0]);
@@ -341,5 +485,65 @@ JSValue QuickJSEngine::js_lineJoin(JSContext *ctx, JSValue this_val, int argc, J
     self->currentRenderer->setLineJoin(join);
 
     JS_FreeCString(ctx, join);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_textAlign(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto align = JS_ToCString(ctx, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->textAlign(align);
+
+    JS_FreeCString(ctx, align);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_textBaseline(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto baseline = JS_ToCString(ctx, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->textBaseline(baseline);
+
+    JS_FreeCString(ctx, baseline);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_shadowColor(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto color = JS_ToCString(ctx, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->setShadowColor(color);
+
+    JS_FreeCString(ctx, color);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_shadowBlur(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double blur;
+    JS_ToFloat64(ctx, &blur, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->setShadowBlur(blur);
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_shadowOffsetX(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double offsetX;
+    JS_ToFloat64(ctx, &offsetX, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->setShadowOffsetX(offsetX);
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_shadowOffsetY(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double offsetY;
+    JS_ToFloat64(ctx, &offsetY, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->setShadowOffsetY(offsetY);
+
     return JS_UNDEFINED;
 }
