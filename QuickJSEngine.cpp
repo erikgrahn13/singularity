@@ -1,29 +1,24 @@
 #include "QuickJSEngine.h"
-// #include <print>
+#include <print>
 
-std::unique_ptr<IJSEngine> createJSEngine()
+#if defined NDEBUG
+#include <hello_release.h>
+#endif
+
+std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer)
 {
-    return std::make_unique<QuickJSEngine>();
+    return std::make_unique<QuickJSEngine>(renderer);
 }
 
-QuickJSEngine::QuickJSEngine()
+QuickJSEngine::QuickJSEngine(IRenderer *renderer)
+ : currentRenderer(renderer)
 {
-    rt = JS_NewRuntime();
-    JS_NewClassID(rt, &gradientClassId);
-    JSClassDef gradientClass = { "CanvasGradient"};
-    JS_NewClass(rt, gradientClassId, &gradientClass);
-    
-    JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader, js_module_check_attributes, nullptr);
-    ctx =  JS_NewContext(rt);
-    js_std_add_helpers(ctx, 0, nullptr);
-    JS_SetContextOpaque(ctx, this);
-
-    // std::println("QuickJSEngine init {}/hello.js",JS_SCRIPTS_DIR);
+    setupJS();
 }
 
 QuickJSEngine::~QuickJSEngine()
 {
-    if(ctx)
+    if(ctx) 
         JS_FreeContext(ctx);
     if(rt)
         JS_FreeRuntime(rt);
@@ -31,10 +26,21 @@ QuickJSEngine::~QuickJSEngine()
 
 void QuickJSEngine::hotReload()
 {
-    JS_FreeContext(ctx);
-    JS_FreeRuntime(rt);
+    setupJS();
+}
+
+void QuickJSEngine::setupJS()
+{
+    currentRenderer->clear();
+
+    if(ctx) 
+        JS_FreeContext(ctx);
+    if(rt) {
+        JS_FreeRuntime(rt);
+    }
 
     rt = JS_NewRuntime();
+    gradientClassId = 0;
     JS_NewClassID(rt, &gradientClassId);
     JSClassDef gradientClass = { "CanvasGradient" };
     JS_NewClass(rt, gradientClassId, &gradientClass);
@@ -43,21 +49,6 @@ void QuickJSEngine::hotReload()
     ctx = JS_NewContext(rt);
     js_std_add_helpers(ctx, 0, nullptr);
     JS_SetContextOpaque(ctx, this);
-    bindRenderer(currentRenderer);
-
-    size_t buf_len;
-    std::string path = JS_SCRIPTS_DIR"/hello.js";
-    auto tmp = js_load_file(ctx, &buf_len, path.c_str());
-    JSValue result = JS_Eval(ctx, (const char*)tmp, buf_len, path.c_str(), JS_EVAL_TYPE_MODULE);
-
-    js_free(ctx, tmp);
-    JS_FreeValue(ctx, result);
-}
-
-void QuickJSEngine::bindRenderer(IRenderer *renderer)
-{
-    currentRenderer = renderer;
-    // std::println("bindRenderer called");
 
     JSValue global_obj = JS_GetGlobalObject(ctx);
     JSValue obj = JS_NewObject(ctx);
@@ -86,8 +77,9 @@ void QuickJSEngine::bindRenderer(IRenderer *renderer)
     JS_SetPropertyStr(ctx, obj, "rotate", JS_NewCFunction(ctx, js_rotate, "rotate", 1));
     JS_SetPropertyStr(ctx, obj, "translate", JS_NewCFunction(ctx, js_translate, "translate", 2));
     JS_SetPropertyStr(ctx, obj, "scale", JS_NewCFunction(ctx, js_scale, "scale", 2));
-    JS_SetPropertyStr(ctx, obj, "resetTranform", JS_NewCFunction(ctx, js_resetTransform, "resetTransform", 1));
+    JS_SetPropertyStr(ctx, obj, "resetTransform", JS_NewCFunction(ctx, js_resetTransform, "resetTransform", 1));
     JS_SetPropertyStr(ctx, obj, "createLinearGradient", JS_NewCFunction(ctx, js_createLinearGradient, "createLinearGradient", 4));
+    JS_SetPropertyStr(ctx, obj, "createRadialGradient", JS_NewCFunction(ctx, js_createRadialGradient, "createRadialGradient", 6));
 
 
     // Properties
@@ -107,6 +99,18 @@ void QuickJSEngine::bindRenderer(IRenderer *renderer)
     
     JS_SetPropertyStr(ctx, global_obj, "ctx", obj);
     JS_FreeValue(ctx, global_obj);
+
+#if !defined NDEBUG
+    size_t buf_len;
+    std::string path = JS_SCRIPTS_DIR"/hello.js";
+    auto tmp = js_load_file(ctx, &buf_len, path.c_str());
+
+    JSValue result = JS_Eval(ctx, (const char*)tmp, buf_len, path.c_str(), JS_EVAL_TYPE_MODULE);
+    js_free(ctx, tmp);
+    JS_FreeValue(ctx, result);
+#else
+    js_std_eval_binary(ctx, qjsc_hello,qjsc_hello_size, 0);
+#endif
 }
 
 void QuickJSEngine::onMouseDown(float x, float y)
@@ -418,6 +422,43 @@ JSValue QuickJSEngine::js_createLinearGradient(JSContext *ctx, JSValue this_val,
     return obj;
 }
 
+JSValue QuickJSEngine::js_createRadialGradient(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x0, y0, r0, x1, y1, r1;
+    JS_ToFloat64(ctx, &x0, argv[0]);
+    JS_ToFloat64(ctx, &y0, argv[1]);
+    JS_ToFloat64(ctx, &r0, argv[2]);
+    JS_ToFloat64(ctx, &x1, argv[3]);
+    JS_ToFloat64(ctx, &y1, argv[4]);
+    JS_ToFloat64(ctx, &r1, argv[5]);
+
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    int id = self->currentRenderer->createRadialGradient(x0, y0, r0, x1, y1, r1);
+
+    JSValue obj = JS_NewObjectClass(ctx, self->gradientClassId);
+    JS_SetOpaque(obj, (void*)(intptr_t)id);
+    JS_SetPropertyStr(ctx, obj, "addColorStop", JS_NewCFunction(ctx, js_addColorStop, "addColorStop", 2));
+    return obj;
+}
+
+JSValue QuickJSEngine::js_drawImage(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double dx, dy, dw, dh;
+    auto name = JS_ToCString(ctx, argv[0]);
+    JS_ToFloat64(ctx, &dx, argv[1]);
+    JS_ToFloat64(ctx, &dy, argv[2]);
+    JS_ToFloat64(ctx, &dw, argv[3]);
+    JS_ToFloat64(ctx, &dh, argv[4]);
+
+
+
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->drawImage(name, dx, dy, dw, dh);
+
+    JS_FreeCString(ctx, name);
+    return JS_UNDEFINED;
+}
+
 JSValue QuickJSEngine::js_font(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
 {
     auto font = JS_ToCString(ctx, argv[0]);
@@ -430,11 +471,15 @@ JSValue QuickJSEngine::js_font(JSContext *ctx, JSValue this_val, int argc, JSVal
 
 JSValue QuickJSEngine::js_fillStyle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv)
 {
-    auto color = JS_ToCString(ctx, argv[0]);
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
-    self->currentRenderer->setFillStyle(color);
-
-    JS_FreeCString(ctx, color);
+    if (JS_GetClassID(argv[0]) == self->gradientClassId) {
+        int id = (int)(intptr_t)JS_GetOpaque(argv[0], self->gradientClassId);
+        self->currentRenderer->setFillStyleGradient(id);
+    } else {
+        auto color = JS_ToCString(ctx, argv[0]);
+        self->currentRenderer->setFillStyle(color);
+        JS_FreeCString(ctx, color);
+    }
     return JS_UNDEFINED;
 }
 

@@ -65,11 +65,12 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     //     float t = SDL_GetTicks() / 1000.0f;
     // state->graphics->renderFrame(t);
-
+#if !defined NDEBUG
     if(state->graphics->pendingReload.exchange(false))
     {
         state->graphics->hotReload();
     }
+#endif
 
 
 

@@ -6,8 +6,7 @@
 class IJSEngine {
     public:
     virtual void hotReload() = 0;
-    virtual void bindRenderer(IRenderer* renderer) = 0;
-
+    virtual void setupJS() = 0;
     // Events
     virtual void onMouseDown(float x, float y) = 0;
 };

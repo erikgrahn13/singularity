@@ -3,11 +3,10 @@
 
 class QuickJSEngine : public IJSEngine {
     public:
-    QuickJSEngine();
+    QuickJSEngine(IRenderer *renderer);
     ~QuickJSEngine();
 
     void hotReload() override;
-    void bindRenderer(IRenderer *renderer) override;
     void onMouseDown(float x, float y) override;
 
     // Methods
@@ -36,6 +35,8 @@ class QuickJSEngine : public IJSEngine {
     static JSValue js_scale(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_resetTransform(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_createLinearGradient(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_createRadialGradient(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_drawImage(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     
     // Properties
     static JSValue js_fillStyle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
@@ -53,9 +54,10 @@ class QuickJSEngine : public IJSEngine {
     static JSValue js_shadowOffsetY(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
     private:
+    void setupJS() override;
     static JSValue js_addColorStop(JSContext* ctx, JSValue this_val, int argc, JSValue* argv);
-    JSRuntime *rt;
-    JSContext *ctx;
+    JSRuntime *rt{nullptr};
+    JSContext *ctx{nullptr};
     JSClassID gradientClassId = 0;
     IRenderer* currentRenderer = nullptr;
 };

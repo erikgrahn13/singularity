@@ -32,7 +32,7 @@ class SingularityGraphics {
 
 
 
-    std::atomic<bool> pendingReload { true };
+    std::atomic<bool> pendingReload { false };
 
     private:
     std::unique_ptr<IRenderer> renderer;

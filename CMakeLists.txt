@@ -115,3 +115,24 @@ target_sources(hello PRIVATE
 )
 
 target_compile_features(hello PRIVATE cxx_std_23)
+
+if(CMAKE_BUILD_TYPE STREQUAL Release)
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/hello_release.h
+        COMMAND $<TARGET_FILE:qjsc>
+            -o ${CMAKE_BINARY_DIR}/hello_release.h
+            ${CMAKE_SOURCE_DIR}/hello.js
+        DEPENDS qjsc hello.js
+    )
+
+    add_custom_target(generate_hello_release DEPENDS ${CMAKE_BINARY_DIR}/hello_release.h)
+    add_dependencies(hello generate_hello_release)
+    target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
+endif()
+
+# TODO: this is an example of how i can compile javascript files and modules with qjsc
+# and then include the file in the in the cpp when building in release mode to embedd javascript
+# qjsc -D widgets/button.js -D widgets/slider.js -o hello_release.h hello.js
+# #include "hello_release.h"
+#    js_std_eval_binary(ctx, qjsc_hello,qjsc_hello_size, 0);
+# the qjsc command should probably be a add_custom_command in cmake
