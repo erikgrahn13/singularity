@@ -14,6 +14,7 @@
 #  include "include/ports/SkFontMgr_mac_ct.h"
 #else
 #  include "include/ports/SkFontMgr_fontconfig.h"
+#include "include/ports/SkFontScanner_FreeType.h"
 #endif
 
 SkiaRenderer::SkiaRenderer(int width, int height)
@@ -25,7 +26,7 @@ SkiaRenderer::SkiaRenderer(int width, int height)
 #elif __APPLE__
         fontMgr = SkFontMgr_New_CoreText(nullptr);
 #else
-        fontMgr = SkFontMgr_New_FontConfig(nullptr);
+        fontMgr = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
 #endif
     defaultTypeface = fontMgr->legacyMakeTypeface(nullptr, SkFontStyle());
 }

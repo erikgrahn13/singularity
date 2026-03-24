@@ -10,8 +10,10 @@ endif()
 
 if(WIN32)
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-win-x64-gpu-release.zip)
-else()
+elseif(APPLE)
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-mac-universal-gpu-release.zip)
+else()
+    set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-linux-x64-gpu-release.zip)
 endif()
 
 FetchContent_Declare(
@@ -81,6 +83,9 @@ elseif(APPLE)
     target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
 else()
     add_executable(hello standalone/main.cpp)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(Fontconfig REQUIRED IMPORTED_TARGET fontconfig)
+    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/linux-gpu/lib/Release/x64/libskia.a PkgConfig::Fontconfig)
 endif()
 
 target_link_libraries(hello PRIVATE 

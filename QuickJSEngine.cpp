@@ -1,5 +1,5 @@
 #include "QuickJSEngine.h"
-#include <print>
+// #include <print>
 
 std::unique_ptr<IJSEngine> createJSEngine()
 {
@@ -18,7 +18,7 @@ QuickJSEngine::QuickJSEngine()
     js_std_add_helpers(ctx, 0, nullptr);
     JS_SetContextOpaque(ctx, this);
 
-    std::println("QuickJSEngine init {}/hello.js",JS_SCRIPTS_DIR);
+    // std::println("QuickJSEngine init {}/hello.js",JS_SCRIPTS_DIR);
 }
 
 QuickJSEngine::~QuickJSEngine()
@@ -57,7 +57,7 @@ void QuickJSEngine::hotReload()
 void QuickJSEngine::bindRenderer(IRenderer *renderer)
 {
     currentRenderer = renderer;
-    std::println("bindRenderer called");
+    // std::println("bindRenderer called");
 
     JSValue global_obj = JS_GetGlobalObject(ctx);
     JSValue obj = JS_NewObject(ctx);

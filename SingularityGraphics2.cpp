@@ -6,7 +6,7 @@
 #include <functional>
 #include <string>
 #include <iostream>
-#include <print>
+//#include <print>
 
 // Factory function declarations (C++-only, Swift never sees .cpp)
 std::unique_ptr<IRenderer> createRenderer(int width, int height);
@@ -23,7 +23,7 @@ SingularityGraphics::SingularityGraphics(int width, int height)
     // TODO: fix this function
     fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [this](const std::string &filePath){
         // jsEngine->hotReload();
-        std::println("Erik {}", filePath);
+        //std::println("Erik {}", filePath);
         pendingReload = true;
         // std::cout << "File has been modified" << std::endl;
     });
