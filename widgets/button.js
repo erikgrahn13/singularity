@@ -6,7 +6,9 @@
  *   const btn = new Button(10, 170, 80, 22, true);
  *   btn.draw();
  */
-export class Button {
+import { Widget } from './widget.js'
+
+export class Button extends Widget {
     /**
      * @param {number}  x      - Top-left X
      * @param {number}  y      - Top-left Y
@@ -16,11 +18,7 @@ export class Button {
      * @param {object}  theme  - Optional visual overrides
      */
     constructor(ctx, x, y, width, height, active = false, theme = {}) {
-        this.x = x;
-        this.y = y;
-        this.ctx = ctx;
-        this.width = width;
-        this.height = height;
+        super(ctx, x, y, width, height);
         this.active = active;
         this.theme = {
             activeColor:      '#00d4ff',
@@ -35,30 +33,37 @@ export class Button {
             label:            '',
             ...theme
         };
-        _registerWidget(this);
+        console.log("button created");
+        // _registerWidget(this);
         this.draw();
     }
 
+    onMouseDown(x, y) {
+        console.log("Button clicked in JS");
+        this.setParameter(13, 10);
+    }
+
     hitTest(x, y) {
-        console.log("Javascript hittest");
+        console.log(`Javascript hittest: x:${x}    y${y}   thisX:${this.x}    thisY${this.y}`);
 
         return x >= this.x && x <= this.x + this.width &&
                y >= this.y && y <= this.y + this.height;
     }
 
-    onMouseDown(x, y) {
-    // handle the click, e.g. toggle state and redraw
-        this.active = !this.active;
-        this.draw();
-        console.log("Javascript Button Clicked");
+    // onMouseDown(x, y) {
+    // // handle the click, e.g. toggle state and redraw
+    //     this.active = !this.active;
+    //     this.draw();
+    //     console.log("Javascript Button Clicked");
         
-    }
+    // }
 
     draw() {
         const { x, y, width, height, active } = this;
         const ctx = this.ctx;
 
         ctx.save();
+        ctx.resetTransform();
 
         const { activeColor, inactiveColor, activeBorder, inactiveBorder,
                 activeHighlight, inactiveHighlight } = this.theme;

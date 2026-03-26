@@ -8,12 +8,14 @@
 
 #include <memory>
 #include <atomic>
+#include <unordered_map>
 // Include interface headers - they're lightweight (just virtual functions)
 #include "IRenderer.h"
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
+#include "IParameterStore.h"
 
-class SingularityGraphics {
+class SingularityGraphics : public IParameterStore {
 
 
     public:
@@ -29,6 +31,11 @@ class SingularityGraphics {
 
     // tmp
     void renderFrame(float t);
+    void setParameter(int id, double value) override { parameters[id] = value; }
+    double getParameter(int id) override {
+        auto it = parameters.find(id);
+        return it != parameters.end() ? it->second : 0.0;
+    }
 
 
 
@@ -38,4 +45,7 @@ class SingularityGraphics {
     std::unique_ptr<IRenderer> renderer;
     std::unique_ptr<IJSEngine> jsEngine;
     std::unique_ptr<IFileWatcher> fileWatcher;
+
+    //TODO: tmp
+    std::unordered_map<int, double> parameters;
 };

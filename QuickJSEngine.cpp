@@ -5,19 +5,51 @@
 #include <hello_release.h>
 #endif
 
-std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer)
+static int js_events_module_init(JSContext *ctx, JSModuleDef *m)
 {
-    return std::make_unique<QuickJSEngine>(renderer);
+    JS_SetModuleExport(ctx, m, "addEventListener", JS_NewCFunction(ctx, QuickJSEngine::js_addEventListener, "addEventListener", 2));
+    return 0;
 }
 
-QuickJSEngine::QuickJSEngine(IRenderer *renderer)
- : currentRenderer(renderer)
+static int js_parameters_module_init(JSContext *ctx, JSModuleDef *m)
+{
+    JS_SetModuleExport(ctx, m, "getParameter", JS_NewCFunction(ctx, QuickJSEngine::js_getParameter, "getParameter", 1));
+    JS_SetModuleExport(ctx, m, "setParameter", JS_NewCFunction(ctx, QuickJSEngine::js_setParameter, "setParameter", 2));
+    return 0;
+}
+
+static JSModuleDef *js_module_loader_custom(JSContext *ctx, const char *module_name, void *opaque, JSValueConst attributes)
+{
+    if (strcmp(module_name, "native:events") == 0) {
+        JSModuleDef *m = JS_NewCModule(ctx, module_name, js_events_module_init);
+        if (!m) return nullptr;
+        JS_AddModuleExport(ctx, m, "addEventListener");
+        return m;
+    }
+    if (strcmp(module_name, "native:parameters") == 0) {
+        JSModuleDef *m = JS_NewCModule(ctx, module_name, js_parameters_module_init);
+        if (!m) return nullptr;
+        JS_AddModuleExport(ctx, m, "getParameter");
+        JS_AddModuleExport(ctx, m, "setParameter");
+        return m;
+    }
+    return js_module_loader(ctx, module_name, opaque, attributes);
+}
+
+std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterStore *parameterStore)
+{
+    return std::make_unique<QuickJSEngine>(renderer, parameterStore);
+}
+
+QuickJSEngine::QuickJSEngine(IRenderer *renderer, IParameterStore *parameterStore)
+ : currentRenderer(renderer), parameterStore(parameterStore)
 {
     setupJS();
 }
 
 QuickJSEngine::~QuickJSEngine()
 {
+    freeEventListeners();
     if(ctx) 
         JS_FreeContext(ctx);
     if(rt)
@@ -26,6 +58,7 @@ QuickJSEngine::~QuickJSEngine()
 
 void QuickJSEngine::hotReload()
 {
+    std::println("QuickJS Hotreload");
     setupJS();
 }
 
@@ -33,6 +66,7 @@ void QuickJSEngine::setupJS()
 {
     currentRenderer->clear();
 
+    freeEventListeners();
     if(ctx) 
         JS_FreeContext(ctx);
     if(rt) {
@@ -45,7 +79,7 @@ void QuickJSEngine::setupJS()
     JSClassDef gradientClass = { "CanvasGradient" };
     JS_NewClass(rt, gradientClassId, &gradientClass);
 
-    JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader, js_module_check_attributes, nullptr);
+    JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader_custom, js_module_check_attributes, nullptr);
     ctx = JS_NewContext(rt);
     js_std_add_helpers(ctx, 0, nullptr);
     JS_SetContextOpaque(ctx, this);
@@ -113,8 +147,40 @@ void QuickJSEngine::setupJS()
 #endif
 }
 
+void QuickJSEngine::freeEventListeners()
+{
+    if (!ctx) return;
+    for (auto& [type, listeners] : eventListeners)
+        for (auto& fn : listeners)
+            JS_FreeValue(ctx, fn);
+    eventListeners.clear();
+}
+
+void QuickJSEngine::dispatchEvent(const char* type, JSValue* args, int argc)
+{
+    auto it = eventListeners.find(type);
+    if (it == eventListeners.end()) return;
+    for (auto& fn : it->second) {
+        JSValue result = JS_Call(ctx, fn, JS_UNDEFINED, argc, args);
+        JS_FreeValue(ctx, result);
+    }
+}
+
 void QuickJSEngine::onMouseDown(float x, float y)
 {
+    JSValue args[2] = { JS_NewFloat64(ctx, x), JS_NewFloat64(ctx, y) };
+    dispatchEvent("mousedown", args, 2);
+    JS_FreeValue(ctx, args[0]);
+    JS_FreeValue(ctx, args[1]);
+}
+
+JSValue QuickJSEngine::js_addEventListener(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    auto type = JS_ToCString(ctx, argv[0]);
+    self->eventListeners[type].push_back(JS_DupValue(ctx, argv[1]));
+    JS_FreeCString(ctx, type);
+    return JS_UNDEFINED;
 }
 
 JSValue QuickJSEngine::js_fillRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv)
@@ -591,4 +657,30 @@ JSValue QuickJSEngine::js_shadowOffsetY(JSContext *ctx, JSValue this_val, int ar
     self->currentRenderer->setShadowOffsetY(offsetY);
 
     return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    int32_t parameterId;
+    double parameterValue;
+
+    JS_ToInt32(ctx, &parameterId, argv[0]);
+    JS_ToFloat64(ctx, &parameterValue, argv[1]);
+
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    if (self->parameterStore)
+        self->parameterStore->setParameter(parameterId, parameterValue);
+
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_getParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    int32_t parameterId;
+    JS_ToInt32(ctx, &parameterId, argv[0]);
+
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    double value = self->parameterStore ? self->parameterStore->getParameter(parameterId) : 0.0;
+
+    return JS_NewFloat64(ctx, value);
 }

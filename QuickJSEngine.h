@@ -1,9 +1,13 @@
 #include "IJSEngine.h"
+#include "IParameterStore.h"
 #include <quickjs-libc.h>
+#include <string>
+#include <vector>
+#include <unordered_map>
 
 class QuickJSEngine : public IJSEngine {
     public:
-    QuickJSEngine(IRenderer *renderer);
+    QuickJSEngine(IRenderer *renderer, IParameterStore *parameterStore);
     ~QuickJSEngine();
 
     void hotReload() override;
@@ -53,11 +57,22 @@ class QuickJSEngine : public IJSEngine {
     static JSValue js_shadowOffsetX(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_shadowOffsetY(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
+    // Audio parameter binding
+    static JSValue js_setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_getParameter(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+
+    // Event binding
+    static JSValue js_addEventListener(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+
     private:
     void setupJS() override;
+    void freeEventListeners();
+    void dispatchEvent(const char* type, JSValue* args, int argc);
     static JSValue js_addColorStop(JSContext* ctx, JSValue this_val, int argc, JSValue* argv);
     JSRuntime *rt{nullptr};
     JSContext *ctx{nullptr};
     JSClassID gradientClassId = 0;
     IRenderer* currentRenderer = nullptr;
+    IParameterStore* parameterStore = nullptr;
+    std::unordered_map<std::string, std::vector<JSValue>> eventListeners;
 };
