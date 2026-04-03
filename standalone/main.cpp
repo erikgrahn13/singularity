@@ -3,12 +3,31 @@
 #include <SDL3/SDL.h>
 
 #include <iostream>
+#include <limits>
 #include "../SingularityGraphics2.h"
+#include "IParameterProvider.h"
+
+ // TODO: should be real time safe with real time safe queue
+class ParameterContainer : public IParameterProvider {
+
+    public:
+    double getParameter(int id) const override {
+        auto it = params.find(id);
+        if (it != params.end()) return it->second;
+        return std::numeric_limits<double>::quiet_NaN(); // Unknown parameter
+    }
+    void setParameter(int id, double value) override {
+        auto it = params.find(id);
+        if (it != params.end()) it->second = value; // Only update existing parameters
+    }
+    std::unordered_map<int, double> params;
+};
 
 struct AppState 
 {
     SDL_Window *window{nullptr};
-    std::unique_ptr<SingularityGraphics> graphics;
+    std::unique_ptr<SingularityGraphics> controller;
+    ParameterContainer parameters;
 } ;
 
 /* This function runs once at startup. */
@@ -21,8 +40,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
+    state->parameters.params[13] = 0.1; // test naive parameter
+
     auto sdlSurface = SDL_GetWindowSurface(state->window);
-    state->graphics = std::make_unique<SingularityGraphics>(sdlSurface->w, sdlSurface->h);
+    state->controller = std::make_unique<SingularityGraphics>(sdlSurface->w, sdlSurface->h, state->parameters);
 
     *appstate = state.release();
 
@@ -43,12 +64,14 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         // SDL_Log("Mouse clicked x: %f   y: %f", event->button.x, event->button.y);
-        state->graphics->onMouseDown(event->button.x, event->button.y);
-        
+        state->controller->onMouseDown(event->button.x, event->button.y);
+    
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
+        state->controller->onMouseUp(event->button.x, event->button.y);
         break;
     case SDL_EVENT_MOUSE_MOTION:
+        state->controller->onMouseMove(event->button.x, event->button.y);
         break;
     case SDL_EVENT_MOUSE_WHEEL:
         break;
@@ -66,15 +89,15 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     //     float t = SDL_GetTicks() / 1000.0f;
     // state->graphics->renderFrame(t);
 #if !defined NDEBUG
-    if(state->graphics->pendingReload.exchange(false))
+    if(state->controller->pendingReload.exchange(false))
     {
-        state->graphics->hotReload();
+        state->controller->hotReload();
     }
 #endif
 
 
-
-    DrawingContent dc = state->graphics->getRenderData();
+    state->controller->renderUI();
+    DrawingContent dc = state->controller->getRenderData();
 
     if (!dc.contentAddres) {
         SDL_Log("getRenderData returned null pixel pointer");

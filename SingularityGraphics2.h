@@ -14,27 +14,32 @@
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
 #include "IParameterStore.h"
+#include "IParameterProvider.h"
 
-class SingularityGraphics : public IParameterStore {
+class SingularityGraphics {
 
 
     public:
-    SingularityGraphics(int width, int height);
+    SingularityGraphics(int width, int height, IParameterProvider &parameterProvider);
 
     SWIFT_RETURNS_INDEPENDENT_VALUE
     DrawingContent getRenderData();
 
     void hotReload();
 
+    void addParameter();
+
     // Events
     void onMouseDown(float x, float y);
+    void onMouseUp(float x, float y);
+    void onMouseMove(float x, float y);
 
     // tmp
+    void renderUI();
     void renderFrame(float t);
-    void setParameter(int id, double value) override { parameters[id] = value; }
-    double getParameter(int id) override {
-        auto it = parameters.find(id);
-        return it != parameters.end() ? it->second : 0.0;
+    // void setParameter(int id, double value) override { parameterProvider. parameters[id] = value; }
+    double getParameter(int id) {
+        return parameterProvider.getParameter(id);
     }
 
 
@@ -45,7 +50,8 @@ class SingularityGraphics : public IParameterStore {
     std::unique_ptr<IRenderer> renderer;
     std::unique_ptr<IJSEngine> jsEngine;
     std::unique_ptr<IFileWatcher> fileWatcher;
+    IParameterProvider& parameterProvider;
 
     //TODO: tmp
-    std::unordered_map<int, double> parameters;
+    // std::unordered_map<int, double> parameters;
 };

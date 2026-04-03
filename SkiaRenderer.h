@@ -79,6 +79,8 @@ class SkiaRenderer : public IRenderer {
     void fillRect(float x, float y, float width, float height) override;
     void strokeRect(float x, float y, float width, float height) override;
     void roundRect(float x, float y, float width, float height, float radii) override;
+    void clearRect(float x, float y, float width, float height) override;
+
 
     void registerImage(const std::string& name, const uint8_t *data, size_t size) override;
     void drawImage(const std::string& name, float dx, float dy, float dw, float dh) override;

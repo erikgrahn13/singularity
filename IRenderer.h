@@ -48,6 +48,7 @@ class IRenderer {
     virtual void setFillStyleGradient(int i) = 0;
 
     virtual void fillRect(float x, float y, float width, float height) = 0;
+    virtual void clearRect(float x, float y, float width, float height) = 0;
     virtual void strokeRect(float x, float y, float width, float height) = 0;
     virtual void roundRect(float x, float y, float width, float height, float radii) = 0;
     virtual void beginPath() = 0;

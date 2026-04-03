@@ -298,6 +298,16 @@ void SkiaRenderer::roundRect(float x, float y, float width, float height, float 
     currentPath.addRRect(roundRect);
 }
 
+void SkiaRenderer::clearRect(float x, float y, float width, float height)
+{
+    SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+
+    skiaSurface->getCanvas()->save();
+    skiaSurface->getCanvas()->clipRect(rect, SkClipOp::kIntersect, false);
+    skiaSurface->getCanvas()->drawColor(SK_ColorTRANSPARENT, SkBlendMode::kClear);
+    skiaSurface->getCanvas()->restore();
+}
+
 void SkiaRenderer::registerImage(const std::string& name, const uint8_t *data, size_t size)
 {
     auto skData = SkData::MakeWithoutCopy(data, size);

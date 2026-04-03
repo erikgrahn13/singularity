@@ -11,12 +11,13 @@
 // Factory function declarations (C++-only, Swift never sees .cpp)
 std::unique_ptr<IRenderer> createRenderer(int width, int height);
 std::unique_ptr<IFileWatcher> createFileWatcher(const std::string &directory, std::function<void(const std::string &filePath)> onChange);
-std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterStore *parameterStore);
+std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterProvider &parameterStore);
 
-SingularityGraphics::SingularityGraphics(int width, int height)
+SingularityGraphics::SingularityGraphics(int width, int height, IParameterProvider &parameterProvider)
+: parameterProvider(parameterProvider)
 {
     renderer = createRenderer(width, height);
-    jsEngine = createJSEngine(renderer.get(), this);
+    jsEngine = createJSEngine(renderer.get(), parameterProvider);
 
     // TODO: fix this function
     fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [this](const std::string &filePath){
@@ -32,6 +33,10 @@ DrawingContent SingularityGraphics::getRenderData()
 void SingularityGraphics::hotReload()
 {
     jsEngine->hotReload();
+}
+
+void SingularityGraphics::addParameter()
+{
 
 }
 
@@ -39,6 +44,22 @@ void SingularityGraphics::onMouseDown(float x, float y)
 {
     // std::println("onMouseDown1 x:{}    y:{}", x, y);
     jsEngine->onMouseDown(x, y);
+}
+
+void SingularityGraphics::onMouseUp(float x, float y)
+{
+    jsEngine->onMouseUp(x, y);
+}
+
+void SingularityGraphics::onMouseMove(float x, float y)
+{
+    jsEngine->onMouseMove(x, y);
+
+}
+
+void SingularityGraphics::renderUI()
+{
+    jsEngine->renderUI();
 }
 
 void SingularityGraphics::renderFrame(float t)

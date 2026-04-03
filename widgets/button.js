@@ -1,99 +1,54 @@
-/**
- * Button widget — a simple toggle/momentary button.
- *
- * Usage:
- *   import { Button } from './widgets/button.js';
- *   const btn = new Button(10, 170, 80, 22, true);
- *   btn.draw();
- */
-import { Widget } from './widget.js'
+import { Widget } from "./widget.js";
 
 export class Button extends Widget {
-    /**
-     * @param {number}  x      - Top-left X
-     * @param {number}  y      - Top-left Y
-     * @param {number}  width
-     * @param {number}  height
-     * @param {boolean} active - Whether the button is pressed / on
-     * @param {object}  theme  - Optional visual overrides
-     */
-    constructor(ctx, x, y, width, height, active = false, theme = {}) {
-        super(ctx, x, y, width, height);
-        this.active = active;
+    constructor(x = 0, y = 0, width = 80, height = 30, theme = {}) {
+        super(x, y, width, height);
+
+        this.active = false;
+        this.dragging = false;
+        this.dragOffsetX = 0;
+        this.dragOffsetY = 0;
+
         this.theme = {
-            activeColor:      '#00d4ff',
-            inactiveColor:    '#ff0000',
-            activeBorder:     '#00a8cc',
-            inactiveBorder:   '#3a3a5c',
-            activeHighlight:  '#80efff55',
-            inactiveHighlight:'#ffffff15',
-            labelColor:       '#ffffff',
-            activeLabelColor: '#000000',
-            fontSize:         10,
-            label:            '',
+            activeColor: "#00d4ff",
+            inactiveColor: "#00ff11",
+            activeBorder: "#00a8cc",
+            inactiveBorder: "#3a3a5c",
+            labelColor: "#ffffff",
+            activeLabelColor: "#000000",
+            fontSize: 12,
+            label: "",
             ...theme
         };
-        console.log("button created");
-        // _registerWidget(this);
-        this.draw();
     }
 
     onMouseDown(x, y) {
-        console.log("Button clicked in JS");
-        this.setParameter(13, 10);
+        console.log("Button down");
+
+        this.active = true;
+        this.repaint();
     }
 
-    hitTest(x, y) {
-        console.log(`Javascript hittest: x:${x}    y${y}   thisX:${this.x}    thisY${this.y}`);
-
-        return x >= this.x && x <= this.x + this.width &&
-               y >= this.y && y <= this.y + this.height;
+    onMouseUp(x, y) {
+        console.log("Button clicked");
+        this.active = false;
+        this.repaint();
     }
 
-    // onMouseDown(x, y) {
-    // // handle the click, e.g. toggle state and redraw
-    //     this.active = !this.active;
-    //     this.draw();
-    //     console.log("Javascript Button Clicked");
-        
-    // }
+    paint(ctx) {
+        ctx.fillStyle = this.active ? this.theme.activeColor : this.theme.inactiveColor;
+        ctx.fillRect(0, 0, this.width, this.height);
 
-    draw() {
-        const { x, y, width, height, active } = this;
-        const ctx = this.ctx;
-
-        ctx.save();
-        ctx.resetTransform();
-
-        const { activeColor, inactiveColor, activeBorder, inactiveBorder,
-                activeHighlight, inactiveHighlight } = this.theme;
-
-        // Body
-        ctx.fillStyle = active ? activeColor : inactiveColor;
-        ctx.fillRect(x, y, width, height);
-
-        // Border
-        ctx.strokeStyle = active ? activeBorder : inactiveBorder;
+        ctx.strokeStyle = this.active ? this.theme.activeBorder : this.theme.inactiveBorder;
         ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, width, height);
+        ctx.strokeRect(0, 0, this.width, this.height);
 
-        // Inner highlight line at top edge
-        ctx.beginPath();
-        ctx.moveTo(x + 1, y + 1);
-        ctx.lineTo(x + width - 1, y + 1);
-        ctx.strokeStyle = active ? activeHighlight : inactiveHighlight;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Label
         if (this.theme.label) {
             ctx.font = `${this.theme.fontSize}px sans-serif`;
-            ctx.fillStyle = active ? this.theme.activeLabelColor : this.theme.labelColor;
-            ctx.fillText(this.theme.label,
-                x + width  / 2 - this.theme.label.length * this.theme.fontSize * 0.3,
-                y + height / 2 + this.theme.fontSize * 0.35);
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = this.active ? this.theme.activeLabelColor : this.theme.labelColor;
+            ctx.fillText(this.theme.label, this.width / 2, this.height / 2 + 4);
         }
-
-        ctx.restore();
     }
 }

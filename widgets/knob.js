@@ -1,42 +1,57 @@
-/**
- * Knob widget — a rotary control, like a volume or parameter knob.
- *
- * Usage:
- *   import { Knob } from './widgets/knob.js';
- *   const knob = new Knob(75, 75, 40, 0.7);
- *   knob.draw();
- */
-export class Knob {
-    /**
-     * @param {number} x       - Center X
-     * @param {number} y       - Center Y
-     * @param {number} radius  - Outer radius
-     * @param {number} value   - Normalized value 0..1  (default 0.5)
-     * @param {object} theme   - Optional visual overrides
-     */
-    constructor(x, y, radius, value = 0.5, theme = {}) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.value = Math.max(0, Math.min(1, value));
+import { Widget } from "./widget.js";
+import { getParameter, setParameter } from "native:parameters";
+
+export class Knob extends Widget {
+    constructor(x, y, size = 40, parameterId, theme = {}) {
+        super(x, y, size, size);
+        this.parameterId = parameterId;
+        // this.value = Math.max(0, Math.min(1, value));
+        this.dragging = false;
         this.theme = {
             bodyColor:  '#1e1e2e',
             trackColor: '#3a3a5c',
             valueColor: '#00d4ff',
             dotColor:   '#ffffff',
-            trackWidth: radius * 0.13,  // relative to radius by default
+            trackWidth: size * 0.13,
             ...theme
         };
-        _registerWidget();
-        this.draw();
     }
 
-    draw() {
-        const { x, y, radius, value } = this;
+    onMouseDown(x, y) {
+        this.dragging = true;
+        this.lastY = y;
+        this.repaint();
+    }
 
-        // Arc goes from 225° (bottom-left) clockwise 270° to 315° (bottom-right)
-        const startAngle = 0.75 * Math.PI;   // 135° in canvas coords
-        const totalSweep = 1.5 * Math.PI;    // 270°
+    onMouseMove(x, y) {
+        if (!this.dragging) return;
+        const dy = y - (this.lastY ?? y);
+        this.lastY = y;
+        let value = getParameter(this.parameterId);
+        if (isNaN(value)) return; // Unknown parameter, do nothing
+        value = Math.max(0, Math.min(1, value - dy * 0.3 / this.height));
+        setParameter(this.parameterId, value);
+        this.repaint();
+    }
+
+    onMouseUp(x, y) {
+        this.dragging = false;
+        this.lastY = undefined;
+        this.repaint();
+    }
+
+    paint(ctx) {
+        const size = this.width;
+        const radius = size / 2;
+        const cx = radius;
+        const cy = radius;
+        // const value = this.value;
+        const value = getParameter(this.parameterId);
+        if (isNaN(value)) return; // Unknown parameter, don't draw
+
+        // Arc goes from 135° to 405° (270° sweep)
+        const startAngle = 0.75 * Math.PI;
+        const totalSweep = 1.5 * Math.PI;
         const valueAngle = startAngle + value * totalSweep;
         const trackRadius = radius * 0.72;
 
@@ -47,13 +62,13 @@ export class Knob {
 
         // Body
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.fillStyle = bodyColor;
         ctx.fill();
 
         // Track (background arc)
         ctx.beginPath();
-        ctx.arc(x, y, trackRadius, startAngle, startAngle + totalSweep, false);
+        ctx.arc(cx, cy, trackRadius, startAngle, startAngle + totalSweep, false);
         ctx.strokeStyle = trackColor;
         ctx.lineWidth = tw;
         ctx.lineCap = 'round';
@@ -61,15 +76,15 @@ export class Knob {
 
         // Value arc
         ctx.beginPath();
-        ctx.arc(x, y, trackRadius, startAngle, valueAngle, false);
+        ctx.arc(cx, cy, trackRadius, startAngle, valueAngle, false);
         ctx.strokeStyle = valueColor;
         ctx.lineWidth = tw;
         ctx.lineCap = 'round';
         ctx.stroke();
 
         // Indicator dot
-        const dotX = x + Math.cos(valueAngle) * trackRadius;
-        const dotY = y + Math.sin(valueAngle) * trackRadius;
+        const dotX = cx + Math.cos(valueAngle) * trackRadius;
+        const dotY = cy + Math.sin(valueAngle) * trackRadius;
         ctx.beginPath();
         ctx.arc(dotX, dotY, radius * 0.07, 0, Math.PI * 2);
         ctx.fillStyle = dotColor;

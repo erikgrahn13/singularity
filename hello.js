@@ -1,24 +1,27 @@
-// Examples from MDN for all the drawing primities
-import {Button} from "./widgets/button.js";
+import { startUI, Component } from "./widgets/ui.js";
+import { Button } from "./widgets/button.js";
+import { Knob } from "./widgets/knob.js"; // Import your Knob
 
-//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillRect
-ctx.fillStyle = "#00ff00";
-ctx.fillText("fillRect", 20, 10);
-ctx.translate(0, 0);
-ctx.fillRect(20, 10, 150, 100);
+class Editor extends Component {
+    constructor() {
+        super();
 
-ctx.translate(0, 140);
-ctx.fillText("strokeRect", 20, 10);
+        this.button = new Button(0, 0, 120, 60, { label: "Click me!" });
+        this.knob = new Knob(250, 100, 60, 13); // x, y, size, value
 
-//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/strokeRect
-ctx.strokeStyle = "#00ff00";
-ctx.strokeRect(20, 10, 160, 100);
+        this.addChild(this.button);
+        this.addChild(this.knob);
+    }
 
-ctx.translate(0, 140);
-ctx.fillText("roundRect", 20, 10);
-ctx.strokeStyle = "#001aff";
-ctx.beginPath();
-ctx.roundRect(10, 10, 150, 100, [40]);
-ctx.stroke();
+    paint(ctx) {
+        ctx.fillStyle = "#ff000000";
+        ctx.fillRect(0, 0, this.width, this.height);
+    }
 
-const button = new Button(ctx, 100, 200, 50, 50);
+    resized() {
+        this.button.setBounds(100, 100, 120, 60);
+        this.knob.setBounds(250, 100, 60, 60); // Position and size the knob
+    }
+}
+
+startUI(ctx, Editor);

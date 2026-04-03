@@ -36,12 +36,12 @@ static JSModuleDef *js_module_loader_custom(JSContext *ctx, const char *module_n
     return js_module_loader(ctx, module_name, opaque, attributes);
 }
 
-std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterStore *parameterStore)
+std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterProvider &parameterStore)
 {
     return std::make_unique<QuickJSEngine>(renderer, parameterStore);
 }
 
-QuickJSEngine::QuickJSEngine(IRenderer *renderer, IParameterStore *parameterStore)
+QuickJSEngine::QuickJSEngine(IRenderer *renderer, IParameterProvider &parameterStore)
  : currentRenderer(renderer), parameterStore(parameterStore)
 {
     setupJS();
@@ -60,6 +60,24 @@ void QuickJSEngine::hotReload()
 {
     std::println("QuickJS Hotreload");
     setupJS();
+}
+
+void QuickJSEngine::renderUI()
+{
+    JSValue globalObj = JS_GetGlobalObject(ctx);
+    JSValue fn = JS_GetPropertyStr(ctx, globalObj, "renderUI");
+
+    if (JS_IsFunction(ctx, fn)) {
+        JSValue result = JS_Call(ctx, fn, JS_UNDEFINED, 0, nullptr);
+
+        if (JS_IsException(result)) {
+        }
+
+        JS_FreeValue(ctx, result);
+    } 
+
+    JS_FreeValue(ctx, fn);
+    JS_FreeValue(ctx, globalObj);
 }
 
 void QuickJSEngine::setupJS()
@@ -89,6 +107,7 @@ void QuickJSEngine::setupJS()
     
     // Methods
     JS_SetPropertyStr(ctx, obj, "fillRect", JS_NewCFunction(ctx, js_fillRect, "fillRect", 4));
+    JS_SetPropertyStr(ctx, obj, "clearRect", JS_NewCFunction(ctx, js_fillRect, "fillRect", 4));
     JS_SetPropertyStr(ctx, obj, "strokeRect", JS_NewCFunction(ctx, js_strokeRect, "strokeRect", 4));
     JS_SetPropertyStr(ctx, obj, "roundRect", JS_NewCFunction(ctx, js_roundRect, "roundRect", 5));
     JS_SetPropertyStr(ctx, obj, "beginPath", JS_NewCFunction(ctx, js_beginPath, "beginPath", 1));
@@ -131,6 +150,12 @@ void QuickJSEngine::setupJS()
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetX"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetX, "shadowOffsetX", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetY"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetY, "shadowOffsetY", 1), JS_PROP_CONFIGURABLE);
     
+
+    JSValue canvasObj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, canvasObj, "width", JS_NewInt32(ctx, currentRenderer->getWidth()));
+    JS_SetPropertyStr(ctx, canvasObj, "height", JS_NewInt32(ctx, currentRenderer->getHeight()));
+    JS_SetPropertyStr(ctx, obj, "canvas", canvasObj);
+
     JS_SetPropertyStr(ctx, global_obj, "ctx", obj);
     JS_FreeValue(ctx, global_obj);
 
@@ -174,6 +199,22 @@ void QuickJSEngine::onMouseDown(float x, float y)
     JS_FreeValue(ctx, args[1]);
 }
 
+void QuickJSEngine::onMouseUp(float x, float y)
+{
+    JSValue args[2] = { JS_NewFloat64(ctx, x), JS_NewFloat64(ctx, y) };
+    dispatchEvent("mouseup", args, 2);
+    JS_FreeValue(ctx, args[0]);
+    JS_FreeValue(ctx, args[1]);
+}
+
+void QuickJSEngine::onMouseMove(float x, float y)
+{
+    JSValue args[2] = { JS_NewFloat64(ctx, x), JS_NewFloat64(ctx, y) };
+    dispatchEvent("mousemove", args, 2);
+    JS_FreeValue(ctx, args[0]);
+    JS_FreeValue(ctx, args[1]);
+}
+
 JSValue QuickJSEngine::js_addEventListener(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
 {
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
@@ -193,6 +234,19 @@ JSValue QuickJSEngine::js_fillRect(JSContext *ctx, JSValue this_val, int argc, J
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
 
     self->currentRenderer->fillRect(x, y, width, height);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_clearRect(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y, width, height;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    JS_ToFloat64(ctx, &width, argv[2]);
+    JS_ToFloat64(ctx, &height, argv[3]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+
+    self->currentRenderer->clearRect(x, y, width, height);
     return JS_UNDEFINED;
 }
 
@@ -668,8 +722,7 @@ JSValue QuickJSEngine::js_setParameter(JSContext *ctx, JSValue this_val, int arg
     JS_ToFloat64(ctx, &parameterValue, argv[1]);
 
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
-    if (self->parameterStore)
-        self->parameterStore->setParameter(parameterId, parameterValue);
+    self->parameterStore.setParameter(parameterId, parameterValue);
 
     return JS_UNDEFINED;
 }
@@ -680,7 +733,7 @@ JSValue QuickJSEngine::js_getParameter(JSContext *ctx, JSValue this_val, int arg
     JS_ToInt32(ctx, &parameterId, argv[0]);
 
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
-    double value = self->parameterStore ? self->parameterStore->getParameter(parameterId) : 0.0;
+    double value = self->parameterStore.getParameter(parameterId);
 
     return JS_NewFloat64(ctx, value);
 }

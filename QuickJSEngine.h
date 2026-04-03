@@ -1,20 +1,24 @@
 #include "IJSEngine.h"
-#include "IParameterStore.h"
 #include <quickjs-libc.h>
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include "IParameterProvider.h"
 
 class QuickJSEngine : public IJSEngine {
     public:
-    QuickJSEngine(IRenderer *renderer, IParameterStore *parameterStore);
+    QuickJSEngine(IRenderer *renderer, IParameterProvider &parameterStore);
     ~QuickJSEngine();
 
     void hotReload() override;
+    void renderUI() override;
     void onMouseDown(float x, float y) override;
+    void onMouseUp(float x, float y) override;
+    void onMouseMove(float x, float y) override;
 
     // Methods
     static JSValue js_fillRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_clearRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_strokeRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_roundRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_beginPath(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
@@ -73,6 +77,6 @@ class QuickJSEngine : public IJSEngine {
     JSContext *ctx{nullptr};
     JSClassID gradientClassId = 0;
     IRenderer* currentRenderer = nullptr;
-    IParameterStore* parameterStore = nullptr;
+    IParameterProvider& parameterStore;
     std::unordered_map<std::string, std::vector<JSValue>> eventListeners;
 };
