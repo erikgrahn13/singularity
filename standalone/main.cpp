@@ -13,14 +13,14 @@ class ParameterContainer : public IParameterProvider {
     public:
     double getParameter(int id) const override {
         auto it = params.find(id);
-        if (it != params.end()) return it->second;
+        if (it != params.end()) return it->second.value;
         return std::numeric_limits<double>::quiet_NaN(); // Unknown parameter
     }
     void setParameter(int id, double value) override {
         auto it = params.find(id);
-        if (it != params.end()) it->second = value; // Only update existing parameters
+        if (it != params.end()) it->second.value = value; // Only update existing parameters
     }
-    std::unordered_map<int, double> params;
+    std::unordered_map<int, Parameter> params;
 };
 
 struct AppState 
@@ -40,7 +40,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
-    state->parameters.params[13] = 0.1; // test naive parameter
+    state->parameters.params[13] = { .name = "Volume", .type = ParamType::Float, .value = 0.1, .minValue = 0.0, .maxValue = 1.0, .defaultValue = 0.5 };
+    state->parameters.params[7]  = { .name = "Bypass",   .type = ParamType::Bool,    .value = 0.0, .defaultValue = 0.0 };
+    state->parameters.params[15] = { .name = "Waveform", .type = ParamType::Stepped, .value = 0.0, .defaultValue = 0.0, .steps = 4 };
 
     auto sdlSurface = SDL_GetWindowSurface(state->window);
     state->controller = std::make_unique<SingularityGraphics>(sdlSurface->w, sdlSurface->h, state->parameters);

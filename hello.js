@@ -1,16 +1,19 @@
 import { startUI, Component } from "./widgets/ui.js";
 import { Button } from "./widgets/button.js";
-import { Knob } from "./widgets/knob.js"; // Import your Knob
+import { Knob } from "./widgets/knob.js";
+import { StepSelector } from "./widgets/stepselector.js";
 
 class Editor extends Component {
     constructor() {
         super();
 
-        this.button = new Button(0, 0, 120, 60, { label: "Click me!" });
-        this.knob = new Knob(250, 100, 60, 13); // x, y, size, value
+        this.button = new Button(0, 0, 120, 60, 7, { label: "Bypass" });
+        this.knob = new Knob(250, 100, 60, 13);
+        this.waveform = new StepSelector(0, 0, 240, 30, 15, ["Sine", "Square", "Saw", "Tri"]);
 
         this.addChild(this.button);
         this.addChild(this.knob);
+        this.addChild(this.waveform);
     }
 
     paint(ctx) {
@@ -20,7 +23,8 @@ class Editor extends Component {
 
     resized() {
         this.button.setBounds(100, 100, 120, 60);
-        this.knob.setBounds(250, 100, 60, 60); // Position and size the knob
+        this.knob.setBounds(250, 100, 60, 60);
+        this.waveform.setBounds(100, 180, 240, 30);
     }
 }
 

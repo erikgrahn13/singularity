@@ -1,17 +1,15 @@
 import { Widget } from "./widget.js";
+import { getParameter, setParameter } from "native:parameters";
 
 export class Button extends Widget {
-    constructor(x = 0, y = 0, width = 80, height = 30, theme = {}) {
+    constructor(x = 0, y = 0, width = 80, height = 30, parameterId, theme = {}) {
         super(x, y, width, height);
 
-        this.active = false;
-        this.dragging = false;
-        this.dragOffsetX = 0;
-        this.dragOffsetY = 0;
+        this.parameterId = parameterId;
 
         this.theme = {
             activeColor: "#00d4ff",
-            inactiveColor: "#00ff11",
+            inactiveColor: "#ff0000",
             activeBorder: "#00a8cc",
             inactiveBorder: "#3a3a5c",
             labelColor: "#ffffff",
@@ -23,23 +21,24 @@ export class Button extends Widget {
     }
 
     onMouseDown(x, y) {
-        console.log("Button down");
-
-        this.active = true;
+        const value = getParameter(this.parameterId);
+        if (isNaN(value)) return;
+        setParameter(this.parameterId, value >= 0.5 ? 0.0 : 1.0); // toggle
         this.repaint();
     }
 
     onMouseUp(x, y) {
-        console.log("Button clicked");
-        this.active = false;
-        this.repaint();
     }
 
     paint(ctx) {
-        ctx.fillStyle = this.active ? this.theme.activeColor : this.theme.inactiveColor;
+        const value = getParameter(this.parameterId);
+        if (isNaN(value)) return; // Unknown parameter, don't draw
+        const active = value >= 0.5;
+
+        ctx.fillStyle = active ? this.theme.activeColor : this.theme.inactiveColor;
         ctx.fillRect(0, 0, this.width, this.height);
 
-        ctx.strokeStyle = this.active ? this.theme.activeBorder : this.theme.inactiveBorder;
+        ctx.strokeStyle = active ? this.theme.activeBorder : this.theme.inactiveBorder;
         ctx.lineWidth = 1;
         ctx.strokeRect(0, 0, this.width, this.height);
 
@@ -47,7 +46,7 @@ export class Button extends Widget {
             ctx.font = `${this.theme.fontSize}px sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = this.active ? this.theme.activeLabelColor : this.theme.labelColor;
+            ctx.fillStyle = active ? this.theme.activeLabelColor : this.theme.labelColor;
             ctx.fillText(this.theme.label, this.width / 2, this.height / 2 + 4);
         }
     }
