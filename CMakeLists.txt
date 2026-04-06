@@ -80,6 +80,7 @@ if(WIN32)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
+    target_sources(hello PRIVATE standalone/ISingularityAudio.cpp)
     target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
 else()
     add_executable(hello standalone/main.cpp)
@@ -105,6 +106,8 @@ target_compile_definitions(hello PRIVATE
     JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
 )
 
+target_compile_definitions(hello PRIVATE SINGULARITY_STANDALONE=1)
+
 target_sources(hello PRIVATE 
     SingularityGraphics2.cpp
     # dmonFileWatcher.cpp
@@ -129,6 +132,12 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
     add_dependencies(hello generate_hello_release)
     target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
 endif()
+
+target_link_libraries(hello PRIVATE 
+    "-framework CoreAudio"
+    "-framework CoreFoundation"
+    "-framework AudioToolbox"
+)
 
 # TODO: this is an example of how i can compile javascript files and modules with qjsc
 # and then include the file in the in the cpp when building in release mode to embedd javascript

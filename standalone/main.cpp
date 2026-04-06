@@ -6,6 +6,7 @@
 #include <limits>
 #include "../SingularityGraphics2.h"
 #include "IParameterProvider.h"
+#include "ISingularityAudio.h"
 
  // TODO: should be real time safe with real time safe queue
 class ParameterContainer : public IParameterProvider {
@@ -26,7 +27,9 @@ class ParameterContainer : public IParameterProvider {
 struct AppState 
 {
     SDL_Window *window{nullptr};
+    SDL_Window *settingsWindow{nullptr};
     std::unique_ptr<SingularityGraphics> controller;
+    std::unique_ptr<ISingularityAudio> processor;
     ParameterContainer parameters;
 } ;
 
@@ -46,6 +49,14 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     auto sdlSurface = SDL_GetWindowSurface(state->window);
     state->controller = std::make_unique<SingularityGraphics>(sdlSurface->w, sdlSurface->h, state->parameters);
+    state->controller->setOnOpenSettings([state = state.get()]() {
+        state->settingsWindow = SDL_CreateWindow("Settings", 400, 300, SDL_WINDOW_ALWAYS_ON_TOP);
+        SDL_SetWindowParent(state->settingsWindow, state->window);
+        SDL_SetWindowModal(state->settingsWindow, true);
+        SDL_RaiseWindow(state->settingsWindow);
+    });
+    state->processor = ISingularityAudio::createSingularityAudio();
+    state->processor->probeDevices();
 
     *appstate = state.release();
 
@@ -63,6 +74,14 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     {
     case SDL_EVENT_QUIT:
         return SDL_APP_SUCCESS;
+        break;
+    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+        if (state->settingsWindow && event->window.windowID == SDL_GetWindowID(state->settingsWindow)) {
+            SDL_DestroyWindow(state->settingsWindow);
+            state->settingsWindow = nullptr;
+        } else {
+            return SDL_APP_SUCCESS;
+        }
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         // SDL_Log("Mouse clicked x: %f   y: %f", event->button.x, event->button.y);

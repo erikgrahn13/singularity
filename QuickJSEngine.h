@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 #include "IParameterProvider.h"
 
 class QuickJSEngine : public IJSEngine {
@@ -15,6 +16,7 @@ class QuickJSEngine : public IJSEngine {
     void onMouseDown(float x, float y) override;
     void onMouseUp(float x, float y) override;
     void onMouseMove(float x, float y) override;
+    void setOnOpenSettings(std::function<void()> cb) override { onOpenSettings = std::move(cb); }
 
     // Methods
     static JSValue js_fillRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
@@ -68,6 +70,10 @@ class QuickJSEngine : public IJSEngine {
     // Event binding
     static JSValue js_addEventListener(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
+    // Settings modal window
+    static JSValue js_openSettingsWindow(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+
+
     private:
     void setupJS() override;
     void freeEventListeners();
@@ -79,4 +85,5 @@ class QuickJSEngine : public IJSEngine {
     IRenderer* currentRenderer = nullptr;
     IParameterProvider& parameterStore;
     std::unordered_map<std::string, std::vector<JSValue>> eventListeners;
+    std::function<void()> onOpenSettings;
 };

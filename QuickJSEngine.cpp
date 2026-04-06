@@ -150,6 +150,9 @@ void QuickJSEngine::setupJS()
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetX"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetX, "shadowOffsetX", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetY"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetY, "shadowOffsetY", 1), JS_PROP_CONFIGURABLE);
     
+    // standalone settings window
+    JS_SetPropertyStr(ctx, global_obj, "STANDALONE", JS_NewBool(ctx, true));
+    JS_SetPropertyStr(ctx, global_obj, "openSettingsWindow", JS_NewCFunction(ctx, js_openSettingsWindow, "openSettingsWindow", 1));
 
     JSValue canvasObj = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, canvasObj, "width", JS_NewInt32(ctx, currentRenderer->getWidth()));
@@ -221,6 +224,13 @@ JSValue QuickJSEngine::js_addEventListener(JSContext *ctx, JSValue this_val, int
     auto type = JS_ToCString(ctx, argv[0]);
     self->eventListeners[type].push_back(JS_DupValue(ctx, argv[1]));
     JS_FreeCString(ctx, type);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_openSettingsWindow(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    if (self->onOpenSettings) self->onOpenSettings();
     return JS_UNDEFINED;
 }
 

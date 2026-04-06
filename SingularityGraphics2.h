@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <atomic>
+#include <functional>
 #include <unordered_map>
 // Include interface headers - they're lightweight (just virtual functions)
 #include "IRenderer.h"
@@ -28,6 +29,8 @@ class SingularityGraphics {
     void hotReload();
 
     void addParameter();
+
+    void setOnOpenSettings(std::function<void()> cb);
 
     // Events
     void onMouseDown(float x, float y);
@@ -51,6 +54,7 @@ class SingularityGraphics {
     std::unique_ptr<IJSEngine> jsEngine;
     std::unique_ptr<IFileWatcher> fileWatcher;
     IParameterProvider& parameterProvider;
+    std::function<void()> onOpenSettings;
 
     //TODO: tmp
     // std::unordered_map<int, double> parameters;

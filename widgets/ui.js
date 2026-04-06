@@ -17,6 +17,7 @@ export function startUI(ctx, ContentComponentClass) {
     content.setBounds(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     root.addChild(content);
+    root.addStandaloneOverlays(); // add settings button on top of editor
     root.requestRepaint();
 }
 

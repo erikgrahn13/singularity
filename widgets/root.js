@@ -1,4 +1,5 @@
 import { Widget } from "./widget.js";
+import { Button } from "./button.js";
 import { addEventListener } from "native:events";
 
 export class RootWidget extends Widget {
@@ -12,6 +13,13 @@ export class RootWidget extends Widget {
         addEventListener("mousedown", (x, y) => this.handleMouseDown(x, y));
         addEventListener("mousemove", (x, y) => this.handleMouseMove(x, y));
         addEventListener("mouseup", (x, y) => this.handleMouseUp(x, y));
+    }
+
+    addStandaloneOverlays() {
+        if (typeof STANDALONE !== 'undefined' && STANDALONE) {
+            this.settingsButton = new Button(0, 0, 120, 60, () => openSettingsWindow(), { label: "Settings" });
+            this.addChild(this.settingsButton);
+        }
     }
 
     requestRepaint() {

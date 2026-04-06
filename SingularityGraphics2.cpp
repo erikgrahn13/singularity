@@ -40,6 +40,12 @@ void SingularityGraphics::addParameter()
 
 }
 
+void SingularityGraphics::setOnOpenSettings(std::function<void()> cb)
+{
+    onOpenSettings = cb;
+    jsEngine->setOnOpenSettings(std::move(cb));
+}
+
 void SingularityGraphics::onMouseDown(float x, float y)
 {
     // std::println("onMouseDown1 x:{}    y:{}", x, y);
