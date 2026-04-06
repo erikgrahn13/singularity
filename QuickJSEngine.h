@@ -17,6 +17,7 @@ class QuickJSEngine : public IJSEngine {
     void onMouseUp(float x, float y) override;
     void onMouseMove(float x, float y) override;
     void setOnOpenSettings(std::function<void()> cb) override { onOpenSettings = std::move(cb); }
+    void setStringList(const std::string& key, std::vector<std::string> values) override { stringLists[key] = std::move(values); }
 
     // Methods
     static JSValue js_fillRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
@@ -72,10 +73,13 @@ class QuickJSEngine : public IJSEngine {
 
     // Settings modal window
     static JSValue js_openSettingsWindow(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_getAudioBackends(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_getStringList(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
 
     private:
     void setupJS() override;
+    void loadScript(const std::string& path) override;
     void freeEventListeners();
     void dispatchEvent(const char* type, JSValue* args, int argc);
     static JSValue js_addColorStop(JSContext* ctx, JSValue this_val, int argc, JSValue* argv);
@@ -84,6 +88,8 @@ class QuickJSEngine : public IJSEngine {
     JSClassID gradientClassId = 0;
     IRenderer* currentRenderer = nullptr;
     IParameterProvider& parameterStore;
+    std::string currentScriptPath;
     std::unordered_map<std::string, std::vector<JSValue>> eventListeners;
     std::function<void()> onOpenSettings;
+    std::unordered_map<std::string, std::vector<std::string>> stringLists;
 };

@@ -18,6 +18,13 @@ static int js_parameters_module_init(JSContext *ctx, JSModuleDef *m)
     return 0;
 }
 
+static int js_audio_module_init(JSContext *ctx, JSModuleDef *m)
+{
+    JS_SetModuleExport(ctx, m, "getAudioBackends", JS_NewCFunction(ctx, QuickJSEngine::js_getAudioBackends, "getAudioBackends", 0));
+    JS_SetModuleExport(ctx, m, "getStringList", JS_NewCFunction(ctx, QuickJSEngine::js_getStringList, "getStringList", 1));
+    return 0;
+}
+
 static JSModuleDef *js_module_loader_custom(JSContext *ctx, const char *module_name, void *opaque, JSValueConst attributes)
 {
     if (strcmp(module_name, "native:events") == 0) {
@@ -31,6 +38,13 @@ static JSModuleDef *js_module_loader_custom(JSContext *ctx, const char *module_n
         if (!m) return nullptr;
         JS_AddModuleExport(ctx, m, "getParameter");
         JS_AddModuleExport(ctx, m, "setParameter");
+        return m;
+    }
+    if (strcmp(module_name, "native:audio") == 0) {
+        JSModuleDef *m = JS_NewCModule(ctx, module_name, js_audio_module_init);
+        if (!m) return nullptr;
+        JS_AddModuleExport(ctx, m, "getAudioBackends");
+        JS_AddModuleExport(ctx, m, "getStringList");
         return m;
     }
     return js_module_loader(ctx, module_name, opaque, attributes);
@@ -60,6 +74,8 @@ void QuickJSEngine::hotReload()
 {
     std::println("QuickJS Hotreload");
     setupJS();
+    if (!currentScriptPath.empty())
+        loadScript(currentScriptPath);
 }
 
 void QuickJSEngine::renderUI()
@@ -162,16 +178,17 @@ void QuickJSEngine::setupJS()
     JS_SetPropertyStr(ctx, global_obj, "ctx", obj);
     JS_FreeValue(ctx, global_obj);
 
-#if !defined NDEBUG
-    size_t buf_len;
-    std::string path = JS_SCRIPTS_DIR"/hello.js";
-    auto tmp = js_load_file(ctx, &buf_len, path.c_str());
+}
 
+void QuickJSEngine::loadScript(const std::string& path)
+{
+#if !defined NDEBUG
+    currentScriptPath = path;
+    size_t buf_len;
+    auto tmp = js_load_file(ctx, &buf_len, path.c_str());
     JSValue result = JS_Eval(ctx, (const char*)tmp, buf_len, path.c_str(), JS_EVAL_TYPE_MODULE);
     js_free(ctx, tmp);
     JS_FreeValue(ctx, result);
-#else
-    js_std_eval_binary(ctx, qjsc_hello,qjsc_hello_size, 0);
 #endif
 }
 
@@ -232,6 +249,34 @@ JSValue QuickJSEngine::js_openSettingsWindow(JSContext *ctx, JSValue this_val, i
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
     if (self->onOpenSettings) self->onOpenSettings();
     return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_getAudioBackends(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    JSValue arr = JS_NewArray(ctx);
+    uint32_t i = 0;
+    auto it = self->stringLists.find("audioBackends");
+    if (it != self->stringLists.end())
+        for (const auto& name : it->second)
+            JS_SetPropertyUint32(ctx, arr, i++, JS_NewString(ctx, name.c_str()));
+    return arr;
+}
+
+JSValue QuickJSEngine::js_getStringList(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    const char* key = JS_ToCString(ctx, argv[0]);
+    JSValue arr = JS_NewArray(ctx);
+    if (key) {
+        uint32_t i = 0;
+        auto it = self->stringLists.find(key);
+        if (it != self->stringLists.end())
+            for (const auto& name : it->second)
+                JS_SetPropertyUint32(ctx, arr, i++, JS_NewString(ctx, name.c_str()));
+        JS_FreeCString(ctx, key);
+    }
+    return arr;
 }
 
 JSValue QuickJSEngine::js_fillRect(JSContext *ctx, JSValue this_val, int argc, JSValue* argv)

@@ -10,14 +10,14 @@ export class Component extends Widget {
     }
 }
 
-export function startUI(ctx, ContentComponentClass) {
+export function startUI(ctx, ContentComponentClass, { showOverlays = true } = {}) {
     root = new RootWidget(ctx);
 
     content = new ContentComponentClass();
     content.setBounds(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     root.addChild(content);
-    root.addStandaloneOverlays(); // add settings button on top of editor
+    if (showOverlays) root.addStandaloneOverlays(); // add settings button on top of editor
     root.requestRepaint();
 }
 

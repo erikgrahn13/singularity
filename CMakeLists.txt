@@ -10,6 +10,27 @@ endif()
 
 if(WIN32)
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-win-x64-gpu-release.zip)
+
+    FetchContent_Declare(
+        asiosdk
+        URL https://www.steinberg.net/asiosdk
+        SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/asiosdk
+    )
+
+    FetchContent_MakeAvailable(asiosdk)
+
+    add_library(asio STATIC
+        ${asiosdk_SOURCE_DIR}/common/asio.cpp
+        ${asiosdk_SOURCE_DIR}/host/asiodrivers.cpp
+        ${asiosdk_SOURCE_DIR}/host/pc/asiolist.cpp
+    )
+    target_include_directories(asio PUBLIC 
+        ${asiosdk_SOURCE_DIR}/common
+        ${asiosdk_SOURCE_DIR}/host
+        ${asiosdk_SOURCE_DIR}/host/pc    
+    )
+
+
 elseif(APPLE)
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-mac-universal-gpu-release.zip)
 else()
@@ -76,11 +97,13 @@ FetchContent_MakeAvailable(quickjs)
 if(WIN32)
     add_executable(hello standalone/main.cpp)
     target_compile_definitions(hello PRIVATE NOMINMAX)
-    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
+    target_sources(hello PRIVATE standalone/ASIO.cpp)
+
+    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib asio)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
-    target_sources(hello PRIVATE standalone/ISingularityAudio.cpp)
+    # target_sources(hello PRIVATE standalone/ISingularityAudio.cpp)
     target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
 else()
     add_executable(hello standalone/main.cpp)
@@ -114,6 +137,7 @@ target_sources(hello PRIVATE
     chocFileWatcher.cpp
     SkiaRenderer.cpp
     QuickJSEngine.cpp
+    standalone/ISingularityAudio.cpp
     # chocQuickJSEngine.cpp
 )
 

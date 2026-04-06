@@ -23,7 +23,7 @@ export class RootWidget extends Widget {
     }
 
     requestRepaint() {
-        console.log("request paint");
+        // console.log("request paint");
         this.repaintPending = true;
     }
 
@@ -43,6 +43,10 @@ export class RootWidget extends Widget {
         for (const child of this.children) {
             this.paintSubtree(ctx, child);
         }
+
+        for (const child of this.children) {
+            this.paintOverlays(ctx, child);
+        }
     }
 
     paintSubtree(ctx, widget) {
@@ -57,6 +61,19 @@ export class RootWidget extends Widget {
             this.paintSubtree(ctx, child);
         }
 
+        ctx.restore();
+    }
+
+    paintOverlays(ctx, widget) {
+        if (!widget.visible) return;
+
+        ctx.save();
+        ctx.translate(widget.x, widget.y);
+
+        for (const child of widget.children) {
+            this.paintOverlays(ctx, child);
+        }
+
         widget.paintOverChildren(ctx);
         ctx.restore();
     }
@@ -65,8 +82,18 @@ export class RootWidget extends Widget {
         if (!widget.visible) return null;
         if (!widget.hitTest(x, y)) return null;
 
+        // First pass: overlay widgets (e.g. open dropdowns) take priority
         for (let i = widget.children.length - 1; i >= 0; --i) {
             const child = widget.children[i];
+            if (!child.isShowingOverlay?.()) continue;
+            const hit = this.findWidgetAt(x - child.x, y - child.y, child);
+            if (hit) return hit;
+        }
+
+        // Second pass: normal widgets
+        for (let i = widget.children.length - 1; i >= 0; --i) {
+            const child = widget.children[i];
+            if (child.isShowingOverlay?.()) continue;
             const hit = this.findWidgetAt(x - child.x, y - child.y, child);
             if (hit) return hit;
         }

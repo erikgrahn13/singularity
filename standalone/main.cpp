@@ -29,6 +29,7 @@ struct AppState
     SDL_Window *window{nullptr};
     SDL_Window *settingsWindow{nullptr};
     std::unique_ptr<SingularityGraphics> controller;
+    std::unique_ptr<SingularityGraphics> settingsController;
     std::unique_ptr<ISingularityAudio> processor;
     ParameterContainer parameters;
 } ;
@@ -49,14 +50,31 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     auto sdlSurface = SDL_GetWindowSurface(state->window);
     state->controller = std::make_unique<SingularityGraphics>(sdlSurface->w, sdlSurface->h, state->parameters);
+    state->controller->loadScript(JS_SCRIPTS_DIR"/hello.js");
     state->controller->setOnOpenSettings([state = state.get()]() {
-        state->settingsWindow = SDL_CreateWindow("Settings", 400, 300, SDL_WINDOW_ALWAYS_ON_TOP);
+        if (state->settingsWindow) return; // already open
+
+        // Build string lists before constructing so they are ready when loadScript runs
+        auto devices = state->processor->probeDevices();
+        std::unordered_map<std::string, std::vector<std::string>> stringLists;
+        stringLists["audioBackends"] = ISingularityAudio::backends;
+        for (const auto& backend : ISingularityAudio::backends) {
+            std::vector<std::string> deviceNames;
+            for (const auto& d : devices)
+                deviceNames.push_back(d.name);
+            stringLists["devices:" + backend] = std::move(deviceNames);
+        }
+
+        state->settingsWindow = SDL_CreateWindow("Settings", 400, 300, 0);
         SDL_SetWindowParent(state->settingsWindow, state->window);
         SDL_SetWindowModal(state->settingsWindow, true);
         SDL_RaiseWindow(state->settingsWindow);
+        state->settingsController = std::make_unique<SingularityGraphics>(400, 300, state->parameters);
+        for (auto& [key, values] : stringLists)
+            state->settingsController->setStringList(key, values);
+        state->settingsController->loadScript(JS_SCRIPTS_DIR"/widgets/settings.js");
     });
     state->processor = ISingularityAudio::createSingularityAudio();
-    state->processor->probeDevices();
 
     *appstate = state.release();
 
@@ -79,20 +97,28 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
         if (state->settingsWindow && event->window.windowID == SDL_GetWindowID(state->settingsWindow)) {
             SDL_DestroyWindow(state->settingsWindow);
             state->settingsWindow = nullptr;
+            state->settingsController.reset();
         } else {
             return SDL_APP_SUCCESS;
         }
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        // SDL_Log("Mouse clicked x: %f   y: %f", event->button.x, event->button.y);
-        state->controller->onMouseDown(event->button.x, event->button.y);
-    
+        if (state->settingsWindow && event->window.windowID == SDL_GetWindowID(state->settingsWindow))
+            state->settingsController->onMouseDown(event->button.x, event->button.y);
+        else
+            state->controller->onMouseDown(event->button.x, event->button.y);
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        state->controller->onMouseUp(event->button.x, event->button.y);
+        if (state->settingsWindow && event->window.windowID == SDL_GetWindowID(state->settingsWindow))
+            state->settingsController->onMouseUp(event->button.x, event->button.y);
+        else
+            state->controller->onMouseUp(event->button.x, event->button.y);
         break;
     case SDL_EVENT_MOUSE_MOTION:
-        state->controller->onMouseMove(event->button.x, event->button.y);
+        if (state->settingsWindow && event->window.windowID == SDL_GetWindowID(state->settingsWindow))
+            state->settingsController->onMouseMove(event->button.x, event->button.y);
+        else
+            state->controller->onMouseMove(event->button.x, event->button.y);
         break;
     case SDL_EVENT_MOUSE_WHEEL:
         break;
@@ -133,6 +159,22 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     SDL_UpdateWindowSurface(state->window);
     SDL_DestroySurface(skiaSurface);
+
+    if (state->settingsWindow && state->settingsController) {
+#if !defined NDEBUG
+        if (state->settingsController->pendingReload.exchange(false))
+            state->settingsController->hotReload();
+#endif
+        state->settingsController->renderUI();
+        DrawingContent sdc = state->settingsController->getRenderData();
+        if (sdc.contentAddres) {
+            auto settingsSurface = SDL_GetWindowSurface(state->settingsWindow);
+            auto skiaSettingsSurface = SDL_CreateSurfaceFrom(sdc.width, sdc.height, settingsSurface->format, (void*)sdc.contentAddres, sdc.contentBytes);
+            SDL_BlitSurface(skiaSettingsSurface, nullptr, settingsSurface, nullptr);
+            SDL_UpdateWindowSurface(state->settingsWindow);
+            SDL_DestroySurface(skiaSettingsSurface);
+        }
+    }
 
     return SDL_APP_CONTINUE;
 }

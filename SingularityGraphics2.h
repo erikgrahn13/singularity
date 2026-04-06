@@ -27,10 +27,12 @@ class SingularityGraphics {
     DrawingContent getRenderData();
 
     void hotReload();
+    void loadScript(const std::string& path);
 
     void addParameter();
 
     void setOnOpenSettings(std::function<void()> cb);
+    void setStringList(const std::string& key, std::vector<std::string> values);
 
     // Events
     void onMouseDown(float x, float y);

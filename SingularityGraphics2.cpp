@@ -35,6 +35,16 @@ void SingularityGraphics::hotReload()
     jsEngine->hotReload();
 }
 
+void SingularityGraphics::loadScript(const std::string& path)
+{
+    jsEngine->loadScript(path);
+}
+
+void SingularityGraphics::setStringList(const std::string& key, std::vector<std::string> values)
+{
+    jsEngine->setStringList(key, std::move(values));
+}
+
 void SingularityGraphics::addParameter()
 {
 
