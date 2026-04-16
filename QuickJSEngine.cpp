@@ -1,5 +1,5 @@
 #include "QuickJSEngine.h"
-#include <print>
+// #include <print>
 
 #if defined NDEBUG
 #include <hello_release.h>
@@ -72,7 +72,7 @@ QuickJSEngine::~QuickJSEngine()
 
 void QuickJSEngine::hotReload()
 {
-    std::println("QuickJS Hotreload");
+    // std::println("QuickJS Hotreload");
     setupJS();
     if (!currentScriptPath.empty())
         loadScript(currentScriptPath);

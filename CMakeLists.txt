@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(Singularity LANGUAGES CXX)
+project(Singularity LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(FetchContent)
@@ -40,24 +40,24 @@ else()
     set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-linux-x64-gpu-release.zip)
 endif()
 
-FetchContent_Declare(
-    sdl
-    URL https://github.com/libsdl-org/SDL/releases/download/release-3.4.2/SDL3-3.4.2.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-set(SDL_AUDIO         OFF CACHE BOOL "" FORCE)
-set(SDL_JOYSTICK      OFF CACHE BOOL "" FORCE)
-set(SDL_HAPTIC        OFF CACHE BOOL "" FORCE)
-set(SDL_HIDAPI        OFF CACHE BOOL "" FORCE)
-set(SDL_POWER         OFF CACHE BOOL "" FORCE)
-set(SDL_RENDER        ON CACHE BOOL "" FORCE)
-set(SDL_SENSOR        OFF CACHE BOOL "" FORCE)
-set(SDL_CAMERA        OFF CACHE BOOL "" FORCE)
-set(SDL_DIALOG        OFF CACHE BOOL "" FORCE)
-set(SDL_GPU           OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC        ON CACHE BOOL "" FORCE)
-set(SDL_SHARED        OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(sdl)
+# FetchContent_Declare(
+#     sdl
+#     URL https://github.com/libsdl-org/SDL/releases/download/release-3.4.2/SDL3-3.4.2.tar.gz
+#     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+# )
+# set(SDL_AUDIO         OFF CACHE BOOL "" FORCE)
+# set(SDL_JOYSTICK      OFF CACHE BOOL "" FORCE)
+# set(SDL_HAPTIC        OFF CACHE BOOL "" FORCE)
+# set(SDL_HIDAPI        OFF CACHE BOOL "" FORCE)
+# set(SDL_POWER         OFF CACHE BOOL "" FORCE)
+# set(SDL_RENDER        ON CACHE BOOL "" FORCE)
+# set(SDL_SENSOR        OFF CACHE BOOL "" FORCE)
+# set(SDL_CAMERA        OFF CACHE BOOL "" FORCE)
+# set(SDL_DIALOG        OFF CACHE BOOL "" FORCE)
+# set(SDL_GPU           OFF CACHE BOOL "" FORCE)
+# set(SDL_STATIC        ON CACHE BOOL "" FORCE)
+# set(SDL_SHARED        OFF CACHE BOOL "" FORCE)
+# FetchContent_MakeAvailable(sdl)
 
 FetchContent_Declare(
     dmon
@@ -106,17 +106,51 @@ if(WIN32)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
-    # target_sources(hello PRIVATE standalone/ISingularityAudio.cpp)
-    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
+    target_sources(hello PRIVATE standalone/macos/CocoaWindow.mm)
+    target_link_libraries(hello PRIVATE
+        ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
+        "-framework AppKit"
+    )
 else()
     add_executable(hello standalone/main.cpp)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(Fontconfig REQUIRED IMPORTED_TARGET fontconfig)
-    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/linux-gpu/lib/Release/x64/libskia.a PkgConfig::Fontconfig)
+    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/linux-gpu/lib/Release/x64/libskia.a PkgConfig::Fontconfig X11)
+
+    # Optional Wayland support — generates xdg-shell protocol glue at configure time
+    pkg_check_modules(WAYLAND_CLIENT IMPORTED_TARGET wayland-client)
+    pkg_check_modules(WAYLAND_PROTOCOLS wayland-protocols)
+    if(WAYLAND_CLIENT_FOUND AND WAYLAND_PROTOCOLS_FOUND)
+        pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
+        find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
+
+        set(XDG_SHELL_XML    "${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml")
+        set(XDG_SHELL_HEADER "${CMAKE_BINARY_DIR}/xdg-shell-client-protocol.h")
+        set(XDG_SHELL_CODE   "${CMAKE_BINARY_DIR}/xdg-shell-client-protocol.c")
+
+        add_custom_command(
+            OUTPUT  ${XDG_SHELL_HEADER}
+            COMMAND ${WAYLAND_SCANNER} client-header ${XDG_SHELL_XML} ${XDG_SHELL_HEADER}
+            DEPENDS ${XDG_SHELL_XML}
+        )
+        add_custom_command(
+            OUTPUT  ${XDG_SHELL_CODE}
+            COMMAND ${WAYLAND_SCANNER} private-code  ${XDG_SHELL_XML} ${XDG_SHELL_CODE}
+            DEPENDS ${XDG_SHELL_XML}
+        )
+
+        add_custom_target(xdg_shell_protocol DEPENDS ${XDG_SHELL_HEADER} ${XDG_SHELL_CODE})
+        add_dependencies(hello xdg_shell_protocol)
+
+        target_sources(hello PRIVATE ${XDG_SHELL_CODE})
+        target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
+        target_link_libraries(hello PRIVATE PkgConfig::WAYLAND_CLIENT)
+        target_compile_definitions(hello PRIVATE HAS_WAYLAND=1)
+    endif()
 endif()
 
 target_link_libraries(hello PRIVATE 
-    SDL3::SDL3
+    # SDL3::SDL3
     qjs-libc
     choc::choc
 )
@@ -160,11 +194,11 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
     target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
 endif()
 
-target_link_libraries(hello PRIVATE 
-    "-framework CoreAudio"
-    "-framework CoreFoundation"
-    "-framework AudioToolbox"
-)
+# target_link_libraries(hello PRIVATE 
+#     "-framework CoreAudio"
+#     "-framework CoreFoundation"
+#     "-framework AudioToolbox"
+# )
 
 add_subdirectory(vst3)
 
