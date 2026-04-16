@@ -6,7 +6,7 @@
 #include <functional>
 #include <string>
 #include <iostream>
-#include <print>
+// #include <print>
 
 // Factory function declarations (C++-only, Swift never sees .cpp)
 std::unique_ptr<IRenderer> createRenderer(int width, int height);
