@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.20)
 
 project(Singularity LANGUAGES CXX)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(FetchContent)
+
+include(VST3)
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
@@ -162,6 +165,8 @@ target_link_libraries(hello PRIVATE
     "-framework CoreFoundation"
     "-framework AudioToolbox"
 )
+
+add_subdirectory(vst3)
 
 # TODO: this is an example of how i can compile javascript files and modules with qjsc
 # and then include the file in the in the cpp when building in release mode to embedd javascript

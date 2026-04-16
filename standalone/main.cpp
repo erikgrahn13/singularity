@@ -8,7 +8,6 @@
 #include "IParameterProvider.h"
 #include "ISingularityAudio.h"
 
- // TODO: should be real time safe with real time safe queue
 class ParameterContainer : public IParameterProvider {
 
     public:
@@ -19,9 +18,14 @@ class ParameterContainer : public IParameterProvider {
     }
     void setParameter(int id, double value) override {
         auto it = params.find(id);
-        if (it != params.end()) it->second.value = value; // Only update existing parameters
+        if (it != params.end()) {
+            it->second.value = value;           // Update GUI-side copy for rendering
+            if (processor)
+                processor->pushParameterChange(id, value); // Notify audio thread (RT-safe)
+        }
     }
     std::unordered_map<int, Parameter> params;
+    ISingularityAudio* processor{nullptr}; // Set after processor is created
 };
 
 struct AppState 
@@ -75,6 +79,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         state->settingsController->loadScript(JS_SCRIPTS_DIR"/widgets/settings.js");
     });
     state->processor = ISingularityAudio::createSingularityAudio();
+    state->parameters.processor = state->processor.get();
 
     *appstate = state.release();
 
