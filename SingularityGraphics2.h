@@ -14,7 +14,6 @@
 #include "IRenderer.h"
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
-#include "IParameterStore.h"
 #include "IParameterProvider.h"
 
 class SingularityGraphics {

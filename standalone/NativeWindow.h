@@ -18,10 +18,12 @@
 #endif
 
 inline std::unique_ptr<IWindow> createNativeWindow(const std::string& title,
-                                                    int width, int height)
+                                                    int width, int height,
+                                                    IWindow* owner = nullptr)
 {
 #if defined(_WIN32)
-    return std::make_unique<Win32Window>(title, width, height);
+    HWND ownerHwnd = owner ? static_cast<Win32Window*>(owner)->hwnd() : nullptr;
+    return std::make_unique<Win32Window>(title, width, height, ownerHwnd);
 #elif defined(__APPLE__)
     return std::make_unique<CocoaWindow>(title, width, height);
 #else

@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include "../IRenderer.h"
 
 class IWindow {
 public:
@@ -12,4 +13,8 @@ public:
     virtual int height() const = 0;
     virtual void setOnMouseDown(std::function<void(int x, int y, unsigned int button)> cb) = 0;
     virtual void setOnMouseUp(std::function<void(int x, int y, unsigned int button)> cb)   = 0;
+    virtual void setOnMouseMove(std::function<void(int x, int y)> cb) = 0;
+    // Called every frame. Return the pixel buffer to blit to the window.
+    virtual void setOnFrame(std::function<DrawingContent()> cb) = 0;
+    virtual void setOnClose(std::function<void()> cb) = 0;
 };

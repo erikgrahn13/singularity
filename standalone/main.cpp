@@ -190,10 +190,100 @@
 //     }
 // }
 
-#include "standalone/NativeWindow.h"
+#include "NativeWindow.h"
+#include "../SingularityGraphics2.h"
+#include "../IParameterProvider.h"
 
-int main() {
-    auto win = createNativeWindow("My Window", 800, 600);
+#include <limits>
+#include <memory>
+#include <unordered_map>
+
+// ---------------------------------------------------------------------------
+// Simple parameter store for the standalone app
+// ---------------------------------------------------------------------------
+class ParameterContainer : public IParameterProvider {
+public:
+    double getParameter(int id) const override {
+        auto it = params.find(id);
+        if (it != params.end()) return it->second.value;
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    void setParameter(int id, double value) override {
+        auto it = params.find(id);
+        if (it != params.end()) it->second.value = value;
+    }
+    std::unordered_map<int, Parameter> params;
+};
+
+// ---------------------------------------------------------------------------
+int main()
+{
+    ParameterContainer params;
+    params.params[13] = { .name = "Volume",   .type = ParamType::Float,   .value = 0.1, .minValue = 0.0, .maxValue = 1.0, .defaultValue = 0.5 };
+    params.params[7]  = { .name = "Bypass",   .type = ParamType::Bool,    .value = 0.0, .defaultValue = 0.0 };
+    params.params[15] = { .name = "Waveform", .type = ParamType::Stepped, .value = 0.0, .defaultValue = 0.0, .steps = 4 };
+
+    constexpr int W = 800, H = 600;
+
+    auto graphics = std::make_unique<SingularityGraphics>(W, H, params);
+    graphics->loadScript(JS_SCRIPTS_DIR "/hello.js");
+
+    auto win = createNativeWindow("Singularity", W, H);
+
+    // Settings window — created on demand, destroyed on close
+    std::unique_ptr<IWindow> settingsWin;
+    std::unique_ptr<SingularityGraphics> settingsGraphics;
+    bool settingsDirty = false;
+
+    graphics->setOnOpenSettings([&]() {
+        if (settingsWin) return; // already open
+
+        settingsGraphics = std::make_unique<SingularityGraphics>(400, 300, params);
+        settingsGraphics->loadScript(JS_SCRIPTS_DIR "/widgets/settings.js");
+
+        settingsWin = createNativeWindow("Settings", 400, 300, win.get());
+        settingsDirty = true;
+
+        settingsWin->setOnMouseDown([&](int x, int y, unsigned int) { settingsGraphics->onMouseDown((float)x, (float)y); settingsDirty = true; });
+        settingsWin->setOnMouseUp  ([&](int x, int y, unsigned int) { settingsGraphics->onMouseUp  ((float)x, (float)y); settingsDirty = true; });
+        settingsWin->setOnMouseMove([&](int x, int y)               { settingsGraphics->onMouseMove((float)x, (float)y); settingsDirty = true; });
+        settingsWin->setOnFrame([&]() -> DrawingContent {
+            if (!settingsDirty) return {};
+            settingsGraphics->renderUI();
+            settingsDirty = false;
+            return settingsGraphics->getRenderData();
+        });
+
+        // Secondary window — main loop already running, just start its timer
+        static_cast<Win32Window*>(settingsWin.get())->startTimer();
+
+        settingsWin->setOnClose([&]() {
+            settingsGraphics.reset();
+            settingsWin.reset();
+        });
+    });
+
+    bool dirty = true; // render at least once on startup
+
+    win->setOnMouseDown([&](int x, int y, unsigned int /*btn*/) { graphics->onMouseDown((float)x, (float)y); dirty = true; });
+    win->setOnMouseUp  ([&](int x, int y, unsigned int /*btn*/) { graphics->onMouseUp  ((float)x, (float)y); dirty = true; });
+    win->setOnMouseMove([&](int x, int y)                       { graphics->onMouseMove((float)x, (float)y); dirty = true; });
+
+    win->setOnFrame([&]() -> DrawingContent {
+#ifndef NDEBUG
+        if (graphics->pendingReload.exchange(false)) {
+            graphics->hotReload();
+            dirty = true;
+        }
+#endif
+        if (!dirty)
+            return {}; // null — tells the window to skip InvalidateRect
+
+        graphics->renderUI();
+        dirty = false;
+        return graphics->getRenderData();
+    });
+
     win->run();
 }
 
