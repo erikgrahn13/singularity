@@ -11,12 +11,23 @@ option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
 option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" ON)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
 option(JS_HOT_RELOAD "Watch and hot-reload JS scripts at runtime" ON)
-# option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
+option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
 
 
 add_subdirectory(${vst3sdk_SOURCE_DIR} ${CMAKE_BINARY_DIR}/vst3sdk)
 
 smtg_enable_vst3_sdk()
+
+if(WIN32 AND MSVC)
+    # SMTG_PlatformToolset adds /MTd for Debug to all vst3sdk targets.
+    # Override to /MT to match prebuilt Skia (always /MT, never /MTd).
+    foreach(_tgt IN ITEMS sdk base pluginterfaces sdk_common sdk_hosting moduleinfotool validator editorhost audiohost)
+        if(TARGET ${_tgt})
+            target_compile_options(${_tgt} PRIVATE $<$<CONFIG:Debug>:/MT>)
+        endif()
+    endforeach()
+    add_compile_options($<$<CONFIG:Debug>:/MT>)
+endif()
 
 smtg_add_vst3plugin(HelloWorld
     source/version.h
@@ -65,9 +76,6 @@ target_include_directories(HelloWorld PRIVATE
 # endif()
 
 target_compile_features(HelloWorld PRIVATE cxx_std_23)
-# if(MSVC)
-#     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
-# endif()
 
 smtg_target_configure_version_file(HelloWorld)
 

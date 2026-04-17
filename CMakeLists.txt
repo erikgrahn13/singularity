@@ -5,6 +5,13 @@ set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 
 project(Singularity LANGUAGES C CXX)
 
+# Must be set before ANY targets are created (including via FetchContent).
+# Skia is a prebuilt /MT (release static) library, so everything must use /MT
+# to avoid RuntimeLibrary and _ITERATOR_DEBUG_LEVEL mismatches on Windows.
+if(WIN32)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(FetchContent)
 
@@ -42,8 +49,7 @@ target_compile_definitions(Hello-shared PUBLIC
 if(WIN32)
     add_executable(hello standalone/main.cpp)
     target_compile_definitions(hello PRIVATE NOMINMAX)
-    target_sources(hello PRIVATE standalone/ASIO.cpp)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+    target_sources(hello PRIVATE standalone/ASIO.cpp standalone/ISingularityAudio.cpp)
 
 
     target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib asio)

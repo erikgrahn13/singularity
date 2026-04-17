@@ -16,7 +16,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(skia)
 
 if(WIN32)
-    set(SKIA_LIB ${skia_SOURCE_DIR})
+    set(SKIA_LIB ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
 elseif(APPLE)
     set(SKIA_LIB ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a)
 else()
