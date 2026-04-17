@@ -9,21 +9,13 @@ include(SKIA)
 if(WIN32)
     include(ASIO)
 endif()
+include(DMON)
 include(VST3)
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 endif()
 
-FetchContent_Declare(
-    dmon
-    GIT_REPOSITORY https://github.com/septag/dmon.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/dmon
-)
-
-FetchContent_Populate(dmon)
 
 FetchContent_Declare(
     choc
