@@ -2,6 +2,12 @@
 #include <string>
 #include <unordered_map>
 
+struct ParameterChange
+{
+    int id;
+    double value;
+};
+
 enum class ParamType { Float, Bool, Stepped };
 
 struct Parameter {
