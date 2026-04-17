@@ -10,20 +10,13 @@ if(WIN32)
     include(ASIO)
 endif()
 include(DMON)
+include(CHOC)
+include(QUICKJS)
 include(VST3)
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 endif()
-
-FetchContent_Declare(
-    quickjs
-    URL https://github.com/quickjs-ng/quickjs/archive/refs/tags/v0.12.1.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/quickjs
-)
-
-FetchContent_MakeAvailable(quickjs)
 
 if(WIN32)
     add_executable(hello standalone/main.cpp)
