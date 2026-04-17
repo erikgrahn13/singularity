@@ -106,7 +106,7 @@ if(WIN32)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
-    target_sources(hello PRIVATE standalone/macos/CocoaWindow.mm)
+    target_sources(hello PRIVATE standalone/macos/CocoaWindow.mm standalone/coreAudio.cpp)
     target_link_libraries(hello PRIVATE
         ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
         "-framework AppKit"
@@ -194,11 +194,11 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
     target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
 endif()
 
-# target_link_libraries(hello PRIVATE 
-#     "-framework CoreAudio"
-#     "-framework CoreFoundation"
-#     "-framework AudioToolbox"
-# )
+target_link_libraries(hello PRIVATE 
+    "-framework CoreAudio"
+    "-framework CoreFoundation"
+    "-framework AudioToolbox"
+)
 
 add_subdirectory(vst3)
 

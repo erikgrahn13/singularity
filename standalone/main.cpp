@@ -254,33 +254,23 @@ int main()
             return settingsGraphics->getRenderData();
         });
 
-        // Secondary window — main loop already running, just start its timer
-        static_cast<Win32Window*>(settingsWin.get())->startTimer();
-
         settingsWin->setOnClose([&]() {
             settingsGraphics.reset();
             settingsWin.reset();
         });
     });
 
-    bool dirty = true; // render at least once on startup
-
-    win->setOnMouseDown([&](int x, int y, unsigned int /*btn*/) { graphics->onMouseDown((float)x, (float)y); dirty = true; });
-    win->setOnMouseUp  ([&](int x, int y, unsigned int /*btn*/) { graphics->onMouseUp  ((float)x, (float)y); dirty = true; });
-    win->setOnMouseMove([&](int x, int y)                       { graphics->onMouseMove((float)x, (float)y); dirty = true; });
+    win->setOnMouseDown([&](int x, int y, unsigned int /*btn*/) { graphics->onMouseDown((float)x, (float)y); });
+    win->setOnMouseUp  ([&](int x, int y, unsigned int /*btn*/) { graphics->onMouseUp  ((float)x, (float)y); });
+    win->setOnMouseMove([&](int x, int y)                       { graphics->onMouseMove((float)x, (float)y); });
 
     win->setOnFrame([&]() -> DrawingContent {
 #ifndef NDEBUG
         if (graphics->pendingReload.exchange(false)) {
             graphics->hotReload();
-            dirty = true;
         }
 #endif
-        if (!dirty)
-            return {}; // null — tells the window to skip InvalidateRect
-
         graphics->renderUI();
-        dirty = false;
         return graphics->getRenderData();
     });
 

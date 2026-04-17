@@ -81,7 +81,7 @@ public:
     void setOnMouseDown(std::function<void(int, int, unsigned int)> cb) override { m_onMouseDown = std::move(cb); }
     void setOnMouseUp(std::function<void(int, int, unsigned int)> cb)   override { m_onMouseUp   = std::move(cb); }
     void setOnMouseMove(std::function<void(int, int)> cb)               override { m_onMouseMove = std::move(cb); }
-    void setOnFrame(std::function<DrawingContent()> cb)                 override { m_onFrame     = std::move(cb); }
+    void setOnFrame(std::function<DrawingContent()> cb) override { m_onFrame = std::move(cb); startTimer(); }
     void setOnClose(std::function<void()> cb)                           override { m_onClose     = std::move(cb); }
 
     HWND hwnd() const { return m_hwnd; }

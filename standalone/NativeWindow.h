@@ -25,7 +25,7 @@ inline std::unique_ptr<IWindow> createNativeWindow(const std::string& title,
     HWND ownerHwnd = owner ? static_cast<Win32Window*>(owner)->hwnd() : nullptr;
     return std::make_unique<Win32Window>(title, width, height, ownerHwnd);
 #elif defined(__APPLE__)
-    return std::make_unique<CocoaWindow>(title, width, height);
+    return std::make_unique<CocoaWindow>(title, width, height, owner);
 #else
 #  ifdef HAS_WAYLAND
     if (std::getenv("WAYLAND_DISPLAY"))
