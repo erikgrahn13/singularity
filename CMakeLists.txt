@@ -16,19 +16,6 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 endif()
 
-
-FetchContent_Declare(
-    choc
-    GIT_REPOSITORY https://github.com/Tracktion/choc.git
-    GIT_TAG main
-    GIT_SHALLOW TRUE
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/choc
-)
-FetchContent_MakeAvailable(choc)
-
-
-
-
 FetchContent_Declare(
     quickjs
     URL https://github.com/quickjs-ng/quickjs/archive/refs/tags/v0.12.1.tar.gz
