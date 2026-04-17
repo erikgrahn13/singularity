@@ -50,13 +50,13 @@ static JSModuleDef *js_module_loader_custom(JSContext *ctx, const char *module_n
     return js_module_loader(ctx, module_name, opaque, attributes);
 }
 
-std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterProvider &parameterStore)
+std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterProvider &parameterStore, bool standalone)
 {
-    return std::make_unique<QuickJSEngine>(renderer, parameterStore);
+    return std::make_unique<QuickJSEngine>(renderer, parameterStore, standalone);
 }
 
-QuickJSEngine::QuickJSEngine(IRenderer *renderer, IParameterProvider &parameterStore)
- : currentRenderer(renderer), parameterStore(parameterStore)
+QuickJSEngine::QuickJSEngine(IRenderer *renderer, IParameterProvider &parameterStore, bool standalone)
+ : currentRenderer(renderer), parameterStore(parameterStore), standalone(standalone)
 {
     setupJS();
 }
@@ -167,7 +167,7 @@ void QuickJSEngine::setupJS()
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "shadowOffsetY"), JS_UNDEFINED, JS_NewCFunction(ctx, js_shadowOffsetY, "shadowOffsetY", 1), JS_PROP_CONFIGURABLE);
     
     // standalone settings window
-    JS_SetPropertyStr(ctx, global_obj, "STANDALONE", JS_NewBool(ctx, true));
+    JS_SetPropertyStr(ctx, global_obj, "STANDALONE", JS_NewBool(ctx, standalone));
     JS_SetPropertyStr(ctx, global_obj, "openSettingsWindow", JS_NewCFunction(ctx, js_openSettingsWindow, "openSettingsWindow", 1));
 
     JSValue canvasObj = JS_NewObject(ctx);

@@ -10,6 +10,9 @@
 
 class Win32Window : public IWindow {
 public:
+    Win32Window(const std::string& title, int width, int height, void* parent, bool childMode)
+        : Win32Window(title, width, height, static_cast<HWND>(parent), childMode) {}
+
     Win32Window(const std::string& title, int width, int height, HWND parent = nullptr, bool childMode = false)
         : m_width(width), m_height(height)
     {
@@ -85,6 +88,7 @@ public:
     void setOnClose(std::function<void()> cb)                           override { m_onClose     = std::move(cb); }
 
     HWND hwnd() const { return m_hwnd; }
+    void* nativeHandle() const override { return m_hwnd; }
 
 private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {

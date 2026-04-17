@@ -10,10 +10,11 @@ struct CocoaWindowImpl;
 
 class CocoaWindow : public IWindow {
 public:
-    // Standalone: creates its own NSWindow
-    CocoaWindow(const std::string& title, int width, int height, IWindow* owner = nullptr);
-    // Embedded (plugin): attaches SingularityContentView as a subview of parentNSView
-    CocoaWindow(int width, int height, void* parentNSView);
+    // parentNSView != nullptr  → embedded/plugin mode (subview of host NSView)
+    // ownerNSWindow != nullptr → floating child window above owner (e.g. settings)
+    // both nullptr             → standalone top-level window
+    CocoaWindow(const std::string& title, int width, int height,
+                void* parentNSView = nullptr, void* ownerNSWindow = nullptr);
     ~CocoaWindow() override;
 
     CocoaWindow(const CocoaWindow&) = delete;
@@ -29,6 +30,7 @@ public:
     void setOnMouseMove(std::function<void(int, int)> cb)               override;
     void setOnFrame    (std::function<DrawingContent()> cb)             override;
     void setOnClose    (std::function<void()> cb)                       override;
+    void* nativeHandle() const override;
 
 private:
     std::unique_ptr<CocoaWindowImpl> m_impl;

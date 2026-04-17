@@ -11,18 +11,21 @@
 // Factory function declarations (C++-only, Swift never sees .cpp)
 std::unique_ptr<IRenderer> createRenderer(int width, int height);
 std::unique_ptr<IFileWatcher> createFileWatcher(const std::string &directory, std::function<void(const std::string &filePath)> onChange);
-std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterProvider &parameterStore);
+std::unique_ptr<IJSEngine> createJSEngine(IRenderer *renderer, IParameterProvider &parameterStore, bool standalone);
 
-SingularityGraphics::SingularityGraphics(int width, int height, IParameterProvider &parameterProvider)
+SingularityGraphics::SingularityGraphics(int width, int height, IParameterProvider &parameterProvider,
+                                         bool standalone, const std::string& scriptPath)
 : parameterProvider(parameterProvider)
 {
     renderer = createRenderer(width, height);
-    jsEngine = createJSEngine(renderer.get(), parameterProvider);
+    jsEngine = createJSEngine(renderer.get(), parameterProvider, standalone);
 
-    // TODO: fix this function
     fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [this](const std::string &filePath){
         pendingReload = true;
     });
+
+    if (!scriptPath.empty())
+        jsEngine->loadScript(scriptPath);
 }
 
 DrawingContent SingularityGraphics::getRenderData()

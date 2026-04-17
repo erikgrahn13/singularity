@@ -17,8 +17,8 @@ public:
     double getParameter(int id) const override { return _controller->getParamNormalized(id); }
     void setParameter(int id, double value) override
     {
-        _controller->setParamNormalized(id, value);
         _controller->beginEdit(id);
+        _controller->setParamNormalized(id, value);
         _controller->performEdit(id, value);
         _controller->endEdit(id);
     }

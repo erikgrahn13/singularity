@@ -225,8 +225,7 @@ int main()
 
     constexpr int W = 800, H = 600;
 
-    auto graphics = std::make_unique<SingularityGraphics>(W, H, params);
-    graphics->loadScript(JS_SCRIPTS_DIR "/hello.js");
+    auto graphics = std::make_unique<SingularityGraphics>(W, H, params, /*standalone=*/true);
 
     auto win = createNativeWindow("Singularity", W, H);
 
@@ -238,10 +237,9 @@ int main()
     graphics->setOnOpenSettings([&]() {
         if (settingsWin) return; // already open
 
-        settingsGraphics = std::make_unique<SingularityGraphics>(400, 300, params);
-        settingsGraphics->loadScript(JS_SCRIPTS_DIR "/widgets/settings.js");
+        settingsGraphics = std::make_unique<SingularityGraphics>(400, 300, params, true, std::string(JS_SCRIPTS_DIR) + "/widgets/settings.js");
 
-        settingsWin = createNativeWindow("Settings", 400, 300, win.get());
+        settingsWin = createNativeWindow("Settings", 400, 300, nullptr, win.get());
         settingsDirty = true;
 
         settingsWin->setOnMouseDown([&](int x, int y, unsigned int) { settingsGraphics->onMouseDown((float)x, (float)y); settingsDirty = true; });

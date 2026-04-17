@@ -8,7 +8,7 @@
 
 class QuickJSEngine : public IJSEngine {
     public:
-    QuickJSEngine(IRenderer *renderer, IParameterProvider &parameterStore);
+    QuickJSEngine(IRenderer *renderer, IParameterProvider &parameterStore, bool standalone = false);
     ~QuickJSEngine();
 
     void hotReload() override;
@@ -88,6 +88,7 @@ class QuickJSEngine : public IJSEngine {
     JSClassID gradientClassId = 0;
     IRenderer* currentRenderer = nullptr;
     IParameterProvider& parameterStore;
+    bool standalone = false;
     std::string currentScriptPath;
     std::unordered_map<std::string, std::vector<JSValue>> eventListeners;
     std::function<void()> onOpenSettings;

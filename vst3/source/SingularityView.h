@@ -43,7 +43,7 @@ private:
     // Platform window + graphics — created in attached(), destroyed in removed()
     std::unique_ptr<IWindow>           m_win;
     std::unique_ptr<SingularityGraphics> m_graphics;
-    bool m_dirty = true;
+    bool m_dirty = true; // used on Win32 to skip redundant repaints
 };
 
 } // namespace Steinberg

@@ -19,13 +19,17 @@
 
 inline std::unique_ptr<IWindow> createNativeWindow(const std::string& title,
                                                     int width, int height,
+                                                    void* parentHandle = nullptr,
                                                     IWindow* owner = nullptr)
 {
 #if defined(_WIN32)
-    HWND ownerHwnd = owner ? static_cast<Win32Window*>(owner)->hwnd() : nullptr;
-    return std::make_unique<Win32Window>(title, width, height, ownerHwnd);
+    void* ownerHandle = owner ? owner->nativeHandle() : nullptr;
+    bool embedded = (parentHandle != nullptr);
+    void* parent = embedded ? parentHandle : ownerHandle;
+    return std::make_unique<Win32Window>(title, width, height, parent, embedded);
 #elif defined(__APPLE__)
-    return std::make_unique<CocoaWindow>(title, width, height, owner);
+    void* ownerHandle = owner ? owner->nativeHandle() : nullptr;
+    return std::make_unique<CocoaWindow>(title, width, height, parentHandle, ownerHandle);
 #else
 #  ifdef HAS_WAYLAND
     if (std::getenv("WAYLAND_DISPLAY"))

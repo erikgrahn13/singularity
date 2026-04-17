@@ -1,10 +1,5 @@
 #include "SingularityView.h"
-
-#if _WIN32
-#  include "standalone/windows/Win32Window.h"
-#elif __APPLE__
-#  include "macos/CocoaWindow.h"
-#endif
+#include "platform/NativeWindow.h"
 
 namespace Steinberg {
 
@@ -29,39 +24,22 @@ tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 tresult PLUGIN_API SingularityView::attached(void* parent, FIDString type)
 {
     fprintf(stderr, "[SingularityView] attached: type=%s parent=%p\n", type, parent);
-#if _WIN32
-    auto* win = new Win32Window("", m_width, m_height, static_cast<HWND>(parent), true);
-    m_win.reset(win);
 
+    m_win = createNativeWindow("", m_width, m_height, parent);
     m_graphics = std::make_unique<SingularityGraphics>(m_width, m_height, m_params);
-    m_graphics->loadScript(std::string(JS_SCRIPTS_DIR) + "/hello.js");
-    m_dirty = true;
-
-    m_win->setOnMouseDown([&](int x, int y, unsigned int) { m_graphics->onMouseDown((float)x, (float)y); m_dirty = true; });
-    m_win->setOnMouseUp  ([&](int x, int y, unsigned int) { m_graphics->onMouseUp  ((float)x, (float)y); m_dirty = true; });
-    m_win->setOnMouseMove([&](int x, int y)               { m_graphics->onMouseMove((float)x, (float)y); m_dirty = true; });
-    m_win->setOnFrame([&]() -> DrawingContent {
-        if (!m_dirty) return {};
-        m_graphics->renderUI();
-        m_dirty = false;
-        return m_graphics->getRenderData();
-    });
-
-    win->startTimer();
-#elif __APPLE__
-    m_win = std::make_unique<CocoaWindow>(m_width, m_height, parent);
-
-    m_graphics = std::make_unique<SingularityGraphics>(m_width, m_height, m_params);
-    m_graphics->loadScript(std::string(JS_SCRIPTS_DIR) + "/hello.js");
 
     m_win->setOnMouseDown([&](int x, int y, unsigned int) { m_graphics->onMouseDown((float)x, (float)y); });
     m_win->setOnMouseUp  ([&](int x, int y, unsigned int) { m_graphics->onMouseUp  ((float)x, (float)y); });
     m_win->setOnMouseMove([&](int x, int y)               { m_graphics->onMouseMove((float)x, (float)y); });
     m_win->setOnFrame([&]() -> DrawingContent {
+#ifndef NDEBUG
+        if (m_graphics->pendingReload.exchange(false))
+            m_graphics->hotReload();
+#endif
         m_graphics->renderUI();
         return m_graphics->getRenderData();
     });
-#endif
+
     return kResultOk;
 }
 

@@ -48,7 +48,7 @@ class SkiaRenderer : public IRenderer {
     };
 
     SkiaRenderer(int width, int height);
-    void renderBackground(float t);
+    void renderBackground(float t) override;
 
     
     void clear() override;
@@ -70,8 +70,8 @@ class SkiaRenderer : public IRenderer {
     void setShadowBlur(float blur) override;
     void setShadowOffsetX(float offsetX) override;
     void setShadowOffsetY(float offsetY) override;
-    int createLinearGradient(float x0, float y0, float x1, float y1);
-    int createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1);
+    int createLinearGradient(float x0, float y0, float x1, float y1) override;
+    int createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1) override;
     void addColorStop(int id, float offset, const std::string& color) override;
     void setFillStyleGradient(int i) override;
 

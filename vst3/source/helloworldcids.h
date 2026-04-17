@@ -12,10 +12,9 @@ namespace Steinberg {
 //------------------------------------------------------------------------
 enum HelloWorldParams : Vst::ParamID
 {
-	kBypassId = 100,
-
-	kParamVolId = 102,
-	kParamOnId = 1000
+	kBypassId    = 7,
+	kParamVolId  = 13,
+	kParamOnId   = 15
 };
 
 //------------------------------------------------------------------------

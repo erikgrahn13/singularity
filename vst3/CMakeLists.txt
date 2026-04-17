@@ -8,7 +8,7 @@ project(HelloWorld
     DESCRIPTION "HelloWorld VST 3 Plug-in"
 )
 option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
-option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" OFF)
+option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" ON)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
 option(JS_HOT_RELOAD "Watch and hot-reload JS scripts at runtime" ON)
 # option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
@@ -28,10 +28,6 @@ smtg_add_vst3plugin(HelloWorld
     source/helloworldentry.cpp
     source/SingularityView.h
     source/SingularityView.cpp
-    ${CMAKE_SOURCE_DIR}/SingularityGraphics2.cpp
-    ${CMAKE_SOURCE_DIR}/SkiaRenderer.cpp
-    ${CMAKE_SOURCE_DIR}/QuickJSEngine.cpp
-    ${CMAKE_SOURCE_DIR}/chocFileWatcher.cpp
 )
 
 if(APPLE)
@@ -43,41 +39,30 @@ message("ERIK1 ${CMAKE_SOURCE_DIR}")
 target_link_libraries(HelloWorld
     PRIVATE
         sdk
-        qjs-libc
-        choc::choc
+        Hello-shared
 )
 
 if(WIN32)
-    target_link_libraries(HelloWorld PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
 elseif(APPLE)
     target_link_libraries(HelloWorld PRIVATE
-        ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
+        # ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
         "-framework AppKit"
-        "-framework QuartzCore"
-        "-framework CoreGraphics"
-        "-framework CoreText"
-        "-framework CoreFoundation"
-        "-framework ImageIO"
-        "-framework CoreServices"
     )
 endif()
 
 target_include_directories(HelloWorld PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${skia_SOURCE_DIR}/include
-    ${quickjs_SOURCE_DIR}
-    ${dmon_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/platform
+    ${CMAKE_SOURCE_DIR}
 )
 
-target_compile_definitions(HelloWorld PRIVATE
-    JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
-    NOMINMAX
-)
+# target_compile_definitions(HelloWorld PRIVATE
+#     JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
+#     NOMINMAX
+# )
 
-if(JS_HOT_RELOAD)
-    target_compile_definitions(HelloWorld PRIVATE JS_HOT_RELOAD)
-endif()
+# if(JS_HOT_RELOAD)
+#     target_compile_definitions(HelloWorld PRIVATE JS_HOT_RELOAD)
+# endif()
 
 target_compile_features(HelloWorld PRIVATE cxx_std_23)
 # if(MSVC)
@@ -91,6 +76,7 @@ if(SMTG_MAC)
         BUNDLE_IDENTIFIER net.steinberg.hello-world
         COMPANY_NAME "Steinberg Media Technologies GmbH"
     )
+    message("erik123 ${BUILT_PRODUCT_DIR}")
     smtg_target_set_debug_executable(HelloWorld
         "/Applications/VST3PluginTestHost.app"
         "--pluginfolder;$(BUILT_PRODUCTS_DIR)"

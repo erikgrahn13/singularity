@@ -1,8 +1,9 @@
-#include "tmpshader.h"
+// #include "tmpshader.h"
 #include "SkiaRenderer.h"
 #include "include/core/SkFontMgr.h"
 #include "include/core/SkCanvas.h"
 #include "include/core/SkFont.h"
+#include "include/core/SkData.h"
 #include "include/core/SkFontMetrics.h"
 #include "include/utils/SkTextUtils.h"
 #include "include/effects/SkImageFilters.h"
@@ -534,5 +535,5 @@ std::unique_ptr<IRenderer> createRenderer(int width, int height)
 void SkiaRenderer::renderBackground(float t)
 {
     SkCanvas* canvas = skiaSurface->getCanvas();
-    DrawMetaballsBackground(canvas, skiaSurface->width(), skiaSurface->height(), t);
+    // DrawMetaballsBackground(canvas, skiaSurface->width(), skiaSurface->height(), t);
 }
