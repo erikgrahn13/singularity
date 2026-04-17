@@ -2,6 +2,8 @@
 
 #if _WIN32
 #  include "standalone/windows/Win32Window.h"
+#elif __APPLE__
+#  include "macos/CocoaWindow.h"
 #endif
 
 namespace Steinberg {
@@ -13,6 +15,7 @@ SingularityView::~SingularityView() { removed(); }
 
 tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 {
+    fprintf(stderr, "[SingularityView] isPlatformTypeSupported: %s\n", type);
 #if _WIN32
     if (strcmp(type, kPlatformTypeHWND) == 0) return kResultTrue;
 #elif __APPLE__
@@ -23,8 +26,9 @@ tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
     return kResultFalse;
 }
 
-tresult PLUGIN_API SingularityView::attached(void* parent, FIDString /*type*/)
+tresult PLUGIN_API SingularityView::attached(void* parent, FIDString type)
 {
+    fprintf(stderr, "[SingularityView] attached: type=%s parent=%p\n", type, parent);
 #if _WIN32
     auto* win = new Win32Window("", m_width, m_height, static_cast<HWND>(parent), true);
     m_win.reset(win);
@@ -44,6 +48,19 @@ tresult PLUGIN_API SingularityView::attached(void* parent, FIDString /*type*/)
     });
 
     win->startTimer();
+#elif __APPLE__
+    m_win = std::make_unique<CocoaWindow>(m_width, m_height, parent);
+
+    m_graphics = std::make_unique<SingularityGraphics>(m_width, m_height, m_params);
+    m_graphics->loadScript(std::string(JS_SCRIPTS_DIR) + "/hello.js");
+
+    m_win->setOnMouseDown([&](int x, int y, unsigned int) { m_graphics->onMouseDown((float)x, (float)y); });
+    m_win->setOnMouseUp  ([&](int x, int y, unsigned int) { m_graphics->onMouseUp  ((float)x, (float)y); });
+    m_win->setOnMouseMove([&](int x, int y)               { m_graphics->onMouseMove((float)x, (float)y); });
+    m_win->setOnFrame([&]() -> DrawingContent {
+        m_graphics->renderUI();
+        return m_graphics->getRenderData();
+    });
 #endif
     return kResultOk;
 }
@@ -57,6 +74,7 @@ tresult PLUGIN_API SingularityView::removed()
 
 tresult PLUGIN_API SingularityView::getSize(ViewRect* rect)
 {
+    fprintf(stderr, "[SingularityView] getSize: %dx%d\n", m_width, m_height);
     if (!rect) return kResultFalse;
     rect->left = 0; rect->top = 0; rect->right = m_width; rect->bottom = m_height;
     return kResultOk;

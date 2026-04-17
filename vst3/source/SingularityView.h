@@ -3,7 +3,7 @@
 #include "pluginterfaces/gui/iplugview.h"
 #include "SingularityGraphics2.h"
 #include "IParameterProvider.h"
-#include "../../standalone/IWindow.h"
+#include "IWindow.h"
 #include <memory>
 
 namespace Steinberg {

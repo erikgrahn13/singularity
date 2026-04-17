@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "")
+# Prebuilt libraries (Skia, QuickJS) are arm64-only — restrict to arm64
+set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 
 project(HelloWorld
     VERSION 1.0.0.0
@@ -32,6 +34,10 @@ smtg_add_vst3plugin(HelloWorld
     ${CMAKE_SOURCE_DIR}/chocFileWatcher.cpp
 )
 
+if(APPLE)
+    target_sources(HelloWorld PRIVATE ${CMAKE_SOURCE_DIR}/platform/macos/CocoaWindow.mm)
+endif()
+
 message("ERIK1 ${CMAKE_SOURCE_DIR}")
 
 target_link_libraries(HelloWorld
@@ -39,14 +45,29 @@ target_link_libraries(HelloWorld
         sdk
         qjs-libc
         choc::choc
-        ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib
 )
+
+if(WIN32)
+    target_link_libraries(HelloWorld PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib)
+elseif(APPLE)
+    target_link_libraries(HelloWorld PRIVATE
+        ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
+        "-framework AppKit"
+        "-framework QuartzCore"
+        "-framework CoreGraphics"
+        "-framework CoreText"
+        "-framework CoreFoundation"
+        "-framework ImageIO"
+        "-framework CoreServices"
+    )
+endif()
 
 target_include_directories(HelloWorld PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${skia_SOURCE_DIR}/include
     ${quickjs_SOURCE_DIR}
     ${dmon_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/platform
 )
 
 target_compile_definitions(HelloWorld PRIVATE

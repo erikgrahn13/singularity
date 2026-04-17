@@ -5,59 +5,33 @@ project(Singularity LANGUAGES C CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(FetchContent)
 
+include(SKIA)
 include(VST3)
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 endif()
 
-if(WIN32)
-    set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-win-x64-gpu-release.zip)
-
-    FetchContent_Declare(
-        asiosdk
-        URL https://www.steinberg.net/asiosdk
-        SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/asiosdk
-    )
-
-    FetchContent_MakeAvailable(asiosdk)
-
-    add_library(asio STATIC
-        ${asiosdk_SOURCE_DIR}/common/asio.cpp
-        ${asiosdk_SOURCE_DIR}/host/asiodrivers.cpp
-        ${asiosdk_SOURCE_DIR}/host/pc/asiolist.cpp
-    )
-    target_include_directories(asio PUBLIC 
-        ${asiosdk_SOURCE_DIR}/common
-        ${asiosdk_SOURCE_DIR}/host
-        ${asiosdk_SOURCE_DIR}/host/pc    
-    )
 
 
-elseif(APPLE)
-    set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-mac-universal-gpu-release.zip)
-else()
-    set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-linux-x64-gpu-release.zip)
-endif()
+    # FetchContent_Declare(
+    #     asiosdk
+    #     URL https://www.steinberg.net/asiosdk
+    #     SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/asiosdk
+    # )
 
-# FetchContent_Declare(
-#     sdl
-#     URL https://github.com/libsdl-org/SDL/releases/download/release-3.4.2/SDL3-3.4.2.tar.gz
-#     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-# )
-# set(SDL_AUDIO         OFF CACHE BOOL "" FORCE)
-# set(SDL_JOYSTICK      OFF CACHE BOOL "" FORCE)
-# set(SDL_HAPTIC        OFF CACHE BOOL "" FORCE)
-# set(SDL_HIDAPI        OFF CACHE BOOL "" FORCE)
-# set(SDL_POWER         OFF CACHE BOOL "" FORCE)
-# set(SDL_RENDER        ON CACHE BOOL "" FORCE)
-# set(SDL_SENSOR        OFF CACHE BOOL "" FORCE)
-# set(SDL_CAMERA        OFF CACHE BOOL "" FORCE)
-# set(SDL_DIALOG        OFF CACHE BOOL "" FORCE)
-# set(SDL_GPU           OFF CACHE BOOL "" FORCE)
-# set(SDL_STATIC        ON CACHE BOOL "" FORCE)
-# set(SDL_SHARED        OFF CACHE BOOL "" FORCE)
-# FetchContent_MakeAvailable(sdl)
+    # FetchContent_MakeAvailable(asiosdk)
+
+    # add_library(asio STATIC
+    #     ${asiosdk_SOURCE_DIR}/common/asio.cpp
+    #     ${asiosdk_SOURCE_DIR}/host/asiodrivers.cpp
+    #     ${asiosdk_SOURCE_DIR}/host/pc/asiolist.cpp
+    # )
+    # target_include_directories(asio PUBLIC 
+    #     ${asiosdk_SOURCE_DIR}/common
+    #     ${asiosdk_SOURCE_DIR}/host
+    #     ${asiosdk_SOURCE_DIR}/host/pc    
+    # )
 
 FetchContent_Declare(
     dmon
@@ -79,14 +53,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(choc)
 
 
-FetchContent_Declare(
-    skia
-    URL ${SKIA_URL}
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia
-)
 
-FetchContent_MakeAvailable(skia)
 
 FetchContent_Declare(
     quickjs
@@ -106,7 +73,7 @@ if(WIN32)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)
-    target_sources(hello PRIVATE standalone/macos/CocoaWindow.mm standalone/coreAudio.cpp)
+    target_sources(hello PRIVATE platform/macos/CocoaWindow.mm standalone/coreAudio.cpp)
     target_link_libraries(hello PRIVATE
         ${skia_SOURCE_DIR}/mac-gpu/lib/Release/libskia.a
         "-framework AppKit"
@@ -160,6 +127,7 @@ target_include_directories(hello PRIVATE
     ${skia_SOURCE_DIR}/include
     ${quickjs_SOURCE_DIR}
     ${dmon_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/platform
 )
 
 target_compile_definitions(hello PRIVATE
