@@ -5,7 +5,7 @@ set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 
 function(singularity_create_plugin target)
-    set(oneValueArgs PACKAGE_NAME PLUGIN_WIDTH PLUGIN_HEIGHT)
+    set(oneValueArgs PACKAGE_NAME PLUGIN_WIDTH PLUGIN_HEIGHT VENDOR URL EMAIL PLUGIN_CATEGORY)
     set(multiValueArgs SOURCES UI FORMATS)
 
     # Parse the arguments
@@ -15,7 +15,7 @@ function(singularity_create_plugin target)
     # If PACKAGE_NAME is not provided, use the target name as the default
     set(pkg_name "${PARAMS_PACKAGE_NAME}")
 
-        if(NOT pkg_name)
+    if(NOT pkg_name)
         set(pkg_name ${target})
     endif()
 
@@ -25,6 +25,21 @@ function(singularity_create_plugin target)
     set(FORMATS "${PARAMS_FORMATS}")
     set(PLUGIN_WIDTH ${PARAMS_PLUGIN_WIDTH})
     set(PLUGIN_HEIGHT ${PARAMS_PLUGIN_HEIGHT})
+    set(VENDOR ${PARAMS_VENDOR})
+    set(URL ${PARAMS_URL})
+    set(EMAIL ${PARAMS_EMAIL})
+
+    if(NOT VENDOR)
+        set(VENDOR "Singularity Plugins")
+    endif()
+
+    if(NOT URL)
+        set(URL "https://github.com/erikgrahn13/singularity")
+    endif()
+
+    if(NOT EMAIL)
+        set(EMAIL "erikgrahn13@gmail.com")
+    endif()
 
     if(NOT SOURCES AND NOT PARAMS_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "No sources provided for target '${target}'. You must provide at least one source file.")
@@ -98,17 +113,56 @@ function(singularity_create_plugin target)
             # set(CMAKE_OSX_DEPLOYMENT_TARGET "12.7" CACHE STRING "Minimum OS X deployment version" FORCE)
             set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "")
 
+            # Generate stable UIDs from plugin target name
+            set(_uid_seed "${target}")
+            set(PLUGIN_CATEGORY "${PARAMS_PLUGIN_CATEGORY}")
+            if(NOT PLUGIN_CATEGORY)
+                set(PLUGIN_CATEGORY "Fx")
+            endif()
+
+            string(MD5 _proc_hash "${_uid_seed}_processor")
+            string(MD5 _ctrl_hash "${_uid_seed}_controller")
+
+            string(SUBSTRING "${_proc_hash}" 0  8 PROC_UID_0)
+            string(SUBSTRING "${_proc_hash}" 8  8 PROC_UID_1)
+            string(SUBSTRING "${_proc_hash}" 16 8 PROC_UID_2)
+            string(SUBSTRING "${_proc_hash}" 24 8 PROC_UID_3)
+            string(SUBSTRING "${_ctrl_hash}" 0  8 CTRL_UID_0)
+            string(SUBSTRING "${_ctrl_hash}" 8  8 CTRL_UID_1)
+            string(SUBSTRING "${_ctrl_hash}" 16 8 CTRL_UID_2)
+            string(SUBSTRING "${_ctrl_hash}" 24 8 CTRL_UID_3)
+
+            string(TOUPPER "${PROC_UID_0}" PROC_UID_0)
+            string(TOUPPER "${PROC_UID_1}" PROC_UID_1)
+            string(TOUPPER "${PROC_UID_2}" PROC_UID_2)
+            string(TOUPPER "${PROC_UID_3}" PROC_UID_3)
+            string(TOUPPER "${CTRL_UID_0}" CTRL_UID_0)
+            string(TOUPPER "${CTRL_UID_1}" CTRL_UID_1)
+            string(TOUPPER "${CTRL_UID_2}" CTRL_UID_2)
+            string(TOUPPER "${CTRL_UID_3}" CTRL_UID_3)
+
+            configure_file(
+                "${SINGULARITY_ROOT_DIR}/vst3/vst3plugincids.h.in"
+                "${CMAKE_CURRENT_BINARY_DIR}/plugincids.h"
+            )
+
             smtg_add_vst3plugin(${target}_VST3
                 PACKAGE_NAME ${target}
-                ${SINGULARITY_ROOT_DIR}/vst3/version.h
-                ${SINGULARITY_ROOT_DIR}/vst3/helloworldcids.h
-                ${SINGULARITY_ROOT_DIR}/vst3/helloworldprocessor.h
-                ${SINGULARITY_ROOT_DIR}/vst3/helloworldprocessor.cpp
-                ${SINGULARITY_ROOT_DIR}/vst3/helloworldcontroller.h
-                ${SINGULARITY_ROOT_DIR}/vst3/helloworldcontroller.cpp
-                ${SINGULARITY_ROOT_DIR}/vst3/helloworldentry.cpp
+                ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
+                ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.h
+                ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.cpp
+                ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.h
+                ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
+                ${SINGULARITY_ROOT_DIR}/vst3/vst3entry.cpp
                 ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.h
                 ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
+            )
+
+            target_compile_definitions(${target}_VST3 PRIVATE
+                PLUGIN_NAME="${target}"
+                VENDOR="${VENDOR}"
+                URL="${URL}"
+                EMAIL="${EMAIL}"
             )
 
             if(APPLE)
@@ -131,6 +185,7 @@ function(singularity_create_plugin target)
             target_include_directories(${target}_VST3 PRIVATE
                 ${SINGULARITY_ROOT_DIR}/platform
                 ${SINGULARITY_ROOT_DIR}
+                ${CMAKE_CURRENT_BINARY_DIR}
             )
 
 

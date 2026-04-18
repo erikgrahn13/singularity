@@ -1,8 +1,4 @@
-//------------------------------------------------------------------------
-// Copyright(c) 2022 Steinberg Media Technologies GmbH.
-//------------------------------------------------------------------------
-
-#include "helloworldcontroller.h"
+#include "vst3controller.h"
 #include "plugincids.h"
 #include "SingularityView.h"
 #include "base/source/fstreamer.h"

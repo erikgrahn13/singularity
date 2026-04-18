@@ -5,10 +5,6 @@ set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 
 project(Singularity LANGUAGES C CXX)
 
-# set(SINGULARITY_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-
-
-
 # Must be set before ANY targets are created (including via FetchContent).
 # Skia is a prebuilt /MT (release static) library, so everything must use /MT
 # to avoid RuntimeLibrary and _ITERATOR_DEBUG_LEVEL mismatches on Windows.
@@ -32,37 +28,15 @@ set(SINGULARITY_SKIA_INCLUDE_DIR "${skia_SOURCE_DIR}/include" CACHE INTERNAL "")
 set(SINGULARITY_QUICKJS_DIR "${quickjs_SOURCE_DIR}" CACHE INTERNAL "")
 set(SINGULARITY_SKIA_LIB "${SKIA_LIB}" CACHE INTERNAL "")
 
-
 include(SingularityPlugin)
-# add_library(Hello-shared STATIC
-#     SingularityGraphics2.cpp
-#     chocFileWatcher.cpp
-#     SkiaRenderer.cpp
-#     QuickJSEngine.cpp
-# )
-
-# target_link_libraries(Hello-shared PRIVATE 
-#     qjs-libc
-#     choc::choc
-#     ${SKIA_LIB}
-# )
-
-# target_include_directories(Hello-shared PRIVATE
-#     ${skia_SOURCE_DIR}/include
-#     ${quickjs_SOURCE_DIR}
-# )
-
-# target_compile_definitions(Hello-shared PUBLIC
-#     JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
-# )
 
 if(WIN32)
-    add_executable(hello standalone/main.cpp)
-    target_compile_definitions(hello PRIVATE NOMINMAX)
-    target_sources(hello PRIVATE standalone/ASIO.cpp standalone/ISingularityAudio.cpp)
+    # add_executable(hello standalone/main.cpp)
+    # target_compile_definitions(hello PRIVATE NOMINMAX)
+    # target_sources(hello PRIVATE standalone/ASIO.cpp standalone/ISingularityAudio.cpp)
 
 
-    target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib asio)
+    # target_link_libraries(hello PRIVATE ${skia_SOURCE_DIR}/win-gpu/lib/Release/x64/skia.lib asio)
     # set_property(TARGET hello PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 elseif(APPLE)
     add_executable(hello MACOSX_BUNDLE standalone/main.cpp)

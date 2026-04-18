@@ -1,15 +1,11 @@
-//------------------------------------------------------------------------
-// Copyright(c) 2022 Steinberg Media Technologies GmbH.
-//------------------------------------------------------------------------
-
-#include "helloworldprocessor.h"
-#include "helloworldcontroller.h"
-#include "helloworldcids.h"
-#include "version.h"
+#include "vst3processor.h"
+#include "vst3controller.h"
+#include "plugincids.h"
+#include "vst3version.h"
 
 #include "public.sdk/source/main/pluginfactory.h"
 
-#define stringPluginName "HelloWorld"
+#define stringPluginName PLUGIN_NAME
 
 using namespace Steinberg::Vst;
 using namespace Steinberg;
@@ -21,9 +17,9 @@ using namespace Steinberg;
 // GetPluginFactory function!
 //------------------------------------------------------------------------
 
-BEGIN_FACTORY_DEF ("Steinberg Media Technologies", 
-			       "www.steinberg.net", 
-			       "mailto:info@steinberg.de")
+BEGIN_FACTORY_DEF (VENDOR, 
+			       URL, 
+			       EMAIL)
 
 	//---First Plug-in included in this factory-------
 	// its kVstAudioEffectClass component

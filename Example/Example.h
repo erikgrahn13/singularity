@@ -6,7 +6,6 @@
 class ExamplePlugin : public SingularityPlugin
 {
 public:
-    ExamplePlugin();
     void process(std::span<const float* const> inputs,
                  std::span<float* const> outputs,
                  int numSamples,

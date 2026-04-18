@@ -16,6 +16,7 @@ public:
                          IParameterChanges& paramChanges) {}
 };
 
+void registerParameters();
 void createParameter(int id, const char* name, ParamType type,
                      double defaultValue, double minValue, double maxValue);
 std::unique_ptr<SingularityPlugin> createPlugin();  

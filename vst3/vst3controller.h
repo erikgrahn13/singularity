@@ -6,6 +6,7 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "IParameterProvider.h"
+#include <limits>
 
 namespace Steinberg {
 
@@ -14,7 +15,11 @@ class VST3ParameterAdapter : public IParameterProvider
 {
 public:
     VST3ParameterAdapter(Vst::EditController* c) : _controller(c) {}
-    double getParameter(int id) const override { return _controller->getParamNormalized(id); }
+    double getParameter(int id) const override {
+        if (!_controller->getParameterObject(id))
+            return std::numeric_limits<double>::quiet_NaN();
+        return _controller->getParamNormalized(id);
+    }
     void setParameter(int id, double value) override
     {
         _controller->beginEdit(id);
@@ -67,6 +72,14 @@ public:
     DELEGATE_REFCOUNT (EditController)
 
 //------------------------------------------------------------------------
+    void addSingularityParameter(int id, const char* name, double defaultValue)
+    {
+        Vst::String128 title{};
+        for (int i = 0; name[i] && i < 127; ++i) title[i] = name[i];
+        parameters.addParameter(title, nullptr, 0, defaultValue,
+            Vst::ParameterInfo::kCanAutomate, id);
+    }
+
 protected:
 
 private:

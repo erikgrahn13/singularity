@@ -46,6 +46,7 @@ class ISingularityAudio
     ISingularityAudio(std::string type)
     {
         backends.push_back(type);
+        registerParameters();
         mPlugin = createPlugin();
     }
 

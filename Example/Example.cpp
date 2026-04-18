@@ -1,7 +1,7 @@
 #include "Example.h"
 #include <cstring>
 
-ExamplePlugin::ExamplePlugin()
+void registerParameters()
 {
     createParameter(13, "Volume", ParamType::Float, 0.5, 0.0, 1.0);
 }

@@ -1,0 +1,15 @@
+#pragma once
+
+#include "pluginterfaces/base/funknown.h"
+#include "pluginterfaces/vst/vsttypes.h"
+
+namespace Steinberg {
+
+static const Steinberg::FUID kHelloWorldProcessorUID (
+    0x@PROC_UID_0@, 0x@PROC_UID_1@, 0x@PROC_UID_2@, 0x@PROC_UID_3@);
+static const Steinberg::FUID kHelloWorldControllerUID (
+    0x@CTRL_UID_0@, 0x@CTRL_UID_1@, 0x@CTRL_UID_2@, 0x@CTRL_UID_3@);
+
+#define HelloWorldVST3Category "@PLUGIN_CATEGORY@"
+
+} // namespace Steinberg

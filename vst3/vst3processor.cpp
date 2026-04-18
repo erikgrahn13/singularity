@@ -2,7 +2,7 @@
 // Copyright(c) 2022 Steinberg Media Technologies GmbH.
 //------------------------------------------------------------------------
 
-#include "helloworldprocessor.h"
+#include "vst3processor.h"
 #include "plugincids.h"
 
 #include "base/source/fstreamer.h"

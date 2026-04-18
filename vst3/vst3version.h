@@ -1,7 +1,3 @@
-//------------------------------------------------------------------------
-// Copyright(c) 2022 Steinberg Media Technologies GmbH.
-//------------------------------------------------------------------------
-
 #pragma once
 
 #include "pluginterfaces/base/fplatform.h"
