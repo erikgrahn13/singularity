@@ -1,5 +1,6 @@
 #include "QuickJSEngine.h"
 // #include <print>
+#include <filesystem>
 
 #if defined NDEBUG
 #include <hello_release.h>
@@ -23,6 +24,41 @@ static int js_audio_module_init(JSContext *ctx, JSModuleDef *m)
     JS_SetModuleExport(ctx, m, "getAudioBackends", JS_NewCFunction(ctx, QuickJSEngine::js_getAudioBackends, "getAudioBackends", 0));
     JS_SetModuleExport(ctx, m, "getStringList", JS_NewCFunction(ctx, QuickJSEngine::js_getStringList, "getStringList", 1));
     return 0;
+}
+
+// Resolves module paths relative to the importing file, with a fallback to
+// the framework root when the file isn't found. This lets user scripts write
+// "./widgets/ui.js" without caring where the framework lives on disk.
+static char *js_module_normalizer_custom(JSContext *ctx, const char *module_base_name, const char *module_name, void *opaque)
+{
+    namespace fs = std::filesystem;
+
+    // Native modules — pass through unchanged
+    if (strncmp(module_name, "native:", 7) == 0)
+        return js_strdup(ctx, module_name);
+
+    // Resolve relative to the importing module's directory (standard behaviour)
+    fs::path resolved;
+    if (module_name[0] == '.')
+        resolved = (fs::path(module_base_name).parent_path() / module_name).lexically_normal();
+    else
+        resolved = fs::path(module_name).lexically_normal();
+
+    std::error_code ec;
+    if (fs::exists(resolved, ec) && !ec)
+        return js_strdup(ctx, resolved.generic_string().c_str());
+
+    // Fallback: for "./something" imports that weren't found next to the
+    // importing file, try resolving from the framework root (where widgets/ lives).
+    if (module_name[0] == '.' && module_name[1] == '/') {
+        fs::path fw_resolved = (fs::path(SINGULARITY_FRAMEWORK_DIR) / (module_name + 2)).lexically_normal();
+        if (fs::exists(fw_resolved, ec) && !ec)
+            return js_strdup(ctx, fw_resolved.generic_string().c_str());
+    }
+
+    // Not found anywhere — return the standard resolution so the loader
+    // produces a sensible "file not found" error.
+    return js_strdup(ctx, resolved.generic_string().c_str());
 }
 
 static JSModuleDef *js_module_loader_custom(JSContext *ctx, const char *module_name, void *opaque, JSValueConst attributes)
@@ -113,7 +149,7 @@ void QuickJSEngine::setupJS()
     JSClassDef gradientClass = { "CanvasGradient" };
     JS_NewClass(rt, gradientClassId, &gradientClass);
 
-    JS_SetModuleLoaderFunc2(rt, nullptr, js_module_loader_custom, js_module_check_attributes, nullptr);
+    JS_SetModuleLoaderFunc2(rt, js_module_normalizer_custom, js_module_loader_custom, js_module_check_attributes, nullptr);
     ctx = JS_NewContext(rt);
     js_std_add_helpers(ctx, 0, nullptr);
     JS_SetContextOpaque(ctx, this);

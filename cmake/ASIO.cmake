@@ -16,3 +16,8 @@ target_include_directories(asio PUBLIC
     ${asiosdk_SOURCE_DIR}/host
     ${asiosdk_SOURCE_DIR}/host/pc
 )
+# asiolist.cpp uses narrow-char APIs (CharLowerBuff etc.) but the VST3 SDK
+# globally defines UNICODE, which makes them resolve to the wide variants.
+# Use /U to explicitly undefine UNICODE for this target only.
+target_compile_options(asio PRIVATE /UUNICODE /U_UNICODE)
+target_compile_definitions(asio PRIVATE _MBCS)

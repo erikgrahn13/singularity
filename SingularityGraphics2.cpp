@@ -20,12 +20,13 @@ SingularityGraphics::SingularityGraphics(int width, int height, IParameterProvid
     renderer = createRenderer(width, height);
     jsEngine = createJSEngine(renderer.get(), parameterProvider, standalone);
 
-    fileWatcher = createFileWatcher(JS_SCRIPTS_DIR, [this](const std::string &filePath){
+    fileWatcher = createFileWatcher(UI_DIR, [this](const std::string &filePath){
         pendingReload = true;
     });
 
-    if (!scriptPath.empty())
-        jsEngine->loadScript(scriptPath);
+    const std::string& resolvedPath = scriptPath.empty() ? std::string(UI_MAIN) : scriptPath;
+    if (!resolvedPath.empty())
+        jsEngine->loadScript(resolvedPath);
 }
 
 DrawingContent SingularityGraphics::getRenderData()

@@ -16,13 +16,14 @@
 #include "IFileWatcher.h"
 #include "IParameterProvider.h"
 
+
 class SingularityGraphics {
 
 
     public:
     SingularityGraphics(int width, int height, IParameterProvider &parameterProvider,
                         bool standalone = false,
-                        const std::string& scriptPath = std::string(JS_SCRIPTS_DIR) + "/hello.js");
+                        const std::string& scriptPath = {});
 
     SWIFT_RETURNS_INDEPENDENT_VALUE
     DrawingContent getRenderData();

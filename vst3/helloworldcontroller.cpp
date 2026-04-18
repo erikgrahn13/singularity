@@ -107,10 +107,7 @@ IPlugView* PLUGIN_API HelloWorldController::createView (FIDString name)
 	if (FIDStringsEqual (name, Vst::ViewType::kEditor))
 	{
         // Default editor size — host may resize after creation
-        constexpr int kWidth  = 800;
-        constexpr int kHeight = 600;
-
-        return new SingularityView(_paramAdapter, kWidth, kHeight);
+        return new SingularityView(_paramAdapter, PLUGIN_WIDTH, PLUGIN_HEIGHT);
 	}
 	return nullptr;
 }

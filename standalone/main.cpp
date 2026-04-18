@@ -223,11 +223,9 @@ int main()
     params.params[7]  = { .name = "Bypass",   .type = ParamType::Bool,    .value = 0.0, .defaultValue = 0.0 };
     params.params[15] = { .name = "Waveform", .type = ParamType::Stepped, .value = 0.0, .defaultValue = 0.0, .steps = 4 };
 
-    constexpr int W = 800, H = 600;
+    auto graphics = std::make_unique<SingularityGraphics>(PLUGIN_WIDTH, PLUGIN_HEIGHT, params, /*standalone=*/true);
 
-    auto graphics = std::make_unique<SingularityGraphics>(W, H, params, /*standalone=*/true);
-
-    auto win = createNativeWindow("Singularity", W, H);
+    auto win = createNativeWindow("Singularity", PLUGIN_WIDTH, PLUGIN_HEIGHT);
 
     // Settings window — created on demand, destroyed on close
     std::unique_ptr<IWindow> settingsWin;

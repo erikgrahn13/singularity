@@ -4,6 +4,7 @@
 #include <string>
 #include "../utilities/SingularityQueue.h"
 #include "../IParameterProvider.h"
+#include "../SingularityPlugin.h"
 
 class AudioDevice {
     public:
@@ -39,6 +40,7 @@ class ISingularityAudio
     ISingularityAudio(std::string type)
     {
         backends.push_back(type);
+        mPlugin = createPlugin();
     }
 
     // Called at the top of each audio callback: drains queue into local RT-safe array
@@ -50,6 +52,7 @@ class ISingularityAudio
     }
 
     double _params[256]{}; // RT-safe local param copy, only written by audio thread
+    std::unique_ptr<SingularityPlugin> mPlugin;
 
     private:
     SingularityQueue<ParameterChange, 256> _paramChanges;

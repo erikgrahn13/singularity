@@ -3,10 +3,10 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "")
 # Prebuilt libraries (Skia, QuickJS) are arm64-only — restrict to arm64
 set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 
-project(HelloWorld
-    VERSION 1.0.0.0
-    DESCRIPTION "HelloWorld VST 3 Plug-in"
-)
+# project(HelloWorld
+#     VERSION 1.0.0.0
+#     DESCRIPTION "HelloWorld VST 3 Plug-in"
+# )
 option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
 option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" ON)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
@@ -30,15 +30,15 @@ if(WIN32 AND MSVC)
 endif()
 
 smtg_add_vst3plugin(HelloWorld
-    source/version.h
-    source/helloworldcids.h
-    source/helloworldprocessor.h
-    source/helloworldprocessor.cpp
-    source/helloworldcontroller.h
-    source/helloworldcontroller.cpp
-    source/helloworldentry.cpp
-    source/SingularityView.h
-    source/SingularityView.cpp
+    version.h
+    helloworldcids.h
+    helloworldprocessor.h
+    helloworldprocessor.cpp
+    helloworldcontroller.h
+    helloworldcontroller.cpp
+    helloworldentry.cpp
+    SingularityView.h
+    SingularityView.cpp
 )
 
 if(APPLE)
@@ -91,7 +91,7 @@ if(SMTG_MAC)
     )
 elseif(SMTG_WIN)
     target_sources(HelloWorld PRIVATE 
-        resource/win32resource.rc
+        win32resource.rc
     )
     if(MSVC)
         set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT HelloWorld)

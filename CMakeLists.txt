@@ -5,6 +5,10 @@ set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 
 project(Singularity LANGUAGES C CXX)
 
+# set(SINGULARITY_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+
+
 # Must be set before ANY targets are created (including via FetchContent).
 # Skia is a prebuilt /MT (release static) library, so everything must use /MT
 # to avoid RuntimeLibrary and _ITERATOR_DEBUG_LEVEL mismatches on Windows.
@@ -24,27 +28,33 @@ include(CHOC)
 include(QUICKJS)
 include(VST3)
 
-add_library(Hello-shared STATIC
-    SingularityGraphics2.cpp
-    chocFileWatcher.cpp
-    SkiaRenderer.cpp
-    QuickJSEngine.cpp
-)
+set(SINGULARITY_SKIA_INCLUDE_DIR "${skia_SOURCE_DIR}/include" CACHE INTERNAL "")
+set(SINGULARITY_QUICKJS_DIR "${quickjs_SOURCE_DIR}" CACHE INTERNAL "")
+set(SINGULARITY_SKIA_LIB "${SKIA_LIB}" CACHE INTERNAL "")
 
-target_link_libraries(Hello-shared PRIVATE 
-    qjs-libc
-    choc::choc
-    ${SKIA_LIB}
-)
 
-target_include_directories(Hello-shared PRIVATE
-    ${skia_SOURCE_DIR}/include
-    ${quickjs_SOURCE_DIR}
-)
+include(SingularityPlugin)
+# add_library(Hello-shared STATIC
+#     SingularityGraphics2.cpp
+#     chocFileWatcher.cpp
+#     SkiaRenderer.cpp
+#     QuickJSEngine.cpp
+# )
 
-target_compile_definitions(Hello-shared PUBLIC
-    JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
-)
+# target_link_libraries(Hello-shared PRIVATE 
+#     qjs-libc
+#     choc::choc
+#     ${SKIA_LIB}
+# )
+
+# target_include_directories(Hello-shared PRIVATE
+#     ${skia_SOURCE_DIR}/include
+#     ${quickjs_SOURCE_DIR}
+# )
+
+# target_compile_definitions(Hello-shared PUBLIC
+#     JS_SCRIPTS_DIR="${CMAKE_SOURCE_DIR}"
+# )
 
 if(WIN32)
     add_executable(hello standalone/main.cpp)
@@ -130,7 +140,7 @@ target_link_libraries(hello PRIVATE
     "-framework AudioToolbox"
 )
 
-add_subdirectory(vst3)
+# add_subdirectory(vst3)
 
 # TODO: this is an example of how i can compile javascript files and modules with qjsc
 # and then include the file in the in the cpp when building in release mode to embedd javascript
