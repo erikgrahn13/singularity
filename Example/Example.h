@@ -6,7 +6,11 @@
 class ExamplePlugin : public SingularityPlugin
 {
 public:
+    ExamplePlugin();
     void process(std::span<const float* const> inputs,
                  std::span<float* const> outputs,
-                 int numSamples) override;
+                 int numSamples,
+                 IParameterChanges& paramChanges) override;
+private:
+    float _volume = 0.5f;
 };

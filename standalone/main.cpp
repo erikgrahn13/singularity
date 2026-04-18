@@ -202,31 +202,34 @@
 // ---------------------------------------------------------------------------
 // Simple parameter store for the standalone app
 // ---------------------------------------------------------------------------
-class ParameterContainer : public IParameterProvider {
-public:
-    double getParameter(int id) const override {
-        auto it = params.find(id);
-        if (it != params.end()) return it->second.value;
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    void setParameter(int id, double value) override {
-        auto it = params.find(id);
-        if (it != params.end()) it->second.value = value;
-    }
-    std::unordered_map<int, Parameter> params;
-};
+// class ParameterContainer : public IParameterProvider {
+// public:
+//     double getParameter(int id) const override {
+//         auto it = params.find(id);
+//         if (it != params.end()) return it->second.value;
+//         return std::numeric_limits<double>::quiet_NaN();
+//     }
+//     void setParameter(int id, double value) override {
+//         auto it = params.find(id);
+//         if (it != params.end()) it->second.value = value;
+//     }
+//     std::unordered_map<int, Parameter> params;
+// };
 
 // ---------------------------------------------------------------------------
 int main()
 {
-    ParameterContainer params;
-    params.params[13] = { .name = "Volume",   .type = ParamType::Float,   .value = 0.1, .minValue = 0.0, .maxValue = 1.0, .defaultValue = 0.5 };
-    params.params[7]  = { .name = "Bypass",   .type = ParamType::Bool,    .value = 0.0, .defaultValue = 0.0 };
-    params.params[15] = { .name = "Waveform", .type = ParamType::Stepped, .value = 0.0, .defaultValue = 0.0, .steps = 4 };
-
-    auto graphics = std::make_unique<SingularityGraphics>(PLUGIN_WIDTH, PLUGIN_HEIGHT, params, /*standalone=*/true);
+    // ParameterContainer params;
+    // params.params[13] = { .name = "Volume",   .type = ParamType::Float,   .value = 0.1, .minValue = 0.0, .maxValue = 1.0, .defaultValue = 0.5 };
+    // params.params[7]  = { .name = "Bypass",   .type = ParamType::Bool,    .value = 0.0, .defaultValue = 0.0 };
+    // params.params[15] = { .name = "Waveform", .type = ParamType::Stepped, .value = 0.0, .defaultValue = 0.0, .steps = 4 };
 
     auto audio = ISingularityAudio::createSingularityAudio();
+    auto graphics = std::make_unique<SingularityGraphics>(PLUGIN_WIDTH, PLUGIN_HEIGHT, getParameterContainer(), /*standalone=*/true);
+    setOnParameterChanged([&](int id, double value) {
+        audio->pushParameterChange(id, value);
+    });
+
 
     auto win = createNativeWindow("Singularity", PLUGIN_WIDTH, PLUGIN_HEIGHT);
 
@@ -238,7 +241,7 @@ int main()
     graphics->setOnOpenSettings([&]() {
         if (settingsWin) return; // already open
 
-        settingsGraphics = std::make_unique<SingularityGraphics>(400, 300, params, true, std::string(JS_SCRIPTS_DIR) + "/widgets/settings.js");
+        settingsGraphics = std::make_unique<SingularityGraphics>(400, 300, getParameterContainer(), true, std::string(JS_SCRIPTS_DIR) + "/widgets/settings.js");
 
         settingsWin = createNativeWindow("Settings", 400, 300, nullptr, win.get());
         settingsDirty = true;

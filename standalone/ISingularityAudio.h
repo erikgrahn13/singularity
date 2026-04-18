@@ -2,9 +2,15 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <limits>
+#include <functional>
 #include "../utilities/SingularityQueue.h"
 #include "../IParameterProvider.h"
 #include "../SingularityPlugin.h"
+
+IParameterProvider& getParameterContainer();
+void setOnParameterChanged(std::function<void(int, double)> cb);
 
 class AudioDevice {
     public:
@@ -46,12 +52,27 @@ class ISingularityAudio
     // Called at the top of each audio callback: drains queue into local RT-safe array
     void processParameterChanges()
     {
+        _currentChanges.clear();
         ParameterChange change;
-        while (_paramChanges.pop(change))
+        while (_paramChanges.pop(change)) {
             _params[change.id] = change.value;
+            _currentChanges.add(change.id, change.value);
+        }
     }
 
-    double _params[256]{}; // RT-safe local param copy, only written by audio thread
+    // Stack-allocated list of changes for the current buffer — passed to process()
+    class ParameterChangeList : public IParameterChanges {
+        ParameterChange _changes[256];
+        int _count = 0;
+    public:
+        void clear() { _count = 0; }
+        void add(int id, double value) { if (_count < 256) _changes[_count++] = {id, value}; }
+        int getCount() const override { return _count; }
+        ParameterChange get(int index) const override { return _changes[index]; }
+    };
+
+    double _params[256]{};
+    ParameterChangeList _currentChanges;
     std::unique_ptr<SingularityPlugin> mPlugin;
 
     private:
