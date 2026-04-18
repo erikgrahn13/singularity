@@ -1,7 +1,7 @@
-import { startUI, Component } from "./widgets/ui.js";
-import { Button } from "./widgets/button.js";
-import { Knob } from "./widgets/knob.js";
-import { StepSelector } from "./widgets/stepselector.js";
+import { startUI, Component } from "../widgets/ui.js";
+import { Button } from "../widgets/button.js";
+import { Knob } from "../widgets/knob.js";
+import { StepSelector } from "../widgets/stepselector.js";
 
 class Editor extends Component {
     constructor() {

@@ -78,15 +78,43 @@ function(singularity_create_plugin target)
         set(UI_MAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/${UI_MAIN_FILE}")
     endif()
 
+    cmake_path(GET UI_MAIN_FILE STEM _ui_stem)
+    message("erik2: ${_ui_stem}")
+
     target_compile_definitions(${target}-shared PUBLIC
         UI_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         UI_MAIN="${UI_MAIN_FILE}"
         PLUGIN_WIDTH=${PLUGIN_WIDTH}
         PLUGIN_HEIGHT=${PLUGIN_HEIGHT}
+        QSJC_SYMBOL=qjsc_${_ui_stem}
+        QSJC_SYMBOL_SIZE=qjsc_${_ui_stem}_size
     )
     target_compile_definitions(${target}-shared PRIVATE
         SINGULARITY_FRAMEWORK_DIR="${SINGULARITY_ROOT_DIR}"
     )
+
+    file(GLOB _widget_files "${SINGULARITY_ROOT_DIR}/widgets/*.js")
+
+    set(_D_args "")
+    foreach(_w ${_widget_files})
+        list(APPEND _D_args -D ${_w})
+    endforeach()
+
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.h
+        COMMAND $<TARGET_FILE:qjsc>
+            ${_D_args}
+            -M native:events,js_events_module_init
+            -M native:parameters,js_parameters_module_init
+            -M native:audio,js_audio_module_init
+            -o ${CMAKE_CURRENT_BINARY_DIR}/generated.h
+            ${UI_MAIN_FILE}
+        DEPENDS qjsc ${UI_MAIN_FILE} ${_widget_files}
+    )
+
+    add_custom_target(${target}_release DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/generated.h)
+    add_dependencies(${target}-shared ${target}_release)
+    target_include_directories(${target}-shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
     foreach(type IN LISTS FORMATS)
         # Standalone plugin

@@ -3,7 +3,7 @@
 #include <filesystem>
 
 #if defined NDEBUG
-#include <hello_release.h>
+#include <generated.h>
 #endif
 
 static int js_events_module_init(JSContext *ctx, JSModuleDef *m)
@@ -40,9 +40,9 @@ static char *js_module_normalizer_custom(JSContext *ctx, const char *module_base
     // Resolve relative to the importing module's directory (standard behaviour)
     fs::path resolved;
     if (module_name[0] == '.')
-        resolved = (fs::path(module_base_name).parent_path() / module_name).lexically_normal();
+        resolved = fs::absolute((fs::path(module_base_name).parent_path() / module_name).lexically_normal());
     else
-        resolved = fs::path(module_name).lexically_normal();
+        resolved = fs::absolute(fs::path(module_name).lexically_normal());
 
     std::error_code ec;
     if (fs::exists(resolved, ec) && !ec)
@@ -51,7 +51,7 @@ static char *js_module_normalizer_custom(JSContext *ctx, const char *module_base
     // Fallback: for "./something" imports that weren't found next to the
     // importing file, try resolving from the framework root (where widgets/ lives).
     if (module_name[0] == '.' && module_name[1] == '/') {
-        fs::path fw_resolved = (fs::path(SINGULARITY_FRAMEWORK_DIR) / (module_name + 2)).lexically_normal();
+        fs::path fw_resolved = fs::absolute((fs::path(SINGULARITY_FRAMEWORK_DIR) / (module_name + 2)).lexically_normal());
         if (fs::exists(fw_resolved, ec) && !ec)
             return js_strdup(ctx, fw_resolved.generic_string().c_str());
     }
@@ -225,6 +225,12 @@ void QuickJSEngine::loadScript(const std::string& path)
     JSValue result = JS_Eval(ctx, (const char*)tmp, buf_len, path.c_str(), JS_EVAL_TYPE_MODULE);
     js_free(ctx, tmp);
     JS_FreeValue(ctx, result);
+#else
+    auto stem = std::filesystem::path(path).stem().string();
+    if (stem == "settings")
+        js_std_eval_binary(ctx, qjsc_settings, qjsc_settings_size, 0);
+    else
+        js_std_eval_binary(ctx, QSJC_SYMBOL,QSJC_SYMBOL_SIZE, 0);
 #endif
 }
 

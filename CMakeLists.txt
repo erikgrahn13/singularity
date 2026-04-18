@@ -83,36 +83,36 @@ else()
 endif()
 
 
-target_include_directories(hello PRIVATE
-    ${CMAKE_SOURCE_DIR}/platform
-)
+# target_include_directories(hello PRIVATE
+#     ${CMAKE_SOURCE_DIR}/platform
+# )
 
-target_compile_definitions(hello PRIVATE
-    SINGULARITY_STANDALONE=1
-)
+# target_compile_definitions(hello PRIVATE
+#     SINGULARITY_STANDALONE=1
+# )
 
-target_compile_features(hello PRIVATE cxx_std_23)
+# target_compile_features(hello PRIVATE cxx_std_23)
 
-if(CMAKE_BUILD_TYPE STREQUAL Release)
-    add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/hello_release.h
-        COMMAND $<TARGET_FILE:qjsc>
-            -o ${CMAKE_BINARY_DIR}/hello_release.h
-            ${CMAKE_SOURCE_DIR}/hello.js
-        DEPENDS qjsc hello.js
-    )
+# if(CMAKE_BUILD_TYPE STREQUAL Release)
+#     add_custom_command(
+#         OUTPUT ${CMAKE_BINARY_DIR}/hello_release.h
+#         COMMAND $<TARGET_FILE:qjsc>
+#             -o ${CMAKE_BINARY_DIR}/hello_release.h
+#             ${CMAKE_SOURCE_DIR}/hello.js
+#         DEPENDS qjsc hello.js
+#     )
 
-    add_custom_target(generate_hello_release DEPENDS ${CMAKE_BINARY_DIR}/hello_release.h)
-    add_dependencies(hello generate_hello_release)
-    target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
-endif()
+#     add_custom_target(generate_hello_release DEPENDS ${CMAKE_BINARY_DIR}/hello_release.h)
+#     add_dependencies(hello generate_hello_release)
+#     target_include_directories(hello PRIVATE ${CMAKE_BINARY_DIR})
+# endif()
 
-target_link_libraries(hello PRIVATE 
-    Hello-shared
-    "-framework CoreAudio"
-    "-framework CoreFoundation"
-    "-framework AudioToolbox"
-)
+# target_link_libraries(hello PRIVATE 
+#     Hello-shared
+#     "-framework CoreAudio"
+#     "-framework CoreFoundation"
+#     "-framework AudioToolbox"
+# )
 
 # add_subdirectory(vst3)
 
