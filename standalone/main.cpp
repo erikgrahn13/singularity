@@ -193,6 +193,7 @@
 #include "NativeWindow.h"
 #include "../SingularityGraphics2.h"
 #include "../IParameterProvider.h"
+#include "ISingularityAudio.h"
 
 #include <limits>
 #include <memory>
@@ -224,6 +225,8 @@ int main()
     params.params[15] = { .name = "Waveform", .type = ParamType::Stepped, .value = 0.0, .defaultValue = 0.0, .steps = 4 };
 
     auto graphics = std::make_unique<SingularityGraphics>(PLUGIN_WIDTH, PLUGIN_HEIGHT, params, /*standalone=*/true);
+
+    auto audio = ISingularityAudio::createSingularityAudio();
 
     auto win = createNativeWindow("Singularity", PLUGIN_WIDTH, PLUGIN_HEIGHT);
 

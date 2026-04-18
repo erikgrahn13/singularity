@@ -53,6 +53,8 @@ function(singularity_create_plugin target)
         ${SINGULARITY_QUICKJS_DIR}
     )
 
+    target_compile_features(${target}-shared PUBLIC cxx_std_23)
+
     # Inside the function, after resolving UI paths:
     # list(GET ABSOLUTE_UI 0 FIRST_UI_FILE)
     # cmake_path(GET FIRST_UI_FILE PARENT_PATH UI_DIR)
@@ -90,7 +92,6 @@ function(singularity_create_plugin target)
                 SINGULARITY_STANDALONE=1
                 JS_SCRIPTS_DIR="${SINGULARITY_ROOT_DIR}"
             )
-            target_compile_features(${target}_APP PRIVATE cxx_std_23)
             set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
             target_link_libraries(${target}_APP PRIVATE ${target}-shared)
         elseif(type STREQUAL "VST3")
@@ -132,7 +133,6 @@ function(singularity_create_plugin target)
                 ${SINGULARITY_ROOT_DIR}
             )
 
-            target_compile_features(${target}_VST3 PRIVATE cxx_std_23)
 
             smtg_target_configure_version_file(${target}_VST3)
 

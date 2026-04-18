@@ -7,6 +7,7 @@
 
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
+#include <span>
 
 using namespace Steinberg;
 
@@ -16,8 +17,8 @@ namespace Steinberg {
 //------------------------------------------------------------------------
 HelloWorldProcessor::HelloWorldProcessor ()
 {
-	//--- set the wanted controller for our processor
 	setControllerClass (kHelloWorldControllerUID);
+	mPlugin = createPlugin();
 }
 
 //------------------------------------------------------------------------
@@ -109,11 +110,18 @@ tresult PLUGIN_API HelloWorldProcessor::process (Vst::ProcessData& data)
         return kResultOk;
     }
 
-    if (data.numSamples > 0)
+    if (data.numSamples > 0 && mPlugin)
     {
-        // Process Algorithm
-        // Ex: algo.process (data.inputs[0].channelBuffers32, data.outputs[0].channelBuffers32,
-        // data.numSamples);
+        // Build span views over the DAW's channel buffers (float32 only)
+        auto** in  = data.inputs[0].channelBuffers32;
+        auto** out = data.outputs[0].channelBuffers32;
+        int    numIn  = data.inputs[0].numChannels;
+        int    numOut = data.outputs[0].numChannels;
+
+        mPlugin->process(
+            std::span<const float* const>(reinterpret_cast<const float* const*>(in),  numIn),
+            std::span<float* const>(out, numOut),
+            data.numSamples);
     }
     return kResultOk;
 

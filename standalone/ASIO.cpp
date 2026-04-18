@@ -1,7 +1,9 @@
 #include "ASIO.h"
 #include <asiodrivers.h>
-// #include <asio.h>
 #include <iostream>
+#include <cstdint>
+#include <cstring>
+#include <span>
 
 extern AsioDrivers* asioDrivers;
 bool loadAsioDriver(char *name);
@@ -166,6 +168,9 @@ std::vector<AudioDevice> ASIO::probeDevices() const
 
 ASIOTime* ASIO::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow)
 {
+    // Drain parameter changes from the GUI thread — no locks, no allocation
+    instance->processParameterChanges();
+
     instance->tInfo = *timeInfo;
 
     if (timeInfo->timeInfo.flags & kSystemTimeValid)
@@ -191,67 +196,64 @@ ASIOTime* ASIO::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool pr
 
     long buffSize = instance->preferredSize;
 
-    for (int i = 0; i < instance->inputBuffers + instance->outputBuffers; i++)
-    {
-        if (!instance->bufferInfos[i].isInput)
-        {
-            // passthrough: output channel N uses input channel N as source (if it exists)
-            int outChan = i - instance->inputBuffers;
-            void* src = (outChan < instance->inputBuffers)
-                ? instance->bufferInfos[outChan].buffers[index]
-                : nullptr;
-            void* dst = instance->bufferInfos[i].buffers[index];
+    // --- Convert ASIO native buffers → non-interleaved float ---
+    static float inputScratch [ASIO::kMaxInputChannels ][8192];
+    static float outputScratch[ASIO::kMaxOutputChannels][8192];
+    static const float* inputPtrs [ASIO::kMaxInputChannels];
+    static float*       outputPtrs[ASIO::kMaxOutputChannels];
 
-            switch (instance->channelInfos[i].type)
-            {
-            case ASIOSTInt16LSB:
-                if (src) memcpy(dst, src, buffSize * 2); else memset(dst, 0, buffSize * 2);
-                break;
-            case ASIOSTInt24LSB:        // used for 20 bits as well
-                if (src) memcpy(dst, src, buffSize * 3); else memset(dst, 0, buffSize * 3);
-                break;
-            case ASIOSTInt32LSB:
-                if (src) memcpy(dst, src, buffSize * 4); else memset(dst, 0, buffSize * 4);
-                break;
-            case ASIOSTFloat32LSB:      // IEEE 754 32 bit float, as found on Intel x86 architecture
-                if (src) memcpy(dst, src, buffSize * 4); else memset(dst, 0, buffSize * 4);
-                break;
-            case ASIOSTFloat64LSB:      // IEEE 754 64 bit double float, as found on Intel x86 architecture
-                if (src) memcpy(dst, src, buffSize * 8); else memset(dst, 0, buffSize * 8);
-                break;
+    for (int ch = 0; ch < instance->inputBuffers; ++ch) {
+        void* src = instance->bufferInfos[ch].buffers[index];
+        float* dst = inputScratch[ch];
+        switch (instance->channelInfos[ch].type) {
+        case ASIOSTFloat32LSB:
+            std::memcpy(dst, src, buffSize * sizeof(float));
+            break;
+        case ASIOSTInt32LSB:
+            for (long s = 0; s < buffSize; ++s)
+                dst[s] = reinterpret_cast<int32_t*>(src)[s] / 2147483648.0f;
+            break;
+        case ASIOSTInt16LSB:
+            for (long s = 0; s < buffSize; ++s)
+                dst[s] = reinterpret_cast<int16_t*>(src)[s] / 32768.0f;
+            break;
+        default:
+            static bool warned = false;
+            if (!warned) { fprintf(stderr, "[ASIO] unhandled input sample type: %d\n", instance->channelInfos[ch].type); warned = true; }
+            std::memset(dst, 0, buffSize * sizeof(float));
+        }
+        inputPtrs[ch] = dst;
+    }
+    for (int ch = 0; ch < instance->outputBuffers; ++ch) {
+        std::memset(outputScratch[ch], 0, buffSize * sizeof(float));
+        outputPtrs[ch] = outputScratch[ch];
+    }
 
-            // these are used for 32 bit data buffer, with different alignment of the data inside
-            case ASIOSTInt32LSB16:      // 32 bit data with 16 bit alignment
-            case ASIOSTInt32LSB18:      // 32 bit data with 18 bit alignment
-            case ASIOSTInt32LSB20:      // 32 bit data with 20 bit alignment
-            case ASIOSTInt32LSB24:      // 32 bit data with 24 bit alignment
-                if (src) memcpy(dst, src, buffSize * 4); else memset(dst, 0, buffSize * 4);
-                break;
+    // --- Call plugin ---
+    instance->mPlugin->process(
+        std::span<const float* const>(inputPtrs, instance->inputBuffers),
+        std::span<float* const>(outputPtrs, instance->outputBuffers),
+        buffSize);
 
-            case ASIOSTInt16MSB:
-                if (src) memcpy(dst, src, buffSize * 2); else memset(dst, 0, buffSize * 2);
-                break;
-            case ASIOSTInt24MSB:        // used for 20 bits as well
-                if (src) memcpy(dst, src, buffSize * 3); else memset(dst, 0, buffSize * 3);
-                break;
-            case ASIOSTInt32MSB:
-                if (src) memcpy(dst, src, buffSize * 4); else memset(dst, 0, buffSize * 4);
-                break;
-            case ASIOSTFloat32MSB:      // IEEE 754 32 bit float, as found on Intel x86 architecture
-                if (src) memcpy(dst, src, buffSize * 4); else memset(dst, 0, buffSize * 4);
-                break;
-            case ASIOSTFloat64MSB:      // IEEE 754 64 bit double float, as found on Intel x86 architecture
-                if (src) memcpy(dst, src, buffSize * 8); else memset(dst, 0, buffSize * 8);
-                break;
-
-            // these are used for 32 bit data buffer, with different alignment of the data inside
-            case ASIOSTInt32MSB16:      // 32 bit data with 16 bit alignment
-            case ASIOSTInt32MSB18:      // 32 bit data with 18 bit alignment
-            case ASIOSTInt32MSB20:      // 32 bit data with 20 bit alignment
-            case ASIOSTInt32MSB24:      // 32 bit data with 24 bit alignment
-                if (src) memcpy(dst, src, buffSize * 4); else memset(dst, 0, buffSize * 4);
-                break;
-            }
+    // --- Convert non-interleaved float → ASIO native buffers ---
+    for (int ch = 0; ch < instance->outputBuffers; ++ch) {
+        int bufIdx = instance->inputBuffers + ch;
+        void* dst = instance->bufferInfos[bufIdx].buffers[index];
+        const float* src = outputScratch[ch];
+        switch (instance->channelInfos[bufIdx].type) {
+        case ASIOSTFloat32LSB:
+            std::memcpy(dst, src, buffSize * sizeof(float));
+            break;
+        case ASIOSTInt32LSB:
+            for (long s = 0; s < buffSize; ++s)
+                reinterpret_cast<int32_t*>(dst)[s] = static_cast<int32_t>(src[s] * 2147483647.0f);
+            break;
+        case ASIOSTInt16LSB:
+            for (long s = 0; s < buffSize; ++s)
+                reinterpret_cast<int16_t*>(dst)[s] = static_cast<int16_t>(src[s] * 32767.0f);
+            break;
+        default:
+            std::memset(dst, 0, buffSize * 4);
         }
     }
 
