@@ -185,6 +185,7 @@ void QuickJSEngine::setupJS()
     JS_SetPropertyStr(ctx, obj, "resetTransform", JS_NewCFunction(ctx, js_resetTransform, "resetTransform", 1));
     JS_SetPropertyStr(ctx, obj, "createLinearGradient", JS_NewCFunction(ctx, js_createLinearGradient, "createLinearGradient", 4));
     JS_SetPropertyStr(ctx, obj, "createRadialGradient", JS_NewCFunction(ctx, js_createRadialGradient, "createRadialGradient", 6));
+    JS_SetPropertyStr(ctx, obj, "drawImage", JS_NewCFunction(ctx, js_drawImage, "drawImage", 5));
 
 
     // Properties

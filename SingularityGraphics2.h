@@ -28,6 +28,10 @@ class SingularityGraphics {
     SWIFT_RETURNS_INDEPENDENT_VALUE
     DrawingContent getRenderData();
 
+    std::vector<uint8_t> encodeFrameToPng() { return renderer->encodeFrameToPng(); }
+
+    void setCanvas(void* canvas) { canvas_ = canvas; renderer->setCanvas(canvas); }
+
     void hotReload();
     void loadScript(const std::string& path);
 
@@ -59,6 +63,7 @@ class SingularityGraphics {
     std::unique_ptr<IFileWatcher> fileWatcher;
     IParameterProvider& parameterProvider;
     std::function<void()> onOpenSettings;
+    void* canvas_ = nullptr;
 
     //TODO: tmp
     // std::unordered_map<int, double> parameters;

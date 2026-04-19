@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
     struct DrawingContent {
         const void* contentAddres{nullptr};
@@ -76,6 +77,16 @@ class IRenderer {
 
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;
+
+    // Optional: used by GPU renderers (e.g. VisageRenderer) to receive the frame canvas.
+    // No-op by default so CPU renderers (e.g. SkiaRenderer) need not implement it.
+    virtual void setCanvas(void* /*canvas*/) {}
+
+    // Called after renderUI(). CPU renderers (e.g. SkiaRenderer) use this to blit
+    // their offscreen pixels to the native canvas. GPU renderers are a no-op.
+    virtual void postRender(void* /*nativeCanvas*/) {}
+
+    virtual std::vector<uint8_t> encodeFrameToPng() = 0;
 
     virtual ~IRenderer() = default;
     virtual DrawingContent getDrawingContent() = 0; 

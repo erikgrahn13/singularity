@@ -16,6 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(FetchContent)
 
 include(SKIA)
+include(VISAGE)
 if(WIN32)
     include(ASIO)
 endif()

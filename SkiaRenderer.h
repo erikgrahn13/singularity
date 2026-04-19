@@ -105,8 +105,10 @@ class SkiaRenderer : public IRenderer {
     void textBaseline(const std::string &baseline) override;
 
     DrawingContent getDrawingContent() override;
+    std::vector<uint8_t> encodeFrameToPng() override;
     int getWidth() const override;
     int getHeight() const override;
+    void postRender(void* nativeCanvas) override;
     
     private:
 
@@ -123,5 +125,6 @@ class SkiaRenderer : public IRenderer {
     std::vector<DrawState> stateStack;
     std::vector<GradientData> gradients;
     std::map<std::string, sk_sp<SkImage>> images;
+    std::vector<uint8_t> cachedRGBA_;  // raw RGBA pixels, constant size (w*h*4), stable pointer
     DrawState currentState;
 };

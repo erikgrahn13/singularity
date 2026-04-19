@@ -1,6 +1,8 @@
 // #include "tmpshader.h"
 #include "SkiaRenderer.h"
+#include <visage/app.h>
 #include "include/core/SkFontMgr.h"
+#include "include/encode/SkPngEncoder.h"
 #include "include/core/SkCanvas.h"
 #include "include/core/SkFont.h"
 #include "include/core/SkData.h"
@@ -318,7 +320,27 @@ void SkiaRenderer::registerImage(const std::string& name, const uint8_t *data, s
 void SkiaRenderer::drawImage(const std::string& name, float dx, float dy, float dw, float dh)
 {
     auto it = images.find(name);
+#if !defined NDEBUG
+    if (it == images.end()) {
+        // Try the name as-is, then relative to UI_DIR
+        auto skData = SkData::MakeFromFileName(name.c_str());
+        if (!skData) {
+            std::string fullPath = std::string(UI_DIR) + "/" + name;
+            printf("[drawImage] trying: %s\n", fullPath.c_str());
+            skData = SkData::MakeFromFileName(fullPath.c_str());
+        }
+        if (skData) {
+            images[name] = SkImages::DeferredFromEncodedData(skData);
+            it = images.find(name);
+        } else {
+            printf("[drawImage] failed to load: %s\n", name.c_str());
+        }
+        printf("[drawImage] seemed to load: %s\n", name.c_str());
+
+    }
+#else
     if (it == images.end()) return;
+#endif
     skiaSurface->getCanvas()->drawImageRect(it->second, SkRect::MakeXYWH(dx, dy, dw, dh), SkSamplingOptions());
 }
 
@@ -524,8 +546,41 @@ void SkiaRenderer::textBaseline(const std::string &baseline)
     currentState.textBaseline = baseline;
 }
 
+std::vector<uint8_t> SkiaRenderer::encodeFrameToPng()
+{
+    SkPixmap pixmap;
+    skiaSurface->peekPixels(&pixmap);
+    sk_sp<SkData> data = SkPngEncoder::Encode(pixmap, {});
+    if (!data) return {};
+    return std::vector<uint8_t>(static_cast<const uint8_t*>(data->data()),
+                                static_cast<const uint8_t*>(data->data()) + data->size());
+}
+
 int SkiaRenderer::getWidth() const  { return skiaSurface->width(); }
 int SkiaRenderer::getHeight() const { return skiaSurface->height(); }
+
+void SkiaRenderer::postRender(void* nativeCanvas)
+{
+    if (!nativeCanvas) return;
+    int w = getWidth(), h = getHeight();
+    cachedRGBA_.resize(w * h * 4);  // constant size after first frame; pointer stays stable
+    SkImageInfo info = SkImageInfo::Make(w, h, kRGBA_8888_SkColorType, kOpaque_SkAlphaType);
+    if (!skiaSurface->readPixels(info, cachedRGBA_.data(), w * 4, 0, 0))
+        return;
+
+    auto* vc = static_cast<visage::Canvas*>(nativeCanvas);
+
+    // Build a raw-pixel Image. visage::Image::operator== does NOT compare the raw flag,
+    // so the atlas key matches the entry from the first frame — one stable slot forever.
+    // force_update=true makes imageAtlas call bgfx::copy() immediately, so the pointer
+    // only needs to survive this call (it's a member, so it always does).
+    visage::Image img{ cachedRGBA_.data(), w * h * 4, w, h };
+    img.raw = true;
+    vc->imageAtlas()->addImage(img, true);  // force RGBA re-upload each frame
+
+    vc->setColor(0xffffffff);
+    vc->image(img, 0, 0);  // atlas finds existing slot (raw excluded from key); adds draw shape
+}
 
 std::unique_ptr<IRenderer> createRenderer(int width, int height)
 {

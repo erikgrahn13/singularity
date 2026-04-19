@@ -20,11 +20,12 @@ class Editor extends Component {
     paint(ctx) {
         ctx.fillStyle = "#ff000000";
         ctx.fillRect(0, 0, this.width, this.height);
+        ctx.drawImage("../logo_transparent.png", 0, 0, 200, 200);
     }
 
     resized() {
         this.button.setBounds(100, 100, 120, 60);
-        this.knob.setBounds(250, 100, 60, 60);
+        // this.knob.setBounds(250, 100, 60, 60);
         this.waveform.setBounds(100, 180, 240, 30);
     }
 }

@@ -53,14 +53,16 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityGraphics2.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        ${SINGULARITY_ROOT_DIR}/SkiaRenderer.cpp
+        # ${SINGULARITY_ROOT_DIR}/SkiaRenderer.cpp
+        ${SINGULARITY_ROOT_DIR}/VisageRenderer.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine.cpp
     )
 
     target_link_libraries(${target}-shared PRIVATE 
         qjs-libc
         choc::choc
-        ${SINGULARITY_SKIA_LIB}
+        # ${SINGULARITY_SKIA_LIB}
+        visage
     )
 
     target_include_directories(${target}-shared PRIVATE
@@ -136,7 +138,7 @@ function(singularity_create_plugin target)
                 JS_SCRIPTS_DIR="${SINGULARITY_ROOT_DIR}"
             )
             set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
-            target_link_libraries(${target}_APP PRIVATE ${target}-shared)
+            target_link_libraries(${target}_APP PRIVATE ${target}-shared visage)
         elseif(type STREQUAL "VST3")
             # set(CMAKE_OSX_DEPLOYMENT_TARGET "12.7" CACHE STRING "Minimum OS X deployment version" FORCE)
             set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "")

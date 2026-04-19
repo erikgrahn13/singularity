@@ -80,6 +80,7 @@ void SingularityGraphics::onMouseMove(float x, float y)
 void SingularityGraphics::renderUI()
 {
     jsEngine->renderUI();
+    renderer->postRender(canvas_);
 }
 
 void SingularityGraphics::renderFrame(float t)
