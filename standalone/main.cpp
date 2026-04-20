@@ -66,68 +66,76 @@
 
 #include <visage/app.h>
 #include <visage_ui/events.h>
+#include <visage_graphics/post_effects.h>
 
 #include "ISingularityAudio.h"
 #include "../SingularityGraphics2.h"
 
-class ExampleEditor : public visage::ApplicationWindow, public visage::EventTimer {
+class SingularityWindow : public visage::ApplicationWindow, public visage::EventTimer {
 public:
-  explicit ExampleEditor(std::shared_ptr<SingularityGraphics> graphics)
+  explicit SingularityWindow(std::shared_ptr<SingularityGraphics> graphics)
       : graphics_(std::move(graphics)) {
-    startTimer(100);  // poll for hot reload every 100 ms
-  }
-
-  void timerCallback() override {
 #ifndef NDEBUG
-    if (graphics_->pendingReload.exchange(false)) {
-      graphics_->hotReload();
-      redraw();
-    }
+    startTimer(50);
 #endif
-  }
+    onDraw() = [this](visage::Canvas& canvas) {
+      graphics_->renderUI(canvas);
+        redraw();
+    };
 
-  void draw(visage::Canvas& canvas) override {
-    graphics_->setCanvas(static_cast<void*>(&canvas));
-    graphics_->renderUI();
-    graphics_->setCanvas(nullptr);
+    graphics_->setOnSetBloom([this](float size, float intensity) {
+      bloom_.setBloomSize(size);
+      bloom_.setBloomIntensity(intensity);
+      setPostEffect(size > 0 ? &bloom_ : nullptr);
+    });
   }
 
   void mouseMove(const visage::MouseEvent& e) override {
     graphics_->onMouseMove(e.position.x, e.position.y);
-    redraw();
+    // redraw();
   }
   void mouseDrag(const visage::MouseEvent& e) override {
     graphics_->onMouseMove(e.position.x, e.position.y);
-    redraw();
+    // redraw();
   }
   void mouseDown(const visage::MouseEvent& e) override {
     graphics_->onMouseDown(e.position.x, e.position.y);
-    redraw();
+    // redraw();
   }
   void mouseUp(const visage::MouseEvent& e) override {
     graphics_->onMouseUp(e.position.x, e.position.y);
-    redraw();
+    // redraw();
+  }
+
+  // Only fired in debug builds for hot reloading
+  void timerCallback() override {
+    if (graphics_->pendingReload.exchange(false)) {
+      graphics_->hotReload();
+      redraw();
+    }
   }
 
 private:
   std::shared_ptr<SingularityGraphics> graphics_;
+  visage::BloomPostEffect bloom_;
 };
 
 int main()
 {
-  auto audio    = ISingularityAudio::createSingularityAudio();
+//   auto audio    = ISingularityAudio::createSingularityAudio();
   auto graphics = std::make_shared<SingularityGraphics>(
-      PLUGIN_WIDTH, PLUGIN_HEIGHT, getParameterContainer(), /*standalone=*/true);
+      PLUGIN_WIDTH, PLUGIN_HEIGHT, getParameterContainer(), true);
 
-  setOnParameterChanged([&](int id, double value) {
-    audio->pushParameterChange(id, value);
-  });
+//   setOnParameterChanged([&](int id, double value) {
+//     audio->pushParameterChange(id, value);
+//   });
 
-  ExampleEditor editor(graphics);
-  editor.show(visage::Dimension::logicalPixels(PLUGIN_WIDTH),
+  SingularityWindow window(graphics);
+  window.show(visage::Dimension::logicalPixels(PLUGIN_WIDTH),
               visage::Dimension::logicalPixels(PLUGIN_HEIGHT));
-  editor.runEventLoop();
+  window.runEventLoop();
 
   return 0;
 }
+
 
