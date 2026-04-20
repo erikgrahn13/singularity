@@ -17,6 +17,8 @@ class QuickJSEngine : public IJSEngine {
     void onMouseUp(float x, float y) override;
     void onMouseMove(float x, float y) override;
     void setOnOpenSettings(std::function<void()> cb) override { onOpenSettings = std::move(cb); }
+    void setOnSetBloom(std::function<void(float, float)> cb) override { onSetBloom = std::move(cb); }
+    // void setOnRequestRedraw(std::function<void()> cb) override { onRequestRedraw = std::move(cb); }
     void setStringList(const std::string& key, std::vector<std::string> values) override { stringLists[key] = std::move(values); }
 
     // Methods
@@ -75,7 +77,30 @@ class QuickJSEngine : public IJSEngine {
     static JSValue js_openSettingsWindow(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_getAudioBackends(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
     static JSValue js_getStringList(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_setBloom(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
+    // Animation time
+    static JSValue js_time(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_deltaTime(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_frameCount(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+
+    // Visage-native GPU primitives
+    static JSValue js_circle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_fadeCircle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_ring(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_squircle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_roundedArc(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_flatArc(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_segment(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_triangle(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_diamond(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_setBlendMode(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_beginLayer(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_endLayer(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_requestRedraw(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_setLineDash(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_lineDashOffset(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
+    static JSValue js_hdrMultiplier(JSContext *ctx, JSValue this_val, int argc, JSValue* argv);
 
     private:
     void setupJS() override;
@@ -92,5 +117,7 @@ class QuickJSEngine : public IJSEngine {
     std::string currentScriptPath;
     std::unordered_map<std::string, std::vector<JSValue>> eventListeners;
     std::function<void()> onOpenSettings;
+    std::function<void(float, float)> onSetBloom;
+    // std::function<void()> onRequestRedraw;
     std::unordered_map<std::string, std::vector<std::string>> stringLists;
 };

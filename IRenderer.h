@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+namespace visage { class Canvas; }
+
     struct DrawingContent {
         const void* contentAddres{nullptr};
         size_t contentBytes{0};
@@ -39,6 +41,9 @@ class IRenderer {
     virtual void setLineWidth(float lineWidth) = 0;
     virtual void setLineCap(const std::string& cap) = 0;
     virtual void setLineJoin(const std::string& join) = 0;
+    virtual void setLineDash(const std::vector<float>& segments) {}
+    virtual void setLineDashOffset(float offset) {}
+    virtual void setHdrMultiplier(float mult) {}
     virtual void setShadowColor(const std::string& color) = 0;
     virtual void setShadowBlur(float blur) = 0;
     virtual void setShadowOffsetX(float offsetX) = 0;
@@ -47,6 +52,7 @@ class IRenderer {
     virtual int createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1) = 0; 
     virtual void addColorStop(int id, float offset, const std::string& color) = 0;
     virtual void setFillStyleGradient(int i) = 0;
+    virtual void setStrokeStyleGradient(int i) = 0;
 
     virtual void fillRect(float x, float y, float width, float height) = 0;
     virtual void clearRect(float x, float y, float width, float height) = 0;
@@ -78,13 +84,53 @@ class IRenderer {
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;
 
-    // Optional: used by GPU renderers (e.g. VisageRenderer) to receive the frame canvas.
-    // No-op by default so CPU renderers (e.g. SkiaRenderer) need not implement it.
-    virtual void setCanvas(void* /*canvas*/) {}
+    // Called once per frame before JS renderUI(). Resets accumulated per-frame
+    // state (gradients, draw state, state stack) without clearing the canvas.
+    virtual void resetFrame() {}
 
-    // Called after renderUI(). CPU renderers (e.g. SkiaRenderer) use this to blit
-    // their offscreen pixels to the native canvas. GPU renderers are a no-op.
-    virtual void postRender(void* /*nativeCanvas*/) {}
+    // Receives the visage Canvas for the current frame. Called by SingularityGraphics
+    // before renderUI(); VisageRenderer stores it, SkiaRenderer stores it for flush().
+    virtual void setCanvas(visage::Canvas* /*canvas*/) {}
+
+    // Called after JS renderUI(). SkiaRenderer blits its CPU pixels to the stored canvas.
+    // VisageRenderer is a no-op — it drew directly during renderUI().
+    virtual void flush() {}
+
+    // Animation time in seconds. VisageRenderer forwards canvas.time(); others return 0.
+    virtual double time()       const { return 0.0; }
+    virtual double deltaTime()  const { return 0.0; }
+    virtual int    frameCount() const { return 0; }
+
+    // ---------------------------------------------------------------------------
+    // Visage-native GPU primitives. Default no-op so SkiaRenderer ignores them.
+    // Coordinates match canvas2D convention: x,y = top-left of bounding box.
+    // ---------------------------------------------------------------------------
+    // circle(cx, cy, radius) — center + radius
+    virtual void circle(float cx, float cy, float radius) {}
+    // fadeCircle — circle with a soft anti-aliased edge of pixelWidth pixels
+    virtual void fadeCircle(float cx, float cy, float radius, float pixelWidth) {}
+    // ring — donut; x,y = top-left of bounding box, diameter, ring thickness
+    virtual void ring(float x, float y, float diameter, float thickness) {}
+    // squircle — superellipse with adjustable power (4 = squircle, higher = more square)
+    virtual void squircle(float x, float y, float diameter, float power) {}
+    // roundedArc — arc with rounded end-caps; angles in radians, center_radians=12-o'clock=0
+    virtual void roundedArc(float x, float y, float diameter, float thickness,
+                            float centerRadians, float arcRadians) {}
+    // flatArc — same but with flat (square) end-caps
+    virtual void flatArc(float x, float y, float diameter, float thickness,
+                         float centerRadians, float arcRadians) {}
+    // segment — anti-aliased line segment between two points
+    virtual void segment(float ax, float ay, float bx, float by, float thickness) {}
+    // triangle — filled triangle
+    virtual void triangle(float ax, float ay, float bx, float by, float cx, float cy) {}
+    // diamond — rotated square
+    virtual void diamond(float x, float y, float diameter) {}
+    // setBlendMode — "alpha" (default), "add", "sub", "mult", "opaque", "composite", "maskAdd", "maskRemove"
+    virtual void setBlendMode(const std::string& mode) {}
+    // Canvas 2D Level 2 layer API — renders content into an isolated buffer, then
+    // composites the whole buffer at 'opacity' onto the destination.
+    virtual void beginLayer(float opacity) {}
+    virtual void endLayer() {}
 
     virtual std::vector<uint8_t> encodeFrameToPng() = 0;
 

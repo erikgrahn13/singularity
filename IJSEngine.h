@@ -18,6 +18,7 @@ class IJSEngine {
     virtual void onMouseMove(float x, float y) = 0;
     // Callbacks
     virtual void setOnOpenSettings(std::function<void()> cb) = 0;
+    virtual void setOnSetBloom(std::function<void(float, float)> cb) {}
     // Generic named string lists (used by native modules)
     virtual void setStringList(const std::string& key, std::vector<std::string> values) = 0;
 };

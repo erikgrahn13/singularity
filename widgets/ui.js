@@ -27,7 +27,7 @@ export function getContentComponent() {
 
 export function renderUI() {
     if (!root) return;
-    root.flushRepaint();
+    root.draw();
 }
 
 globalThis.renderUI = renderUI;

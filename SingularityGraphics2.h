@@ -16,6 +16,8 @@
 #include "IFileWatcher.h"
 #include "IParameterProvider.h"
 
+namespace visage { class Canvas; }
+
 
 class SingularityGraphics {
 
@@ -30,14 +32,13 @@ class SingularityGraphics {
 
     std::vector<uint8_t> encodeFrameToPng() { return renderer->encodeFrameToPng(); }
 
-    void setCanvas(void* canvas) { canvas_ = canvas; renderer->setCanvas(canvas); }
-
     void hotReload();
     void loadScript(const std::string& path);
 
     void addParameter();
 
     void setOnOpenSettings(std::function<void()> cb);
+    void setOnSetBloom(std::function<void(float, float)> cb);
     void setStringList(const std::string& key, std::vector<std::string> values);
 
     // Events
@@ -46,7 +47,7 @@ class SingularityGraphics {
     void onMouseMove(float x, float y);
 
     // tmp
-    void renderUI();
+    void renderUI(visage::Canvas& canvas);
     void renderFrame(float t);
     // void setParameter(int id, double value) override { parameterProvider. parameters[id] = value; }
     double getParameter(int id) {
@@ -63,7 +64,6 @@ class SingularityGraphics {
     std::unique_ptr<IFileWatcher> fileWatcher;
     IParameterProvider& parameterProvider;
     std::function<void()> onOpenSettings;
-    void* canvas_ = nullptr;
 
     //TODO: tmp
     // std::unordered_map<int, double> parameters;

@@ -2,6 +2,7 @@
 #include "IRenderer.h"
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
+#include <visage_graphics/canvas.h>
 
 #include <functional>
 #include <string>
@@ -60,6 +61,11 @@ void SingularityGraphics::setOnOpenSettings(std::function<void()> cb)
     jsEngine->setOnOpenSettings(std::move(cb));
 }
 
+void SingularityGraphics::setOnSetBloom(std::function<void(float, float)> cb)
+{
+    jsEngine->setOnSetBloom(std::move(cb));
+}
+
 void SingularityGraphics::onMouseDown(float x, float y)
 {
     // std::println("onMouseDown1 x:{}    y:{}", x, y);
@@ -77,10 +83,12 @@ void SingularityGraphics::onMouseMove(float x, float y)
 
 }
 
-void SingularityGraphics::renderUI()
+void SingularityGraphics::renderUI(visage::Canvas& canvas)
 {
+    renderer->setCanvas(&canvas);
+    renderer->resetFrame();
     jsEngine->renderUI();
-    renderer->postRender(canvas_);
+    renderer->flush();
 }
 
 void SingularityGraphics::renderFrame(float t)

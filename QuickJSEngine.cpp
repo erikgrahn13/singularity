@@ -187,6 +187,25 @@ void QuickJSEngine::setupJS()
     JS_SetPropertyStr(ctx, obj, "createRadialGradient", JS_NewCFunction(ctx, js_createRadialGradient, "createRadialGradient", 6));
     JS_SetPropertyStr(ctx, obj, "drawImage", JS_NewCFunction(ctx, js_drawImage, "drawImage", 5));
 
+    // Animation time
+    JS_SetPropertyStr(ctx, obj, "time",       JS_NewCFunction(ctx, js_time,       "time",       0));
+    JS_SetPropertyStr(ctx, obj, "deltaTime",  JS_NewCFunction(ctx, js_deltaTime,  "deltaTime",  0));
+    JS_SetPropertyStr(ctx, obj, "frameCount", JS_NewCFunction(ctx, js_frameCount, "frameCount", 0));
+
+    // Visage-native GPU primitives
+    JS_SetPropertyStr(ctx, obj, "circle",     JS_NewCFunction(ctx, js_circle,     "circle",     3));
+    JS_SetPropertyStr(ctx, obj, "fadeCircle", JS_NewCFunction(ctx, js_fadeCircle, "fadeCircle", 4));
+    JS_SetPropertyStr(ctx, obj, "ring",       JS_NewCFunction(ctx, js_ring,       "ring",       4));
+    JS_SetPropertyStr(ctx, obj, "squircle",   JS_NewCFunction(ctx, js_squircle,   "squircle",   4));
+    JS_SetPropertyStr(ctx, obj, "roundedArc", JS_NewCFunction(ctx, js_roundedArc, "roundedArc", 6));
+    JS_SetPropertyStr(ctx, obj, "flatArc",    JS_NewCFunction(ctx, js_flatArc,    "flatArc",    6));
+    JS_SetPropertyStr(ctx, obj, "segment",    JS_NewCFunction(ctx, js_segment,    "segment",    5));
+    JS_SetPropertyStr(ctx, obj, "triangle",   JS_NewCFunction(ctx, js_triangle,   "triangle",   6));
+    JS_SetPropertyStr(ctx, obj, "diamond",    JS_NewCFunction(ctx, js_diamond,    "diamond",    3));
+    JS_SetPropertyStr(ctx, obj, "setBlendMode", JS_NewCFunction(ctx, js_setBlendMode, "setBlendMode", 1));
+    JS_SetPropertyStr(ctx, obj, "beginLayer",   JS_NewCFunction(ctx, js_beginLayer,   "beginLayer",   1));
+    JS_SetPropertyStr(ctx, obj, "endLayer",     JS_NewCFunction(ctx, js_endLayer,     "endLayer",     0));
+
 
     // Properties
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "fillStyle"), JS_UNDEFINED, JS_NewCFunction(ctx, js_fillStyle, "fillStyle", 1), JS_PROP_CONFIGURABLE);
@@ -195,6 +214,9 @@ void QuickJSEngine::setupJS()
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineWidth"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineWidth, "lineWidth", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineCap"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineCap, "lineCap", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineJoin"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineJoin, "lineJoin", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "lineDashOffset"), JS_UNDEFINED, JS_NewCFunction(ctx, js_lineDashOffset, "lineDashOffset", 1), JS_PROP_CONFIGURABLE);
+    JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "hdrMultiplier"), JS_UNDEFINED, JS_NewCFunction(ctx, js_hdrMultiplier, "hdrMultiplier", 1), JS_PROP_CONFIGURABLE);
+    JS_SetPropertyStr(ctx, obj, "setLineDash", JS_NewCFunction(ctx, js_setLineDash, "setLineDash", 1));
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "font"), JS_UNDEFINED, JS_NewCFunction(ctx, js_font, "font", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "textAlign"), JS_UNDEFINED, JS_NewCFunction(ctx, js_textAlign, "textAlign", 1), JS_PROP_CONFIGURABLE);
     JS_DefinePropertyGetSet(ctx, obj, JS_NewAtom(ctx, "textBaseline"), JS_UNDEFINED, JS_NewCFunction(ctx, js_textBaseline, "textBaseline", 1), JS_PROP_CONFIGURABLE);
@@ -206,6 +228,7 @@ void QuickJSEngine::setupJS()
     // standalone settings window
     JS_SetPropertyStr(ctx, global_obj, "STANDALONE", JS_NewBool(ctx, standalone));
     JS_SetPropertyStr(ctx, global_obj, "openSettingsWindow", JS_NewCFunction(ctx, js_openSettingsWindow, "openSettingsWindow", 1));
+    JS_SetPropertyStr(ctx, obj, "setBloom", JS_NewCFunction(ctx, js_setBloom, "setBloom", 2));
 
     JSValue canvasObj = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, canvasObj, "width", JS_NewInt32(ctx, currentRenderer->getWidth()));
@@ -291,6 +314,16 @@ JSValue QuickJSEngine::js_openSettingsWindow(JSContext *ctx, JSValue this_val, i
 {
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
     if (self->onOpenSettings) self->onOpenSettings();
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_setBloom(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    double size = 0, intensity = 1;
+    if (argc > 0) JS_ToFloat64(ctx, &size, argv[0]);
+    if (argc > 1) JS_ToFloat64(ctx, &intensity, argv[1]);
+    if (self->onSetBloom) self->onSetBloom(static_cast<float>(size), static_cast<float>(intensity));
     return JS_UNDEFINED;
 }
 
@@ -695,19 +728,27 @@ JSValue QuickJSEngine::js_fillStyle(JSContext *ctx, JSValue this_val, int argc, 
         self->currentRenderer->setFillStyleGradient(id);
     } else {
         auto color = JS_ToCString(ctx, argv[0]);
-        self->currentRenderer->setFillStyle(color);
-        JS_FreeCString(ctx, color);
+        if (color) {
+            self->currentRenderer->setFillStyle(color);
+            JS_FreeCString(ctx, color);
+        }
     }
     return JS_UNDEFINED;
 }
 
 JSValue QuickJSEngine::js_strokeStyle(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
 {
-    auto color = JS_ToCString(ctx, argv[0]);
     auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
-    self->currentRenderer->setStrokeStyle(color);
-
-    JS_FreeCString(ctx, color);
+    if (JS_GetClassID(argv[0]) == self->gradientClassId) {
+        int id = (int)(intptr_t)JS_GetOpaque(argv[0], self->gradientClassId);
+        self->currentRenderer->setStrokeStyleGradient(id);
+    } else {
+        auto color = JS_ToCString(ctx, argv[0]);
+        if (color) {
+            self->currentRenderer->setStrokeStyle(color);
+            JS_FreeCString(ctx, color);
+        }
+    }
     return JS_UNDEFINED;
 }
 
@@ -748,6 +789,45 @@ JSValue QuickJSEngine::js_lineJoin(JSContext *ctx, JSValue this_val, int argc, J
     self->currentRenderer->setLineJoin(join);
 
     JS_FreeCString(ctx, join);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_setLineDash(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    std::vector<float> segments;
+    if (argc > 0 && JS_IsArray(argv[0])) {
+        JSValue lenVal = JS_GetPropertyStr(ctx, argv[0], "length");
+        uint32_t len = 0;
+        JS_ToUint32(ctx, &len, lenVal);
+        JS_FreeValue(ctx, lenVal);
+        for (uint32_t i = 0; i < len; ++i) {
+            JSValue v = JS_GetPropertyUint32(ctx, argv[0], i);
+            double d = 0;
+            JS_ToFloat64(ctx, &d, v);
+            JS_FreeValue(ctx, v);
+            segments.push_back(static_cast<float>(d));
+        }
+    }
+    self->currentRenderer->setLineDash(segments);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_lineDashOffset(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double offset = 0;
+    JS_ToFloat64(ctx, &offset, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->setLineDashOffset(static_cast<float>(offset));
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_hdrMultiplier(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double mult = 1.0;
+    JS_ToFloat64(ctx, &mult, argv[0]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->setHdrMultiplier(static_cast<float>(mult));
     return JS_UNDEFINED;
 }
 
@@ -834,4 +914,184 @@ JSValue QuickJSEngine::js_getParameter(JSContext *ctx, JSValue this_val, int arg
     double value = self->parameterStore.getParameter(parameterId);
 
     return JS_NewFloat64(ctx, value);
+}
+
+// ---------------------------------------------------------------------------
+// Animation time
+// ---------------------------------------------------------------------------
+
+JSValue QuickJSEngine::js_time(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    return JS_NewFloat64(ctx, self->currentRenderer->time());
+}
+
+JSValue QuickJSEngine::js_deltaTime(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    return JS_NewFloat64(ctx, self->currentRenderer->deltaTime());
+}
+
+JSValue QuickJSEngine::js_frameCount(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    return JS_NewInt32(ctx, self->currentRenderer->frameCount());
+}
+
+// ---------------------------------------------------------------------------
+// Visage-native GPU primitives
+// ---------------------------------------------------------------------------
+
+JSValue QuickJSEngine::js_circle(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double cx, cy, radius;
+    JS_ToFloat64(ctx, &cx, argv[0]);
+    JS_ToFloat64(ctx, &cy, argv[1]);
+    JS_ToFloat64(ctx, &radius, argv[2]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->circle(cx, cy, radius);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_fadeCircle(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double cx, cy, radius, pw;
+    JS_ToFloat64(ctx, &cx, argv[0]);
+    JS_ToFloat64(ctx, &cy, argv[1]);
+    JS_ToFloat64(ctx, &radius, argv[2]);
+    JS_ToFloat64(ctx, &pw, argv[3]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->fadeCircle(cx, cy, radius, pw);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_ring(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y, diameter, thickness;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    JS_ToFloat64(ctx, &diameter, argv[2]);
+    JS_ToFloat64(ctx, &thickness, argv[3]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->ring(x, y, diameter, thickness);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_squircle(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y, diameter, power;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    JS_ToFloat64(ctx, &diameter, argv[2]);
+    JS_ToFloat64(ctx, &power, argv[3]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->squircle(x, y, diameter, power);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_roundedArc(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y, diameter, thickness, centerRad, arcRad;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    JS_ToFloat64(ctx, &diameter, argv[2]);
+    JS_ToFloat64(ctx, &thickness, argv[3]);
+    JS_ToFloat64(ctx, &centerRad, argv[4]);
+    JS_ToFloat64(ctx, &arcRad, argv[5]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->roundedArc(x, y, diameter, thickness, centerRad, arcRad);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_flatArc(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y, diameter, thickness, centerRad, arcRad;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    JS_ToFloat64(ctx, &diameter, argv[2]);
+    JS_ToFloat64(ctx, &thickness, argv[3]);
+    JS_ToFloat64(ctx, &centerRad, argv[4]);
+    JS_ToFloat64(ctx, &arcRad, argv[5]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->flatArc(x, y, diameter, thickness, centerRad, arcRad);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_segment(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double ax, ay, bx, by, thickness;
+    JS_ToFloat64(ctx, &ax, argv[0]);
+    JS_ToFloat64(ctx, &ay, argv[1]);
+    JS_ToFloat64(ctx, &bx, argv[2]);
+    JS_ToFloat64(ctx, &by, argv[3]);
+    JS_ToFloat64(ctx, &thickness, argv[4]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->segment(ax, ay, bx, by, thickness);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_triangle(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double ax, ay, bx, by, cx, cy;
+    JS_ToFloat64(ctx, &ax, argv[0]);
+    JS_ToFloat64(ctx, &ay, argv[1]);
+    JS_ToFloat64(ctx, &bx, argv[2]);
+    JS_ToFloat64(ctx, &by, argv[3]);
+    JS_ToFloat64(ctx, &cx, argv[4]);
+    JS_ToFloat64(ctx, &cy, argv[5]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->triangle(ax, ay, bx, by, cx, cy);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_diamond(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    double x, y, diameter;
+    JS_ToFloat64(ctx, &x, argv[0]);
+    JS_ToFloat64(ctx, &y, argv[1]);
+    JS_ToFloat64(ctx, &diameter, argv[2]);
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->diamond(x, y, diameter);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_setBlendMode(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    const char* mode = JS_ToCString(ctx, argv[0]);
+    if (mode) {
+        auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+        self->currentRenderer->setBlendMode(mode);
+        JS_FreeCString(ctx, mode);
+    }
+    return JS_UNDEFINED;
+}
+
+// ctx.beginLayer({ opacity: 0.5 }) — Canvas 2D Level 2 spec
+JSValue QuickJSEngine::js_beginLayer(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    float opacity = 1.0f;
+    if (argc > 0 && JS_IsObject(argv[0])) {
+        JSValue opVal = JS_GetPropertyStr(ctx, argv[0], "opacity");
+        if (!JS_IsUndefined(opVal)) {
+            double d = 1.0;
+            JS_ToFloat64(ctx, &d, opVal);
+            opacity = static_cast<float>(d);
+        }
+        JS_FreeValue(ctx, opVal);
+    } else if (argc > 0 && !JS_IsUndefined(argv[0])) {
+        // Also accept a bare number for convenience
+        double d = 1.0;
+        JS_ToFloat64(ctx, &d, argv[0]);
+        opacity = static_cast<float>(d);
+    }
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->beginLayer(opacity);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::js_endLayer(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    self->currentRenderer->endLayer();
+    return JS_UNDEFINED;
 }

@@ -12,7 +12,7 @@ singularity_create_plugin(
     SOURCES
         Example.cpp
     UI
-        hello.js
+        bloom.js
     PLUGIN_WIDTH 400
     PLUGIN_HEIGHT 300
     FORMATS APP VST3
