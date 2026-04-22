@@ -5,7 +5,7 @@ set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 
 function(singularity_create_plugin target)
-    set(oneValueArgs PACKAGE_NAME PLUGIN_WIDTH PLUGIN_HEIGHT VENDOR URL EMAIL PLUGIN_CATEGORY)
+    set(oneValueArgs PACKAGE_NAME VENDOR URL EMAIL PLUGIN_CATEGORY)
     set(multiValueArgs SOURCES UI FORMATS)
 
     # Parse the arguments
@@ -23,8 +23,6 @@ function(singularity_create_plugin target)
     set(SOURCES "${PARAMS_SOURCES}")
     set(UI "${PARAMS_UI}")
     set(FORMATS "${PARAMS_FORMATS}")
-    set(PLUGIN_WIDTH ${PARAMS_PLUGIN_WIDTH})
-    set(PLUGIN_HEIGHT ${PARAMS_PLUGIN_HEIGHT})
     set(VENDOR ${PARAMS_VENDOR})
     set(URL ${PARAMS_URL})
     set(EMAIL ${PARAMS_EMAIL})
@@ -53,15 +51,13 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        # ${SINGULARITY_ROOT_DIR}/SkiaRenderer.cpp
         ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
     )
 
-    target_link_libraries(${target}-shared PRIVATE 
+    target_link_libraries(${target}-shared PUBLIC 
         qjs-libc
         choc::choc
-        # ${SINGULARITY_SKIA_LIB}
         visage
     )
 
@@ -86,8 +82,6 @@ function(singularity_create_plugin target)
     target_compile_definitions(${target}-shared PUBLIC
         UI_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         UI_MAIN="${UI_MAIN_FILE}"
-        PLUGIN_WIDTH=${PLUGIN_WIDTH}
-        PLUGIN_HEIGHT=${PLUGIN_HEIGHT}
         QSJC_SYMBOL=qjsc_${_ui_stem}
         QSJC_SYMBOL_SIZE=qjsc_${_ui_stem}_size
     )
@@ -244,12 +238,5 @@ function(singularity_create_plugin target)
                 endif()
             endif(SMTG_MAC)
         endif()
-    endforeach()
-
-    # target_compile_definitions(${target} PUBLIC
-    #     PLUGIN_WIDTH=${PARAMS_PLUGIN_WIDTH}
-    #     PLUGIN_HEIGHT=${PARAMS_PLUGIN_HEIGHT}
-    # )
-
-    
+    endforeach()    
 endfunction()

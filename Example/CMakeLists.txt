@@ -13,8 +13,6 @@ singularity_create_plugin(
         Example.cpp
     UI
         bloom.js
-    PLUGIN_WIDTH 400
-    PLUGIN_HEIGHT 300
     FORMATS APP VST3
 )
 

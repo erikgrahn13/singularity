@@ -1,17 +1,17 @@
 #pragma once
 
 #include "pluginterfaces/gui/iplugview.h"
-#include "SingularityGraphics2.h"
+#include "SingularityController.h"
 #include "IParameterProvider.h"
-#include "IWindow.h"
 #include <memory>
 
+#include <visage/app.h>
 namespace Steinberg {
 
 class SingularityView : public IPlugView
 {
 public:
-    SingularityView(IParameterProvider& params, int width, int height);
+    SingularityView(IParameterProvider& params);
     ~SingularityView();
 
     // IPlugView
@@ -22,10 +22,10 @@ public:
     tresult PLUGIN_API onKeyDown(char16, int16, int16) override     { return kResultFalse; }
     tresult PLUGIN_API onKeyUp(char16, int16, int16) override       { return kResultFalse; }
     tresult PLUGIN_API getSize(ViewRect* rect) override;
-    tresult PLUGIN_API onSize(ViewRect*) override                   { return kResultOk; }
+    tresult PLUGIN_API onSize(ViewRect*) override;
     tresult PLUGIN_API onFocus(TBool) override                      { return kResultOk; }
     tresult PLUGIN_API setFrame(IPlugFrame* f) override             { frame = f; return kResultOk; }
-    tresult PLUGIN_API canResize() override                         { return kResultFalse; }
+    tresult PLUGIN_API canResize() override                         { return kResultTrue; }
     tresult PLUGIN_API checkSizeConstraint(ViewRect*) override      { return kResultOk; }
 
     // IUnknown
@@ -35,15 +35,15 @@ public:
 
 private:
     IParameterProvider& m_params;
-    int                 m_width;
-    int                 m_height;
     IPlugFrame*         frame    = nullptr;
     uint32              refCount = 1;
 
-    // Platform window + graphics — created in attached(), destroyed in removed()
-    std::unique_ptr<IWindow>           m_win;
-    std::unique_ptr<SingularityGraphics> m_graphics;
-    bool m_dirty = true; // used on Win32 to skip redundant repaints
+    int currentWidth;
+    int currentHeight;
+
+    std::unique_ptr<SingularityController> controller_;
+    std::unique_ptr<visage::ApplicationWindow> app_;
+    visage::EventTimer hotReloadtimer;
 };
 
 } // namespace Steinberg

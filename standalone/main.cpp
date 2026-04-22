@@ -153,6 +153,9 @@ int main()
   auto jsEngine = IJSEngine::createJSEngine();
   auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
 
+  auto width = static_cast<visage::ApplicationWindow*>(renderer->getRootComponent())->width();
+  auto height = static_cast<visage::ApplicationWindow*>(renderer->getRootComponent())->height();
+
   auto controller = std::make_unique<SingularityController>(std::move(renderer), std::move(jsEngine), std::move(fileWathcer));
 
 #ifndef NDEBUG
@@ -163,10 +166,10 @@ int main()
     });
 #endif
 
-  app.show(visage::Dimension::logicalPixels(PLUGIN_WIDTH),
-  visage::Dimension::logicalPixels(PLUGIN_HEIGHT));
+controller->initialize();
+app.show(visage::Dimension::nativePixels(width),
+         visage::Dimension::nativePixels(height));
   
-  controller->initialize();
   app.runEventLoop();
 
   return 0;
