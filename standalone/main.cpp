@@ -69,71 +69,105 @@
 #include <visage_graphics/post_effects.h>
 
 #include "ISingularityAudio.h"
-#include "../SingularityGraphics2.h"
+#include "../SingularityController.h"
+#include "../IRenderer2.h"
+#include "../IJSEngine.h"
+#include "../IFileWatcher.h"
 
-class SingularityWindow : public visage::ApplicationWindow, public visage::EventTimer {
-public:
-  explicit SingularityWindow(std::shared_ptr<SingularityGraphics> graphics)
-      : graphics_(std::move(graphics)) {
-#ifndef NDEBUG
-    startTimer(50);
-#endif
-    onDraw() = [this](visage::Canvas& canvas) {
-      graphics_->renderUI(canvas);
-        redraw();
-    };
+#include <iostream>
 
-    graphics_->setOnSetBloom([this](float size, float intensity) {
-      bloom_.setBloomSize(size);
-      bloom_.setBloomIntensity(intensity);
-      setPostEffect(size > 0 ? &bloom_ : nullptr);
-    });
-  }
+// class SingularityWindow : public visage::ApplicationWindow, public visage::EventTimer {
+// public:
+//   explicit SingularityWindow(std::shared_ptr<SingularityGraphics> graphics)
+//       : graphics_(std::move(graphics)) {
+// // #ifndef NDEBUG
+// //     startTimer(50);
+// // #endif
+// //     onDraw() = [this](visage::Canvas& canvas) {
+// //       graphics_->renderUI(canvas);
+// //         redraw();
+// //     };
 
-  void mouseMove(const visage::MouseEvent& e) override {
-    graphics_->onMouseMove(e.position.x, e.position.y);
-    // redraw();
-  }
-  void mouseDrag(const visage::MouseEvent& e) override {
-    graphics_->onMouseMove(e.position.x, e.position.y);
-    // redraw();
-  }
-  void mouseDown(const visage::MouseEvent& e) override {
-    graphics_->onMouseDown(e.position.x, e.position.y);
-    // redraw();
-  }
-  void mouseUp(const visage::MouseEvent& e) override {
-    graphics_->onMouseUp(e.position.x, e.position.y);
-    // redraw();
-  }
+// //     graphics_->setOnSetBloom([this](float size, float intensity) {
+// //       bloom_.setBloomSize(size);
+// //       bloom_.setBloomIntensity(intensity);
+// //       setPostEffect(size > 0 ? &bloom_ : nullptr);
+// //     });
+// //   }
 
-  // Only fired in debug builds for hot reloading
-  void timerCallback() override {
-    if (graphics_->pendingReload.exchange(false)) {
-      graphics_->hotReload();
-      redraw();
-    }
-  }
+// //   void mouseMove(const visage::MouseEvent& e) override {
+// //     graphics_->onMouseMove(e.position.x, e.position.y);
+// //     // redraw();
+// //   }
+// //   void mouseDrag(const visage::MouseEvent& e) override {
+// //     graphics_->onMouseMove(e.position.x, e.position.y);
+// //     // redraw();
+// //   }
+// //   void mouseDown(const visage::MouseEvent& e) override {
+// //     graphics_->onMouseDown(e.position.x, e.position.y);
+// //     // redraw();
+// //   }
+// //   void mouseUp(const visage::MouseEvent& e) override {
+// //     graphics_->onMouseUp(e.position.x, e.position.y);
+// //     // redraw();
+// //   }
 
-private:
-  std::shared_ptr<SingularityGraphics> graphics_;
-  visage::BloomPostEffect bloom_;
-};
+// //   // Only fired in debug builds for hot reloading
+// //   void timerCallback() override {
+// //     if (graphics_->pendingReload.exchange(false)) {
+// //       graphics_->hotReload();
+// //       redraw();
+// //     }
+//   }
+
+// private:
+//   std::shared_ptr<SingularityGraphics> graphics_;
+//   visage::BloomPostEffect bloom_;
+// };
+
+// int main()
+// {
+//   visage::ApplicationWindow app;
+
+// //   auto audio    = ISingularityAudio::createSingularityAudio();
+// //   auto graphics = std::make_shared<SingularityGraphics>(
+// //       PLUGIN_WIDTH, PLUGIN_HEIGHT, getParameterContainer(), true);
+
+// // //   setOnParameterChanged([&](int id, double value) {
+// // //     audio->pushParameterChange(id, value);
+// // //   });
+
+// //   SingularityWindow window(graphics);
+//   app.show(visage::Dimension::logicalPixels(PLUGIN_WIDTH),
+//               visage::Dimension::logicalPixels(PLUGIN_HEIGHT));
+//   app.runEventLoop();
+
+//   return 0;
+// }
 
 int main()
 {
-//   auto audio    = ISingularityAudio::createSingularityAudio();
-  auto graphics = std::make_shared<SingularityGraphics>(
-      PLUGIN_WIDTH, PLUGIN_HEIGHT, getParameterContainer(), true);
+  visage::ApplicationWindow app;
 
-//   setOnParameterChanged([&](int id, double value) {
-//     audio->pushParameterChange(id, value);
-//   });
+  auto renderer = IRenderer::createRenderer(&app);
+  auto jsEngine = IJSEngine::createJSEngine();
+  auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
 
-  SingularityWindow window(graphics);
-  window.show(visage::Dimension::logicalPixels(PLUGIN_WIDTH),
-              visage::Dimension::logicalPixels(PLUGIN_HEIGHT));
-  window.runEventLoop();
+  auto controller = std::make_unique<SingularityController>(std::move(renderer), std::move(jsEngine), std::move(fileWathcer));
+
+#ifndef NDEBUG
+    visage::EventTimer timer;
+    timer.startTimer(50);
+    timer.onTimerCallback().add([&]{
+        controller->tick();
+    });
+#endif
+
+  app.show(visage::Dimension::logicalPixels(PLUGIN_WIDTH),
+  visage::Dimension::logicalPixels(PLUGIN_HEIGHT));
+  
+  controller->initialize();
+  app.runEventLoop();
 
   return 0;
 }

@@ -51,11 +51,11 @@ function(singularity_create_plugin target)
 
     add_library(${target}-shared STATIC 
         ${SOURCES}
-        ${SINGULARITY_ROOT_DIR}/SingularityGraphics2.cpp
+        ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
         # ${SINGULARITY_ROOT_DIR}/SkiaRenderer.cpp
-        ${SINGULARITY_ROOT_DIR}/VisageRenderer.cpp
-        ${SINGULARITY_ROOT_DIR}/QuickJSEngine.cpp
+        ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
+        ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
     )
 
     target_link_libraries(${target}-shared PRIVATE 

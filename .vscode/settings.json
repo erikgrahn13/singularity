@@ -4,4 +4,8 @@
         "**/build": true,
         "**/external": false
     },
+    "cmake.sourceDirectory": "${workspaceFolder}/Example"
+    // "cmake.sourceDirectory": [
+    //     "${workspaceFolder}/Example",
+    // ],
 }

@@ -27,6 +27,37 @@
             "preLaunchTask": "CMake: build",
             "externalConsole": false,
             "MIMode": "lldb"
+        },
+        {
+            "name": "VST3PluginTestHost Windows",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "C:/Program Files/Steinberg/VST3PluginTestHost/VST3PluginTestHost.exe",
+            "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "newExternalWindow",
+            "preLaunchTask": "CMake: build"
+        },
+        {
+            "name": "Editorhost Windows",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.buildDirectory}/bin/Release/editorhost.exe",
+            "args": ["${command:cmake.buildDirectory}/VST3/Release/ExamplePlugin.vst3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "newExternalWindow",
+            "preLaunchTask": "CMake: build"
+        },
+        {
+            "name": "ExamplePlugin APP",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}/Example",
+            "environment": [],
+            "args": []
         }
     ]
 }

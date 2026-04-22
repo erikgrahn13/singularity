@@ -9,9 +9,12 @@
 class ChocFileWatcher : public IFileWatcher
 {
     public:
-    ChocFileWatcher(std::filesystem::path fileOrFolderToWatch, std::function<void(const choc::file::Watcher::Event&)> onChange);
+    ChocFileWatcher(std::filesystem::path fileOrFolderToWatch);
+    void setCallback(std::function<void(const std::string&)> cb) override;
+
     ~ChocFileWatcher();
 
     private:
     choc::file::Watcher watcher;
+    std::function<void(const std::string&)> callback_;
 };

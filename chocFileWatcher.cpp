@@ -1,17 +1,24 @@
 #include "chocFileWatcher.h"
 
-ChocFileWatcher::ChocFileWatcher(std::filesystem::path fileOrFolderToWatch, std::function<void(const choc::file::Watcher::Event&)> onChange)
- : watcher(std::move(fileOrFolderToWatch), onChange)
+ChocFileWatcher::ChocFileWatcher(std::filesystem::path fileOrFolderToWatch)
+     : watcher(fileOrFolderToWatch, [this](const choc::file::Watcher::Event& e)
+    {
+        if (callback_)
+            callback_(e.file.string()); // adjust if needed
+    })
 {
+}
+
+void ChocFileWatcher::setCallback(std::function<void(const std::string &)> cb)
+{
+    callback_ = std::move(cb);
 }
 
 ChocFileWatcher::~ChocFileWatcher()
 {
 }
 
-std::unique_ptr<IFileWatcher> createFileWatcher(const std::string &directory, std::function<void(const std::string& filePath)> onChange)
+std::unique_ptr<IFileWatcher> IFileWatcher::createFileWatcher(const std::string &directory)
 {
-    return std::make_unique<ChocFileWatcher>(directory, [onChange](const choc::file::Watcher::Event& e) {
-        onChange(e.file.string());
-    });
+    return std::make_unique<ChocFileWatcher>(directory);
 }
