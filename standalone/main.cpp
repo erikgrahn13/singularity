@@ -150,11 +150,9 @@ int main()
   visage::ApplicationWindow app;
 
   auto renderer = IRenderer::createRenderer(&app);
+  auto rootWindow = renderer->getRootComponent();
   auto jsEngine = IJSEngine::createJSEngine();
   auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
-
-  auto width = static_cast<visage::ApplicationWindow*>(renderer->getRootComponent())->width();
-  auto height = static_cast<visage::ApplicationWindow*>(renderer->getRootComponent())->height();
 
   auto controller = std::make_unique<SingularityController>(std::move(renderer), std::move(jsEngine), std::move(fileWathcer));
 
@@ -167,6 +165,10 @@ int main()
 #endif
 
 controller->initialize();
+
+auto width = static_cast<visage::ApplicationWindow*>(rootWindow)->width();
+auto height = static_cast<visage::ApplicationWindow*>(rootWindow)->height();
+
 app.show(visage::Dimension::nativePixels(width),
          visage::Dimension::nativePixels(height));
   
