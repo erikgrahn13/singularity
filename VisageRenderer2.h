@@ -16,6 +16,10 @@ public:
     void setBounds(void* component, float x, float y, float w, float h) override;
     void setDrawCallback(void* component, std::function<void(void* canvas)> cb) override;
     void clear() override;
+    void setComponentMouseDownCallback(std::function<void(void*, float, float)> cb) override;
+    void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) override;
+    void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) override;
+
 
     // --- Immediate rect helpers ---
     void fillRect(void* canvas, float x, float y, float width, float height) override;
@@ -89,4 +93,7 @@ private:
 
     DrawState state_;
     std::vector<DrawState> stateStack_;
+    std::function<void(void*, float, float)> componentMouseDownCallback_;
+    std::function<void(void*, float, float)> componentMouseUpCallback_;
+    std::function<void(void*, float, float)> componentMouseDragCallback_;
 };

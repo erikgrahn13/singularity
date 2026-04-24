@@ -73,10 +73,29 @@ void *VisageRenderer::createComponent(void *parentComponent)
     auto* parentFrame = static_cast<visage::Frame*>(parentComponent);
     auto child = std::make_unique<visage::Frame>();
     auto* childPtr = child.get();
-    parentFrame->addChild(std::move(child));
+    
+    childPtr->onMouseDown() += [this, childPtr](const visage::MouseEvent& e) {
+        if (componentMouseDownCallback_) {
+            componentMouseDownCallback_(childPtr, e.position.x, e.position.y);
+        }
+    };
 
+    childPtr->onMouseUp() += [this, childPtr](const visage::MouseEvent& e) {
+        if (componentMouseUpCallback_) {
+            componentMouseUpCallback_(childPtr, e.position.x, e.position.y);
+        }
+    };
+    childPtr->onMouseDrag() += [this, childPtr](const visage::MouseEvent& e) {
+        if (componentMouseDragCallback_) {
+            componentMouseDragCallback_(childPtr, e.position.x, e.position.y);
+        }
+    };
+    
     std::cout << "VisageRenderer created child: " << childPtr
-              << " parent: " << parentFrame << std::endl;
+    << " parent: " << parentFrame << std::endl;
+    
+    parentFrame->addChild(std::move(child));
+    
 
     return childPtr;
 }
@@ -425,4 +444,19 @@ float VisageRenderer::measureText(void* canvas, const std::string& text)
     visage::Font vFont = makeFont(state_.fontSize);
     std::u32string u32 = visage::String::convertUtf8ToUtf32<std::u32string>(text);
     return vFont.stringWidth(u32.c_str(), static_cast<int>(u32.size()));
+}
+
+void VisageRenderer::setComponentMouseDownCallback(std::function<void(void*, float, float)> cb)
+{
+    componentMouseDownCallback_ = std::move(cb);
+}
+
+void VisageRenderer::setComponentMouseUpCallback(std::function<void(void*, float, float)> cb)
+{
+    componentMouseUpCallback_ = std::move(cb);
+}
+
+void VisageRenderer::setComponentMouseDragCallback(std::function<void(void*, float, float)> cb)
+{
+    componentMouseDragCallback_ = std::move(cb);
 }

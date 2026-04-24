@@ -7,12 +7,16 @@ class IRenderer {
 public:
     static std::unique_ptr<IRenderer> createRenderer(void* parentHandle);
 
+
     // --- Component tree ---
     virtual void* getRootComponent() = 0;
     virtual void* createComponent(void* parentComponent) = 0;
     virtual void setBounds(void* component, float x, float y, float w, float h) = 0;
     virtual void setDrawCallback(void* component, std::function<void(void* canvas)> cb) = 0;
     virtual void clear() = 0;
+    virtual void setComponentMouseDownCallback(std::function<void(void*, float, float)> cb) = 0;
+    virtual void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) = 0;
+    virtual void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) = 0;
 
     // --- Immediate rect helpers ---
     virtual void fillRect(void* canvas, float x, float y, float width, float height) = 0;

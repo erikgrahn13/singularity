@@ -15,10 +15,10 @@ class IJSEngine {
     // virtual void setupJS() = 0;
     // virtual void loadScript(const std::string& path) = 0;
     // virtual void renderUI() = 0;
-    // // Events
-    // virtual void onMouseDown(float x, float y) = 0;
-    // virtual void onMouseUp(float x, float y) = 0;
-    // virtual void onMouseMove(float x, float y) = 0;
+    // Events
+    virtual void onMouseDown(void* component, float x, float y) = 0;
+    virtual void onMouseUp(void* component, float x, float y) = 0;
+    virtual void onMouseDrag(void* component, float x, float y) = 0;
     // // Callbacks
     // virtual void setOnOpenSettings(std::function<void()> cb) = 0;
     // virtual void setOnSetBloom(std::function<void(float, float)> cb) {}

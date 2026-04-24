@@ -149,12 +149,14 @@ int main()
 {
   visage::ApplicationWindow app;
 
-  auto renderer = IRenderer::createRenderer(&app);
-  auto rootWindow = renderer->getRootComponent();
-  auto jsEngine = IJSEngine::createJSEngine();
-  auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
+  auto audio    = ISingularityAudio::createSingularityAudio();
 
-  auto controller = std::make_unique<SingularityController>(std::move(renderer), std::move(jsEngine), std::move(fileWathcer));
+
+  // auto renderer = IRenderer::createRenderer(&app);
+  // auto rootWindow = renderer->getRootComponent();
+  // auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
+
+  auto controller = std::make_unique<SingularityController>(&app, getParameterContainer());
 
 #ifndef NDEBUG
     visage::EventTimer timer;
@@ -164,13 +166,13 @@ int main()
     });
 #endif
 
-controller->initialize();
+  controller->initialize();
 
-auto width = static_cast<visage::ApplicationWindow*>(rootWindow)->width();
-auto height = static_cast<visage::ApplicationWindow*>(rootWindow)->height();
+  auto width = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
+  auto height = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->height();
 
-app.show(visage::Dimension::nativePixels(width),
-         visage::Dimension::nativePixels(height));
+  app.show(visage::Dimension::nativePixels(width),
+          visage::Dimension::nativePixels(height));
   
   app.runEventLoop();
 

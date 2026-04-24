@@ -8,7 +8,6 @@ std::unique_ptr<IJSEngine> IJSEngine::createJSEngine()
     return std::make_unique<QuickJSEngine>();
 }
 
-
 static JSValue js_mount(JSContext* ctx, JSValueConst this_val,
                         int argc, JSValueConst* argv) {
     if (argc < 1 || !JS_IsFunction(ctx, argv[0]))
@@ -40,6 +39,7 @@ static JSValue js_Component(JSContext* ctx, JSValueConst this_val,
 static const JSCFunctionListEntry singularity_funcs[] = {
     JS_CFUNC_DEF("Component", 1, js_Component),
     JS_CFUNC_DEF("mount", 1, js_mount),
+    // JS_CFUNC_DEF("on", 2, js_on),
 };
 
 static int js_singularity_init(JSContext* ctx, JSModuleDef* m) {
@@ -145,8 +145,34 @@ void applyPropsToFrame(JSContext* ctx, JSValueConst props, IRenderer* renderer, 
             JS_SetContextOpaque(ctx, previousOpaque);
         });
     }
-
     JS_FreeValue(ctx, draw);
+
+    JSValue onMouseDown = JS_GetPropertyStr(ctx, props, "onMouseDown");
+    std::cout << "before has onMouseDown" << std::endl;
+    if (JS_IsFunction(ctx, onMouseDown)) {
+        std::cout << "component has onMouseDown" << std::endl;
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        engine->registerMouseDownHandler(component, ctx, onMouseDown);
+    }
+    JS_FreeValue(ctx, onMouseDown);
+
+    JSValue onMouseUp = JS_GetPropertyStr(ctx, props, "onMouseUp");
+    if (JS_IsFunction(ctx, onMouseUp)) {
+        std::cout << "component has onMouseUp" << std::endl;
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        engine->registerMouseUpHandler(component, ctx, onMouseUp);
+    }
+    JS_FreeValue(ctx, onMouseUp);
+
+    JSValue onMouseDrag = JS_GetPropertyStr(ctx, props, "onMouseDrag");
+
+    if (JS_IsFunction(ctx, onMouseDrag)) {
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        engine->registerMouseDragHandler(component, ctx, onMouseDrag);
+    }
+
+    JS_FreeValue(ctx, onMouseDrag);
+
 }
 
 static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* renderer, void* component) {
@@ -204,6 +230,23 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
             JS_FreeValue(ctx_, fn);
         drawCallbacks_.clear();
 
+        // for (auto& [name, fn] : eventHandlers_) {
+        //     JS_FreeValue(ctx_, fn);
+        // }
+        // eventHandlers_.clear();
+
+        for (auto& [component, fn] : mouseDownHandlers_)
+            JS_FreeValue(ctx_, fn);
+        mouseDownHandlers_.clear();
+
+        for (auto& [component, fn] : mouseUpHandlers_)
+            JS_FreeValue(ctx_, fn);
+        mouseUpHandlers_.clear();
+
+        for (auto& [component, fn] : mouseDragHandlers_)
+            JS_FreeValue(ctx_, fn);
+        mouseDragHandlers_.clear();
+
         if (!JS_IsUndefined(appFn_)) {
             JS_FreeValue(ctx_, appFn_);
             appFn_ = JS_UNDEFINED;
@@ -248,4 +291,130 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
 
     JS_FreeValue(ctx_, module_val);
     js_free(ctx_, buf);
+}
+
+// void QuickJSEngine::onMouseDown(float x, float y)
+// {
+//     dispatchEvent("mousedown", x, y);
+// }
+
+// void QuickJSEngine::onMouseUp(float x, float y)
+// {
+//     dispatchEvent("mouseup", x, y);
+// }
+
+// void QuickJSEngine::onMouseMove(float x, float y)
+// {
+//     dispatchEvent("mousemove", x, y);
+// }
+
+// void QuickJSEngine::dispatchEvent(const std::string& type, float x, float y)
+// {
+//     auto it = eventHandlers_.find(type);
+//     if (it == eventHandlers_.end())
+//         return;
+
+//     JSValue eventObj = JS_NewObject(ctx_);
+//     JS_SetPropertyStr(ctx_, eventObj, "type", JS_NewString(ctx_, type.c_str()));
+//     JS_SetPropertyStr(ctx_, eventObj, "x", JS_NewFloat64(ctx_, x));
+//     JS_SetPropertyStr(ctx_, eventObj, "y", JS_NewFloat64(ctx_, y));
+
+//     JSValue argv[1] = { eventObj };
+//     JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 1, argv);
+
+//     if (JS_IsException(result))
+//         js_std_dump_error(ctx_);
+
+//     JS_FreeValue(ctx_, result);
+//     JS_FreeValue(ctx_, eventObj);
+// }
+
+void QuickJSEngine::registerMouseDownHandler(void* component, JSContext* ctx, JSValue fn)
+{
+    auto it = mouseDownHandlers_.find(component);
+    if (it != mouseDownHandlers_.end()) {
+        JS_FreeValue(ctx, it->second);
+    }
+
+    mouseDownHandlers_[component] = JS_DupValue(ctx, fn);
+}
+
+void QuickJSEngine::registerMouseUpHandler(void* component, JSContext* ctx, JSValue fn)
+{
+    auto it = mouseUpHandlers_.find(component);
+    if (it != mouseUpHandlers_.end()) {
+        JS_FreeValue(ctx, it->second);
+    }
+
+    mouseUpHandlers_[component] = JS_DupValue(ctx, fn);
+}
+
+void QuickJSEngine::registerMouseDragHandler(void* component, JSContext* ctx, JSValue fn)
+{
+    auto it = mouseDragHandlers_.find(component);
+    if (it != mouseDragHandlers_.end()) {
+        JS_FreeValue(ctx, it->second);
+    }
+
+    mouseDragHandlers_[component] = JS_DupValue(ctx, fn);
+}
+
+void QuickJSEngine::onMouseDown(void *component, float x, float y)
+{
+    auto it = mouseDownHandlers_.find(component);
+    if (it == mouseDownHandlers_.end())
+        return;
+
+    JSValue eventObj = JS_NewObject(ctx_);
+    JS_SetPropertyStr(ctx_, eventObj, "x", JS_NewFloat64(ctx_, x));
+    JS_SetPropertyStr(ctx_, eventObj, "y", JS_NewFloat64(ctx_, y));
+
+    JSValue argv[1] = { eventObj };
+    JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 1, argv);
+
+    if (JS_IsException(result))
+        js_std_dump_error(ctx_);
+
+    JS_FreeValue(ctx_, result);
+    JS_FreeValue(ctx_, eventObj);
+}
+
+void QuickJSEngine::onMouseUp(void* component, float x, float y)
+{
+    auto it = mouseUpHandlers_.find(component);
+    if (it == mouseUpHandlers_.end())
+        return;
+
+    JSValue eventObj = JS_NewObject(ctx_);
+    JS_SetPropertyStr(ctx_, eventObj, "x", JS_NewFloat64(ctx_, x));
+    JS_SetPropertyStr(ctx_, eventObj, "y", JS_NewFloat64(ctx_, y));
+
+    JSValue argv[1] = { eventObj };
+    JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 1, argv);
+
+    if (JS_IsException(result))
+        js_std_dump_error(ctx_);
+
+    JS_FreeValue(ctx_, result);
+    JS_FreeValue(ctx_, eventObj);
+}
+
+void QuickJSEngine::onMouseDrag(void* component, float x, float y)
+{
+    auto it = mouseDragHandlers_.find(component);
+    if (it == mouseDragHandlers_.end())
+        return;
+
+    JSValue eventObj = JS_NewObject(ctx_);
+    JS_SetPropertyStr(ctx_, eventObj, "x", JS_NewFloat64(ctx_, x));
+    JS_SetPropertyStr(ctx_, eventObj, "y", JS_NewFloat64(ctx_, y));
+
+    JSValue argv[1] = { eventObj };
+    JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 1, argv);
+
+    if (JS_IsException(result))
+        js_std_dump_error(ctx_);
+
+    JS_FreeValue(ctx_, result);
+    JS_FreeValue(ctx_, eventObj);
 }
