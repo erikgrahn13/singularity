@@ -8,6 +8,14 @@ class QuickJSEngine : public IJSEngine {
     public:
     void load(const std::string& entryFile, IRenderer* renderer) override;
 
+    void installConsole();
+    void log(const std::string& msg);
+    
+
+    void setLogger(LogCallback cb) override {
+        logger_ = std::move(cb);
+    }
+
     // Events
     JSValue on(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv);
     void registerMouseDownHandler(void* component, JSContext* ctx, JSValue fn);

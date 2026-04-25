@@ -26,6 +26,33 @@ static JSValue js_mount(JSContext* ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+static JSValue js_console_log(JSContext* ctx, JSValueConst this_val,
+                             int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+
+    std::string msg;
+
+    for (int i = 0; i < argc; ++i) {
+        const char* str = JS_ToCString(ctx, argv[i]);
+        if (str) {
+            msg += str;
+            JS_FreeCString(ctx, str);
+        }
+
+        if (i + 1 < argc)
+            msg += " ";
+    }
+
+    if (engine) {
+        engine->log(msg);
+    }
+
+    return JS_UNDEFINED;
+}
+
 static JSValue js_Component(JSContext* ctx, JSValueConst this_val,
                             int argc, JSValueConst* argv) {
     JSValue obj = JS_NewObject(ctx);
@@ -59,6 +86,20 @@ extern "C" JSModuleDef* js_init_module_singularity(JSContext* ctx, const char* m
     JS_AddModuleExportList(ctx, m, singularity_funcs,
                            sizeof(singularity_funcs) / sizeof(JSCFunctionListEntry));
     return m;
+}
+
+void QuickJSEngine::installConsole()
+{
+    JSValue global = JS_GetGlobalObject(ctx_);
+
+    JSValue console = JS_NewObject(ctx_);
+
+    JS_SetPropertyStr(ctx_, console, "log",
+        JS_NewCFunction(ctx_, js_console_log, "log", 1));
+
+    JS_SetPropertyStr(ctx_, global, "console", console);
+
+    JS_FreeValue(ctx_, global);
 }
 
 int getIntProp(JSContext* ctx, JSValueConst props, const char* name, int fallback = 0) {
@@ -269,7 +310,7 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     js_init_module_singularity(ctx_, "singularity");
 
     size_t buf_len;
-    js_std_add_helpers(ctx_, 0, nullptr);
+    installConsole();
 
 #if !defined NDEBUG
     auto buf = js_load_file(ctx_, &buf_len, entryFile.c_str());
@@ -383,4 +424,10 @@ void QuickJSEngine::onMouseDrag(void* component, float x, float y)
 
     JS_FreeValue(ctx_, result);
     JS_FreeValue(ctx_, eventObj);
+}
+
+void QuickJSEngine::log(const std::string& msg)
+{
+    if (logger_)
+        logger_(msg);
 }

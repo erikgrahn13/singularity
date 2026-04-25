@@ -10,6 +10,8 @@ class SingularityController {
     SingularityController(void* rootFrame, IParameterProvider &parameterProvider);
     void initialize();
     void tick(); // call from main thread each frame
+    void setLogger(IJSEngine::LogCallback cb);
+
     void* getRootFrame()
     {
         return renderer_->getRootComponent();

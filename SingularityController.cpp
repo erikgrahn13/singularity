@@ -9,6 +9,11 @@ SingularityController::SingularityController(void *rootFrame, IParameterProvider
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
 }
 
+void SingularityController::setLogger(IJSEngine::LogCallback cb)
+{
+    jsEngine_->setLogger(std::move(cb));
+}
+
 void SingularityController::initialize()
 {
     renderer_->setComponentMouseDownCallback(

@@ -158,7 +158,7 @@ int main()
 
   auto controller = std::make_unique<SingularityController>(&app, getParameterContainer());
 
-#ifndef NDEBUG
+#if !defined NDEBUG
     visage::EventTimer timer;
     timer.startTimer(50);
     timer.onTimerCallback().add([&]{
@@ -166,6 +166,10 @@ int main()
     });
 #endif
 
+
+  controller->setLogger([](const std::string& msg) {
+    std::cout << msg << std::endl;
+  });
   controller->initialize();
 
   auto width = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
