@@ -1,5 +1,5 @@
 #include "SingularityView.h"
-
+#include "base/source/fdebug.h"
 
 namespace Steinberg {
 
@@ -24,6 +24,10 @@ SingularityView::SingularityView(IParameterProvider& params)
     });
 #endif
 
+    controller_->setLogger([](const std::string& msg) {
+        SMTG_DBPRT1("%s\n", msg.c_str());
+    });
+    
     controller_->initialize();
     currentWidth = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame())->width();
     currentHeight = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame())->height();
@@ -33,7 +37,6 @@ SingularityView::~SingularityView() { removed(); }
 
 tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 {
-    fprintf(stderr, "[SingularityView] isPlatformTypeSupported: %s\n", type);
 #if _WIN32
     if (strcmp(type, kPlatformTypeHWND) == 0) return kResultTrue;
 #elif __APPLE__
@@ -46,8 +49,6 @@ tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 
 tresult PLUGIN_API SingularityView::attached(void* parent, FIDString type)
 {
-    fprintf(stderr, "[SingularityView] attached: type=%s parent=%p\n", type, parent);
-
     app_->show(visage::Dimension::logicalPixels(currentWidth),
             visage::Dimension::logicalPixels(currentHeight), parent);
 
