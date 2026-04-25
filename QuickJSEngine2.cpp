@@ -7,9 +7,9 @@
 #include "generated.h"
 #endif
 
-std::unique_ptr<IJSEngine> IJSEngine::createJSEngine()
+std::unique_ptr<IJSEngine> IJSEngine::createJSEngine(IParameterProvider &parameterStore)
 {
-    return std::make_unique<QuickJSEngine>();
+    return std::make_unique<QuickJSEngine>(parameterStore);
 }
 
 static JSValue js_mount(JSContext* ctx, JSValueConst this_val,
@@ -67,9 +67,31 @@ static JSValue js_Component(JSContext* ctx, JSValueConst this_val,
     return obj;
 }
 
+static JSValue js_getParameter(JSContext* ctx, JSValueConst this_val,
+                               int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+
+    return engine->getParameter(ctx, this_val, argc, argv);
+}
+
+static JSValue js_setParameter(JSContext* ctx, JSValueConst this_val,
+                               int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+
+    return engine->setParameter(ctx, this_val, argc, argv);
+}
+
 static const JSCFunctionListEntry singularity_funcs[] = {
     JS_CFUNC_DEF("Component", 1, js_Component),
     JS_CFUNC_DEF("mount", 1, js_mount),
+    JS_CFUNC_DEF("getParameter", 1, js_getParameter),
+    JS_CFUNC_DEF("setParameter", 2, js_setParameter),
     // JS_CFUNC_DEF("on", 2, js_on),
 };
 
@@ -263,6 +285,12 @@ static void callApp(JSContext* ctx, IRenderer* renderer) {
     JS_FreeValue(ctx, result);
 }
 
+QuickJSEngine::QuickJSEngine(IParameterProvider &parameterStore)
+: parameterStore_(parameterStore)
+{
+    
+}
+
 void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
 {
     if (ctx_) {
@@ -424,10 +452,40 @@ void QuickJSEngine::onMouseDrag(void* component, float x, float y)
 
     JS_FreeValue(ctx_, result);
     JS_FreeValue(ctx_, eventObj);
+
+    renderer_->redraw(component);
+}
+
+JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
+{
+    int32_t parameterId;
+    double parameterValue;
+
+    JS_ToInt32(ctx, &parameterId, argv[0]);
+    JS_ToFloat64(ctx, &parameterValue, argv[1]);
+
+    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
+    parameterStore_.setParameter(parameterId, parameterValue);
+
+    return JS_UNDEFINED;
 }
 
 void QuickJSEngine::log(const std::string& msg)
 {
     if (logger_)
         logger_(msg);
+}
+
+JSValue QuickJSEngine::getParameter(JSContext* ctx, JSValueConst this_val,
+                                    int argc, JSValueConst* argv)
+{
+    if (argc < 1)
+        return JS_ThrowTypeError(ctx, "getParameter(id) expects parameter id");
+
+    int32_t parameterId = 0;
+    if (JS_ToInt32(ctx, &parameterId, argv[0]) < 0)
+        return JS_EXCEPTION;
+
+    double value = parameterStore_.getParameter(parameterId);
+    return JS_NewFloat64(ctx, value);
 }

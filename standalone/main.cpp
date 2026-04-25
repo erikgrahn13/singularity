@@ -150,6 +150,9 @@ int main()
   visage::ApplicationWindow app;
 
   auto audio    = ISingularityAudio::createSingularityAudio();
+    setOnParameterChanged([&](int id, double value) {
+    audio->pushParameterChange(id, value);
+  });
 
 
   // auto renderer = IRenderer::createRenderer(&app);

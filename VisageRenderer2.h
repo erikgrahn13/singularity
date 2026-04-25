@@ -19,6 +19,7 @@ public:
     void setComponentMouseDownCallback(std::function<void(void*, float, float)> cb) override;
     void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) override;
     void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) override;
+    void redraw(void *component) override;
 
 
     // --- Immediate rect helpers ---

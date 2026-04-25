@@ -5,7 +5,7 @@ SingularityController::SingularityController(void *rootFrame, IParameterProvider
 : parameterProvider_(parameterProvider)
 {
     renderer_ = IRenderer::createRenderer(rootFrame);
-    jsEngine_ = IJSEngine::createJSEngine();
+    jsEngine_ = IJSEngine::createJSEngine(parameterProvider_);
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
 }
 

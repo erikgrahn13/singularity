@@ -279,46 +279,86 @@ void VisageRenderer::bezierCurveTo(void* canvas, float cp1x, float cp1y,
     currentPath_.bezierTo(cp1x + tx, cp1y + ty, cp2x + tx, cp2y + ty, x + tx, y + ty);
 }
 
-void VisageRenderer::ellipse(void* canvas, float cx, float cy, float rx, float ry,
-                              float /*rotation*/, float startAngle, float endAngle,
-                              bool anticlockwise)
+void VisageRenderer::ellipse(void* canvas,
+                             float cx,
+                             float cy,
+                             float rx,
+                             float ry,
+                             float /*rotation*/,
+                             float startAngle,
+                             float endAngle,
+                             bool anticlockwise)
 {
-    float tx = state_.translateX, ty = state_.translateY;
+    float tx = state_.translateX;
+    float ty = state_.translateY;
 
-    if (std::abs(endAngle - startAngle) >= 2.0f * kPi - 0.001f) {
-        currentPath_.addEllipse(cx + tx, cy + ty, rx, ry);
+    float pcx = cx + tx;
+    float pcy = cy + ty;
+
+    float fullCircle = 2.0f * kPi;
+
+    if (std::abs(endAngle - startAngle) >= fullCircle - 0.001f) {
+        currentPath_.addEllipse(pcx, pcy, rx, ry);
         return;
     }
 
-    float sweep = anticlockwise ? (startAngle - endAngle) : (endAngle - startAngle);
-    while (sweep < 0) sweep += 2.0f * kPi;
-    while (sweep > 2.0f * kPi) sweep -= 2.0f * kPi;
+    float sweep = endAngle - startAngle;
 
-    int segments = std::max(1, static_cast<int>(sweep / (kPi / 2.0f)) + 1);
-    float segAngle = (anticlockwise ? -sweep : sweep) / segments;
+    if (!anticlockwise && sweep < 0.0f)
+        sweep += fullCircle;
 
-    float sx = (cx + tx) + rx * std::cos(startAngle);
-    float sy = (cy + ty) + ry * std::sin(startAngle);
+    if (anticlockwise && sweep > 0.0f)
+        sweep -= fullCircle;
+
+    if (sweep > fullCircle)
+        sweep = fullCircle;
+
+    if (sweep < -fullCircle)
+        sweep = -fullCircle;
+
+    int segments = std::max(
+        1,
+        static_cast<int>(std::ceil(std::abs(sweep) / (kPi / 2.0f)))
+    );
+
+    float delta = sweep / segments;
+
+    float startX = pcx + rx * std::cos(startAngle);
+    float startY = pcy + ry * std::sin(startAngle);
 
     if (currentPath_.numPoints() == 0)
-        currentPath_.moveTo(sx, sy);
+        currentPath_.moveTo(startX, startY);
     else
-        currentPath_.lineTo(sx, sy);
-
-    float alpha2 = std::tan(segAngle / 4.0f);
-    float alphaFactor = std::sin(segAngle) * (std::sqrt(4.0f + 3.0f * alpha2 * alpha2) - 1.0f) / 3.0f;
+        currentPath_.lineTo(startX, startY);
 
     float angle = startAngle;
+
     for (int i = 0; i < segments; ++i) {
-        float ex_ = (cx + tx) + rx * std::cos(angle + segAngle);
-        float ey_ = (cy + ty) + ry * std::sin(angle + segAngle);
-        float dx1 = (cx + tx) + rx * std::cos(angle);
-        float dy1 = (cy + ty) + ry * std::sin(angle);
+        float next = angle + delta;
+        float t = (4.0f / 3.0f) * std::tan((next - angle) / 4.0f);
+
+        float x1 = pcx + rx * std::cos(angle);
+        float y1 = pcy + ry * std::sin(angle);
+
+        float x2 = pcx + rx * std::cos(next);
+        float y2 = pcy + ry * std::sin(next);
+
+        float dx1 = -rx * std::sin(angle);
+        float dy1 =  ry * std::cos(angle);
+
+        float dx2 = -rx * std::sin(next);
+        float dy2 =  ry * std::cos(next);
+
         currentPath_.bezierTo(
-            dx1 - alphaFactor * rx * std::sin(angle),   dy1 + alphaFactor * ry * std::cos(angle),
-            ex_ + alphaFactor * rx * std::sin(angle + segAngle), ey_ - alphaFactor * ry * std::cos(angle + segAngle),
-            ex_, ey_);
-        angle += segAngle;
+            x1 + t * dx1,
+            y1 + t * dy1,
+            x2 - t * dx2,
+            y2 - t * dy2,
+            x2,
+            y2
+        );
+
+        angle = next;
     }
 }
 
@@ -360,13 +400,21 @@ void VisageRenderer::fill(void* canvas)
 
 void VisageRenderer::stroke(void* canvas)
 {
-    if (currentPath_.numPoints() == 0) return;
+    if (currentPath_.numPoints() == 0)
+        return;
+
     auto* c = static_cast<visage::Canvas*>(canvas);
     c->setColor(state_.strokeColor);
-    // Canvas::stroke() calls a non-const method on Path internally; build the
-    // stroked path ourselves and fill it instead.
-    visage::Path stroked = currentPath_.stroke(state_.lineWidth);
+
+    auto stroked = currentPath_.stroke(
+        state_.lineWidth,
+        visage::Path::Join::Round,
+        visage::Path::EndCap::Round
+    );
+
     c->fill(stroked);
+
+    currentPath_.clear(); // temporary test
 }
 
 // ---------------------------------------------------------------------------
@@ -461,4 +509,9 @@ void VisageRenderer::setComponentMouseUpCallback(std::function<void(void*, float
 void VisageRenderer::setComponentMouseDragCallback(std::function<void(void*, float, float)> cb)
 {
     componentMouseDragCallback_ = std::move(cb);
+}
+
+void VisageRenderer::redraw(void *component)
+{
+    static_cast<visage::ApplicationWindow*>(component)->redraw();
 }

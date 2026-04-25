@@ -17,6 +17,8 @@ public:
     virtual void setComponentMouseDownCallback(std::function<void(void*, float, float)> cb) = 0;
     virtual void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) = 0;
     virtual void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) = 0;
+    virtual void redraw(void *component) = 0;
+
 
     // --- Immediate rect helpers ---
     virtual void fillRect(void* canvas, float x, float y, float width, float height) = 0;
