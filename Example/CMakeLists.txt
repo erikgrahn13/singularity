@@ -12,7 +12,7 @@ singularity_create_plugin(
     SOURCES
         Example.cpp
     UI
-        bloom.js
+        main.js
     FORMATS APP VST3
 )
 

@@ -26,7 +26,6 @@ class QuickJSEngine : public IJSEngine {
     JSRuntime* rt_{nullptr};
     JSContext* ctx_{nullptr};
     IRenderer* renderer_{nullptr};
-    // std::unordered_map<std::string, JSValue> eventHandlers_;
     std::unordered_map<void*, JSValue> mouseDownHandlers_;
     std::unordered_map<void*, JSValue> mouseUpHandlers_;
     std::unordered_map<void*, JSValue> mouseDragHandlers_;

@@ -7,22 +7,16 @@ SingularityView::SingularityView(IParameterProvider& params)
     : m_params(params) {
 
     app_ = std::make_unique<visage::ApplicationWindow>();
-    auto renderer = IRenderer::createRenderer(app_.get());
-    auto jsEngine = IJSEngine::createJSEngine();
-    auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
-    controller_ = std::make_unique<SingularityController>(std::move(renderer), std::move(jsEngine), std::move(fileWathcer));
-
+    controller_ = std::make_unique<SingularityController>(app_.get(), params);
 
 #ifndef NDEBUG
     hotReloadtimer.startTimer(50);
     hotReloadtimer.onTimerCallback().add([&]{
-        auto prevWidth  = app_->width();
-        auto prevHeight = app_->height();
         controller_->tick();
         if (frame) {
             auto newWidth  = app_->width();
             auto newHeight = app_->height();
-            if (newWidth != prevWidth || newHeight != prevHeight) {
+            if (newWidth != currentWidth || newHeight != currentHeight) {
                 ViewRect rect{0, 0, (int32)newWidth, (int32)newHeight};
                 frame->resizeView(this, &rect);
             }
@@ -31,8 +25,8 @@ SingularityView::SingularityView(IParameterProvider& params)
 #endif
 
     controller_->initialize();
-    currentWidth = app_->width();
-    currentHeight = app_->height();
+    currentWidth = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame())->width();
+    currentHeight = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame())->height();
 }
 
 SingularityView::~SingularityView() { removed(); }
@@ -54,9 +48,8 @@ tresult PLUGIN_API SingularityView::attached(void* parent, FIDString type)
 {
     fprintf(stderr, "[SingularityView] attached: type=%s parent=%p\n", type, parent);
 
-    app_->show(visage::Dimension::nativePixels(app_->width()),
-            visage::Dimension::nativePixels(app_->height()), parent);
-
+    app_->show(visage::Dimension::logicalPixels(currentWidth),
+            visage::Dimension::logicalPixels(currentHeight), parent);
 
     return kResultOk;
 }
@@ -71,7 +64,7 @@ tresult PLUGIN_API SingularityView::removed()
 
 tresult PLUGIN_API SingularityView::getSize(ViewRect* rect)
 {
-    fprintf(stderr, "[SingularityView] getSize: %dx%d\n", currentWidth, currentHeight);
+    // fprintf(stderr, "[SingularityView] getSize: %dx%d\n", currentWidth, currentHeight);
     if (!rect) return kResultFalse;
     rect->left = 0; rect->top = 0; rect->right = currentWidth; rect->bottom = currentHeight;
 
@@ -83,7 +76,7 @@ tresult PLUGIN_API SingularityView::onSize(ViewRect* rect) {
     {
         currentWidth = rect->right - rect->left;
         currentHeight = rect->bottom - rect->top;
-        app_->setNativeWindowDimensions(rect->right - rect->left, rect->bottom - rect->top);
+        app_->setWindowDimensions(currentWidth, currentHeight);
     }
     return kResultOk;
 }

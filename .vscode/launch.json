@@ -21,9 +21,9 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost.app/Contents/MacOS/editorhost",
-            "args": ["${command:cmake.buildDirectory}/vst3/Debug/HelloWorld.vst3"],
+            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExamplePlugin.vst3"],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/Example",
             "preLaunchTask": "CMake: build",
             "externalConsole": false,
             "MIMode": "lldb"
@@ -51,13 +51,23 @@
             "preLaunchTask": "CMake: build"
         },
         {
-            "name": "ExamplePlugin APP",
+            "name": "ExamplePlugin APP Windows",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "cwd": "${workspaceFolder}/Example",
             "environment": [],
             "args": []
+        },
+        {
+            "name": "ExamplePlugin APP Mac",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}/Example",
+            "environment": [],
+            "args": [],
+            "MIMode": "lldb"
         }
     ]
 }

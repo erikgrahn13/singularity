@@ -171,8 +171,8 @@ int main()
   auto width = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
   auto height = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->height();
 
-  app.show(visage::Dimension::nativePixels(width),
-          visage::Dimension::nativePixels(height));
+  app.show(visage::Dimension::logicalPixels(width),
+          visage::Dimension::logicalPixels(height));
   
   app.runEventLoop();
 

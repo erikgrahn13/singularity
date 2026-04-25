@@ -69,8 +69,6 @@ int getIntProp(JSContext* ctx, JSValueConst props, const char* name, int fallbac
     return out;
 }
 
-
-
 void applyPropsToFrame(JSContext* ctx, JSValueConst props, IRenderer* renderer, void* component) {
     int x = getIntProp(ctx, props, "x", 0);
     int y = getIntProp(ctx, props, "y", 0);
@@ -230,11 +228,6 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
             JS_FreeValue(ctx_, fn);
         drawCallbacks_.clear();
 
-        // for (auto& [name, fn] : eventHandlers_) {
-        //     JS_FreeValue(ctx_, fn);
-        // }
-        // eventHandlers_.clear();
-
         for (auto& [component, fn] : mouseDownHandlers_)
             JS_FreeValue(ctx_, fn);
         mouseDownHandlers_.clear();
@@ -292,42 +285,6 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     JS_FreeValue(ctx_, module_val);
     js_free(ctx_, buf);
 }
-
-// void QuickJSEngine::onMouseDown(float x, float y)
-// {
-//     dispatchEvent("mousedown", x, y);
-// }
-
-// void QuickJSEngine::onMouseUp(float x, float y)
-// {
-//     dispatchEvent("mouseup", x, y);
-// }
-
-// void QuickJSEngine::onMouseMove(float x, float y)
-// {
-//     dispatchEvent("mousemove", x, y);
-// }
-
-// void QuickJSEngine::dispatchEvent(const std::string& type, float x, float y)
-// {
-//     auto it = eventHandlers_.find(type);
-//     if (it == eventHandlers_.end())
-//         return;
-
-//     JSValue eventObj = JS_NewObject(ctx_);
-//     JS_SetPropertyStr(ctx_, eventObj, "type", JS_NewString(ctx_, type.c_str()));
-//     JS_SetPropertyStr(ctx_, eventObj, "x", JS_NewFloat64(ctx_, x));
-//     JS_SetPropertyStr(ctx_, eventObj, "y", JS_NewFloat64(ctx_, y));
-
-//     JSValue argv[1] = { eventObj };
-//     JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 1, argv);
-
-//     if (JS_IsException(result))
-//         js_std_dump_error(ctx_);
-
-//     JS_FreeValue(ctx_, result);
-//     JS_FreeValue(ctx_, eventObj);
-// }
 
 void QuickJSEngine::registerMouseDownHandler(void* component, JSContext* ctx, JSValue fn)
 {

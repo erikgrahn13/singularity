@@ -25,7 +25,7 @@ public:
     tresult PLUGIN_API onSize(ViewRect*) override;
     tresult PLUGIN_API onFocus(TBool) override                      { return kResultOk; }
     tresult PLUGIN_API setFrame(IPlugFrame* f) override             { frame = f; return kResultOk; }
-    tresult PLUGIN_API canResize() override                         { return kResultTrue; }
+    tresult PLUGIN_API canResize() override                         { return kResultOk; }
     tresult PLUGIN_API checkSizeConstraint(ViewRect*) override      { return kResultOk; }
 
     // IUnknown

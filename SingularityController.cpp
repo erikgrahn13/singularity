@@ -33,7 +33,7 @@ void SingularityController::initialize()
         std::cout << "File changed" << std::endl;
         reloadPending_ = true;
     });
-    jsEngine_->load("./main.js", renderer_.get());
+    jsEngine_->load(UI_MAIN, renderer_.get());
 }
 
 void SingularityController::tick()
@@ -45,20 +45,5 @@ void SingularityController::tick()
 void SingularityController::reload()
 {
     std::cout << "Reload called" << std::endl;
-    jsEngine_->load("./main.js", renderer_.get());
+    jsEngine_->load(UI_MAIN, renderer_.get());
 }
-
-// void SingularityController::onMouseDown(float x, float y)
-// {
-//     jsEngine_->onMouseDown(x, y);
-// }
-
-// void SingularityController::onMouseUp(float x, float y)
-// {
-//     jsEngine_->onMouseUp(x, y);
-// }
-
-// void SingularityController::onMouseMove(float x, float y)
-// {
-//     jsEngine_->onMouseMove(x, y);
-// }

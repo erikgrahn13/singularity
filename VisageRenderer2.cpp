@@ -57,6 +57,8 @@ static visage::Color parseColorString(const std::string& color)
 VisageRenderer::VisageRenderer(void *parentHandle)
 {
     rootFrame_ = static_cast<visage::ApplicationWindow*>(parentHandle);
+    rootFrame_->setDpiScale(visage::defaultDpiScale());
+
     rootFrame_->onDraw() += [this](visage::Canvas& canvas) {
         canvas.setColor(0xff000000);
         canvas.fill(0, 0, rootFrame_->width(), rootFrame_->height());
