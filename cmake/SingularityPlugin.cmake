@@ -98,18 +98,20 @@ function(singularity_create_plugin target)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.h
         COMMAND $<TARGET_FILE:qjsc>
-            ${_D_args}
-            -M native:events,js_events_module_init
-            -M native:parameters,js_parameters_module_init
-            -M native:audio,js_audio_module_init
+            -M singularity,js_init_module_singularity
             -o ${CMAKE_CURRENT_BINARY_DIR}/generated.h
             ${UI_MAIN_FILE}
-        DEPENDS qjsc ${UI_MAIN_FILE} ${_widget_files}
+        DEPENDS qjsc ${UI_MAIN_FILE}
+        VERBATIM
     )
 
-    add_custom_target(${target}_release DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/generated.h)
-    add_dependencies(${target}-shared ${target}_release)
-    target_include_directories(${target}-shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    target_sources(${target}-shared PRIVATE
+        $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/generated.h>
+    )
+
+    target_include_directories(${target}-shared PRIVATE
+        $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}>
+    )
 
     foreach(type IN LISTS FORMATS)
         # Standalone plugin
