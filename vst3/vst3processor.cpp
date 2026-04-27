@@ -42,20 +42,20 @@ struct VST3ParamChanges : IParameterChanges {
 
 namespace Steinberg {
 //------------------------------------------------------------------------
-// HelloWorldProcessor
+// VST3Processor
 //------------------------------------------------------------------------
-HelloWorldProcessor::HelloWorldProcessor ()
+VST3Processor::VST3Processor ()
 {
-	setControllerClass (kHelloWorldControllerUID);
+	setControllerClass (kVST3ControllerUID);
 	mPlugin = createPlugin();
 }
 
 //------------------------------------------------------------------------
-HelloWorldProcessor::~HelloWorldProcessor ()
+VST3Processor::~VST3Processor ()
 {}
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::initialize (FUnknown* context)
+tresult PLUGIN_API VST3Processor::initialize (FUnknown* context)
 {
 	// Here the Plug-in will be instantiated
 	
@@ -78,7 +78,7 @@ tresult PLUGIN_API HelloWorldProcessor::initialize (FUnknown* context)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::terminate ()
+tresult PLUGIN_API VST3Processor::terminate ()
 {
 	// Here the Plug-in will be de-instantiated, last possibility to remove some memory!
 	
@@ -87,14 +87,14 @@ tresult PLUGIN_API HelloWorldProcessor::terminate ()
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::setActive (TBool state)
+tresult PLUGIN_API VST3Processor::setActive (TBool state)
 {
 	//--- called when the Plug-in is enable/disable (On/Off) -----
 	return AudioEffect::setActive (state);
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::process (Vst::ProcessData& data)
+tresult PLUGIN_API VST3Processor::process (Vst::ProcessData& data)
 {
     //--- Read inputs parameter changes-----------
     //--- Process Audio---------------------
@@ -123,14 +123,14 @@ tresult PLUGIN_API HelloWorldProcessor::process (Vst::ProcessData& data)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::setupProcessing (Vst::ProcessSetup& newSetup)
+tresult PLUGIN_API VST3Processor::setupProcessing (Vst::ProcessSetup& newSetup)
 {
 	//--- called before any processing ----
 	return AudioEffect::setupProcessing (newSetup);
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::canProcessSampleSize (int32 symbolicSampleSize)
+tresult PLUGIN_API VST3Processor::canProcessSampleSize (int32 symbolicSampleSize)
 {
 	// by default kSample32 is supported
 	if (symbolicSampleSize == Vst::kSample32)
@@ -144,7 +144,7 @@ tresult PLUGIN_API HelloWorldProcessor::canProcessSampleSize (int32 symbolicSamp
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::setState (IBStream* state)
+tresult PLUGIN_API VST3Processor::setState (IBStream* state)
 {
 	if (!state)
 		return kResultFalse;
@@ -173,7 +173,7 @@ tresult PLUGIN_API HelloWorldProcessor::setState (IBStream* state)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldProcessor::getState (IBStream* state)
+tresult PLUGIN_API VST3Processor::getState (IBStream* state)
 {
 	// here we need to save the model (preset or project)
 

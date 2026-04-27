@@ -1,26 +1,31 @@
-import { startUI, Component } from "../widgets/ui.js";
+import { Component } from "singularity";
 
-class Editor extends Component {
-    constructor() {
-        super();
+export function Basic() {
+  console.log("erik234", window.width, window.height);
+  return Component({
+    y: 0,
+    x: 0,
+    width: window.width,
+    height: window.height,
+    draw: (ctx) => {
+      // background
+      ctx.fillStyle = "#000066";
+      ctx.fillRect(0, 0, window.width, window.height);
 
+      // circle
+      const circleRadius = window.height * 0.1;
 
-    }
+      const x = window.width * 0.5 - circleRadius;
+      const y = window.height * 0.5 - circleRadius;
 
-    paint(ctx) {
-        ctx.fillStyle = "#000066";
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      // convert to center
+      const cx = x + circleRadius;
+      const cy = y + circleRadius;
 
-        const r = ctx.canvas.height * 0.1;
-        const x = ctx.canvas.width * 0.5;
-        const y = ctx.canvas.height * 0.5;
-        ctx.fillStyle = "#00ffff";
-        ctx.circle(x, y, r);
-    }
-
-    resized() {
-
-    }
+      ctx.beginPath();
+      ctx.arc(cx, cy, circleRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#00ffff";
+      ctx.fill();
+    },
+  });
 }
-
-startUI(ctx, Editor);

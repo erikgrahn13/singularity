@@ -7,16 +7,16 @@
 
 namespace Steinberg {
 
-class HelloWorldProcessor : public Steinberg::Vst::AudioEffect
+class VST3Processor : public Steinberg::Vst::AudioEffect
 {
 public:
-	HelloWorldProcessor ();
-	~HelloWorldProcessor () SMTG_OVERRIDE;
+	VST3Processor ();
+	~VST3Processor () SMTG_OVERRIDE;
 
     // Create function
 	static Steinberg::FUnknown* createInstance (void* /*context*/) 
 	{ 
-		return (Steinberg::Vst::IAudioProcessor*)new HelloWorldProcessor; 
+		return (Steinberg::Vst::IAudioProcessor*)new VST3Processor; 
 	}
 
 	Steinberg::tresult PLUGIN_API initialize (Steinberg::FUnknown* context) SMTG_OVERRIDE;

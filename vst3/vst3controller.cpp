@@ -9,7 +9,7 @@
 using namespace Steinberg;
 
 // VST3 implementation of createParameter — routes to the active controller
-static HelloWorldController* g_controller = nullptr;
+static VST3Controller* g_controller = nullptr;
 
 void createParameter(int id, const char* name, ParamType type,
                      double defaultValue, double minValue, double maxValue)
@@ -21,9 +21,9 @@ void createParameter(int id, const char* name, ParamType type,
 namespace Steinberg {
 
 //------------------------------------------------------------------------
-// HelloWorldController Implementation
+// VST3Controller Implementation
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::initialize (FUnknown* context)
+tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 {
 	//---do not forget to call parent ------
 	tresult result = EditControllerEx1::initialize (context);
@@ -41,7 +41,7 @@ tresult PLUGIN_API HelloWorldController::initialize (FUnknown* context)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::terminate ()
+tresult PLUGIN_API VST3Controller::terminate ()
 {
 	// Here the Plug-in will be de-instantiated, last possibility to remove some memory!
 
@@ -50,7 +50,7 @@ tresult PLUGIN_API HelloWorldController::terminate ()
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::setComponentState (IBStream* state)
+tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 {
 	// Here you get the state of the component (Processor part)
 	if (!state)
@@ -61,12 +61,12 @@ tresult PLUGIN_API HelloWorldController::setComponentState (IBStream* state)
 	// float savedParam1 = 0.f;
 	// if (streamer.readFloat (savedParam1) == false)
 	// 	return kResultFalse;
-	// setParamNormalized (HelloWorldParams::kParamVolId, savedParam1);
+	// setParamNormalized (VST3Params::kParamVolId, savedParam1);
 
 	// int8 savedParam2 = 0;
 	// if (streamer.readInt8 (savedParam2) == false)
 	// 	return kResultFalse;
-	// setParamNormalized (HelloWorldParams::kParamOnId, savedParam2);
+	// setParamNormalized (VST3Params::kParamOnId, savedParam2);
 
 	// // read the bypass
 	// int32 bypassState;
@@ -78,7 +78,7 @@ tresult PLUGIN_API HelloWorldController::setComponentState (IBStream* state)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::setState (IBStream* state)
+tresult PLUGIN_API VST3Controller::setState (IBStream* state)
 {
 	// Here you get the state of the controller
 
@@ -86,7 +86,7 @@ tresult PLUGIN_API HelloWorldController::setState (IBStream* state)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::getState (IBStream* state)
+tresult PLUGIN_API VST3Controller::getState (IBStream* state)
 {
 	// Here you are asked to deliver the state of the controller (if needed)
 	// Note: the real state of your plug-in is saved in the processor
@@ -95,7 +95,7 @@ tresult PLUGIN_API HelloWorldController::getState (IBStream* state)
 }
 
 //------------------------------------------------------------------------
-IPlugView* PLUGIN_API HelloWorldController::createView (FIDString name)
+IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)
 {
 	if (FIDStringsEqual (name, Vst::ViewType::kEditor))
 	{
@@ -106,7 +106,7 @@ IPlugView* PLUGIN_API HelloWorldController::createView (FIDString name)
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::setParamNormalized (Vst::ParamID tag, Vst::ParamValue value)
+tresult PLUGIN_API VST3Controller::setParamNormalized (Vst::ParamID tag, Vst::ParamValue value)
 {
 	// called by host to update your parameters
 	tresult result = EditControllerEx1::setParamNormalized (tag, value);
@@ -114,7 +114,7 @@ tresult PLUGIN_API HelloWorldController::setParamNormalized (Vst::ParamID tag, V
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::getParamStringByValue (Vst::ParamID tag, Vst::ParamValue valueNormalized, Vst::String128 string)
+tresult PLUGIN_API VST3Controller::getParamStringByValue (Vst::ParamID tag, Vst::ParamValue valueNormalized, Vst::String128 string)
 {
 	// called by host to get a string for given normalized value of a specific parameter
 	// (without having to set the value!)
@@ -122,7 +122,7 @@ tresult PLUGIN_API HelloWorldController::getParamStringByValue (Vst::ParamID tag
 }
 
 //------------------------------------------------------------------------
-tresult PLUGIN_API HelloWorldController::getParamValueByString (Vst::ParamID tag, Vst::TChar* string, Vst::ParamValue& valueNormalized)
+tresult PLUGIN_API VST3Controller::getParamValueByString (Vst::ParamID tag, Vst::TChar* string, Vst::ParamValue& valueNormalized)
 {
 	// called by host to get a normalized value from a string representation of a specific parameter
 	// (without having to set the value!)

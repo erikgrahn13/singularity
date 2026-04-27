@@ -78,22 +78,21 @@ function(singularity_create_plugin target)
         set(UI_MAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/${UI_MAIN_FILE}")
     endif()
 
-    message("erik1 ${UI_MAIN_FILE}")
-
     cmake_path(GET UI_MAIN_FILE STEM _ui_stem)
     target_compile_definitions(${target}-shared PUBLIC
         UI_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         UI_MAIN="${UI_MAIN_FILE}"
         QSJC_SYMBOL=qjsc_${_ui_stem}
         QSJC_SYMBOL_SIZE=qjsc_${_ui_stem}_size
+        PACKAGE_NAME="${pkg_name}"
     )
 
-    file(GLOB _widget_files "${SINGULARITY_ROOT_DIR}/widgets/*.js")
+    # file(GLOB _widget_files "${SINGULARITY_ROOT_DIR}/widgets/*.js")
 
-    set(_D_args "")
-    foreach(_w ${_widget_files})
-        list(APPEND _D_args -D ${_w})
-    endforeach()
+    # set(_D_args "")
+    # foreach(_w ${_widget_files})
+    #     list(APPEND _D_args -D ${_w})
+    # endforeach()
 
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.h

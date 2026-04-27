@@ -5,11 +5,11 @@
 
 namespace Steinberg {
 
-static const Steinberg::FUID kHelloWorldProcessorUID (
+static const Steinberg::FUID kVST3ProcessorUID (
     0x@PROC_UID_0@, 0x@PROC_UID_1@, 0x@PROC_UID_2@, 0x@PROC_UID_3@);
-static const Steinberg::FUID kHelloWorldControllerUID (
+static const Steinberg::FUID kVST3ControllerUID (
     0x@CTRL_UID_0@, 0x@CTRL_UID_1@, 0x@CTRL_UID_2@, 0x@CTRL_UID_3@);
 
-#define HelloWorldVST3Category "@PLUGIN_CATEGORY@"
+#define VST3VST3Category "@PLUGIN_CATEGORY@"
 
 } // namespace Steinberg

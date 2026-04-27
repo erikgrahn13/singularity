@@ -31,19 +31,19 @@ private:
     Vst::EditController* _controller;
 };
 //------------------------------------------------------------------------
-//  HelloWorldController
+//  VST3Controller
 //------------------------------------------------------------------------
-class HelloWorldController : public Steinberg::Vst::EditControllerEx1
+class VST3Controller : public Steinberg::Vst::EditControllerEx1
 {
 public:
 //------------------------------------------------------------------------
-	HelloWorldController () = default;
-	~HelloWorldController () SMTG_OVERRIDE = default;
+	VST3Controller () = default;
+	~VST3Controller () SMTG_OVERRIDE = default;
 
     // Create function
 	static Steinberg::FUnknown* createInstance (void* /*context*/)
 	{
-		return (Steinberg::Vst::IEditController*)new HelloWorldController;
+		return (Steinberg::Vst::IEditController*)new VST3Controller;
 	}
 
 	// IPluginBase
