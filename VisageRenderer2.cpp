@@ -515,3 +515,18 @@ void VisageRenderer::redraw(void *component)
 {
     static_cast<visage::ApplicationWindow*>(component)->redraw();
 }
+
+double VisageRenderer::getTime(void *canvas)
+{
+    return static_cast<visage::Canvas*>(canvas)->time();
+}
+
+void VisageRenderer::setPostEffectForComponent(void* component, const PostEffectSpec& spec) {
+    if (spec.type == "bloom") {
+        auto* bloom = new visage::BloomPostEffect();
+        bloom->setBloomSize(spec.size);
+        bloom->setBloomIntensity(spec.intensity);
+        static_cast<visage::Frame*>(component)->setPostEffect(bloom);
+    }
+    // ...handle other types...
+}

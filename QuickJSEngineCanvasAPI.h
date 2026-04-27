@@ -5,6 +5,7 @@
 struct DrawContextData {
     IRenderer* renderer;
     void* canvas;
+    void* component; // The Frame/ApplicationWindow for redraw
     std::string fillColor;
 };
 

@@ -7,6 +7,11 @@ class IRenderer {
 public:
     static std::unique_ptr<IRenderer> createRenderer(void* parentHandle);
 
+    struct PostEffectSpec {
+        std::string type;
+        float size = 0.0f;
+        float intensity = 1.0f;
+    };
 
     // --- Component tree ---
     virtual void* getRootComponent() = 0;
@@ -18,6 +23,9 @@ public:
     virtual void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) = 0;
     virtual void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) = 0;
     virtual void redraw(void *component) = 0;
+    virtual double getTime(void* canvas) = 0;
+    virtual void setPostEffectForComponent(void* component, const PostEffectSpec& spec) = 0;
+    
 
 
     // --- Immediate rect helpers ---

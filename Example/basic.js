@@ -1,22 +1,22 @@
 import { Component } from "singularity";
 
-export function Basic() {
-  console.log("erik234", window.width, window.height);
+export function Basic({width, height}) {
+  console.log("erik234", width, height);
   return Component({
     y: 0,
     x: 0,
-    width: window.width,
-    height: window.height,
+    width,
+    height,
     draw: (ctx) => {
       // background
       ctx.fillStyle = "#000066";
-      ctx.fillRect(0, 0, window.width, window.height);
+      ctx.fillRect(0, 0, width, height);
 
       // circle
-      const circleRadius = window.height * 0.1;
+      const circleRadius = height * 0.1;
 
-      const x = window.width * 0.5 - circleRadius;
-      const y = window.height * 0.5 - circleRadius;
+      const x = width * 0.5 - circleRadius;
+      const y = height * 0.5 - circleRadius;
 
       // convert to center
       const cx = x + circleRadius;

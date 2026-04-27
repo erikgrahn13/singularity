@@ -4,7 +4,10 @@
         "**/build": true,
         "**/external": false
     },
-    "cmake.sourceDirectory": "${workspaceFolder}/Example"
+    "cmake.sourceDirectory": "${workspaceFolder}/Example",
+    "cmake.configureSettings": {
+        "VISAGE_BUILD_EXAMPLES":true
+    }
     // "cmake.sourceDirectory": [
     //     "${workspaceFolder}/Example",
     // ],

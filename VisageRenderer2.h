@@ -20,6 +20,10 @@ public:
     void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) override;
     void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) override;
     void redraw(void *component) override;
+    double getTime(void* canvas) override;
+    void setPostEffectForComponent(void* component, const PostEffectSpec& spec) override;
+
+
 
 
     // --- Immediate rect helpers ---

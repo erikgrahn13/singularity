@@ -146,16 +146,52 @@ void applyPropsToFrame(JSContext* ctx, JSValueConst props, IRenderer* renderer, 
         renderer->setBounds(component, (float)x, (float)y, (float)width, (float)height);
     }
 
+ // TEST BLOOM
+JSValue postEffectProp = JS_GetPropertyStr(ctx, props, "postEffect");
+if (JS_IsObject(postEffectProp)) {
+    IRenderer::PostEffectSpec spec;
+    JSValue typeVal = JS_GetPropertyStr(ctx, postEffectProp, "type");
+    if (JS_IsString(typeVal)) {
+        const char* typeStr = JS_ToCString(ctx, typeVal);
+        if (typeStr) spec.type = typeStr;
+        JS_FreeCString(ctx, typeStr);
+    }
+    JS_FreeValue(ctx, typeVal);
+
+    JSValue sizeVal = JS_GetPropertyStr(ctx, postEffectProp, "size");
+    if (JS_IsNumber(sizeVal)) {
+        double size;
+        JS_ToFloat64(ctx, &size, sizeVal);
+        spec.size = static_cast<float>(size);
+    }
+    JS_FreeValue(ctx, sizeVal);
+
+    JSValue intensityVal = JS_GetPropertyStr(ctx, postEffectProp, "intensity");
+    if (JS_IsNumber(intensityVal)) {
+        double intensity;
+        JS_ToFloat64(ctx, &intensity, intensityVal);
+        spec.intensity = static_cast<float>(intensity);
+    }
+    JS_FreeValue(ctx, intensityVal);
+
+    renderer->setPostEffectForComponent(component, spec);
+}
+JS_FreeValue(ctx, postEffectProp);
+
+//
+
+
     JSValue draw = JS_GetPropertyStr(ctx, props, "draw");
 
     if (JS_IsFunction(ctx, draw)) {
         auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
         JSValue drawFn = JS_DupValue(ctx, draw);
         engine->drawCallbacks_.push_back(drawFn);
-        renderer->setDrawCallback(component, [ctx, drawFn, renderer](void* canvas) mutable {
+        renderer->setDrawCallback(component, [ctx, drawFn, renderer, component](void* canvas) mutable {
             DrawContextData drawData;
             drawData.renderer = renderer;
             drawData.canvas = canvas;
+            drawData.component = component; // Store the component (Frame/ApplicationWindow)
 
             void* previousOpaque = JS_GetContextOpaque(ctx);
             JS_SetContextOpaque(ctx, &drawData);
@@ -188,6 +224,28 @@ void applyPropsToFrame(JSContext* ctx, JSValueConst props, IRenderer* renderer, 
             JS_SetPropertyStr(ctx, jsCtx, "rotate",             JS_NewCFunction(ctx, js_rotate,             "rotate",             1));
             JS_SetPropertyStr(ctx, jsCtx, "scale",              JS_NewCFunction(ctx, js_scale,              "scale",              2));
             JS_SetPropertyStr(ctx, jsCtx, "resetTransform",     JS_NewCFunction(ctx, js_resetTransform,     "resetTransform",     0));
+
+            // Add ctx.time() for animation
+            auto js_time = [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
+                void* opaque = JS_GetContextOpaque(ctx);
+                if (!opaque) return JS_NewFloat64(ctx, 0.0);
+                DrawContextData* drawData = static_cast<DrawContextData*>(opaque);
+                if (!drawData || !drawData->renderer || !drawData->canvas) return JS_NewFloat64(ctx, 0.0);
+                double t = drawData->renderer->getTime(drawData->canvas);
+                return JS_NewFloat64(ctx, t);
+            };
+            JS_SetPropertyStr(ctx, jsCtx, "time", JS_NewCFunction(ctx, js_time, "time", 0));
+
+            // Add ctx.redraw() to allow JS to request a new frame (visage-style)
+            auto js_redraw = [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
+                void* opaque = JS_GetContextOpaque(ctx);
+                if (!opaque) return JS_UNDEFINED;
+                DrawContextData* drawData = static_cast<DrawContextData*>(opaque);
+                if (!drawData || !drawData->renderer || !drawData->component) return JS_UNDEFINED;
+                drawData->renderer->redraw(drawData->component);
+                return JS_UNDEFINED;
+            };
+            JS_SetPropertyStr(ctx, jsCtx, "redraw", JS_NewCFunction(ctx, js_redraw, "redraw", 0));
 
             // CANVAS API PROPERTIES (setters)
             JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "fillStyle"),    JS_UNDEFINED, JS_NewCFunction(ctx, js_fillStyle,    "fillStyle",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
