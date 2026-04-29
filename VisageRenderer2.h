@@ -3,6 +3,7 @@
 #include "IRenderer2.h"
 #include <visage/app.h>
 #include <visage_graphics/path.h>
+#include <visage_graphics/gradient.h>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,13 @@ public:
     void setTextAlign(void* canvas, const std::string& align) override;
     void setTextBaseline(void* canvas, const std::string& baseline) override;
 
+    // --- Gradients ---
+    int  createLinearGradient(void* canvas, float x0, float y0, float x1, float y1) override;
+    int  createRadialGradient(void* canvas, float x0, float y0, float r0, float x1, float y1, float r1) override;
+    void addColorStop(void* canvas, int id, float offset, const std::string& color) override;
+    void setFillStyleGradient(void* canvas, int i) override;
+    void setStrokeStyleGradient(void* canvas, int i) override;
+
     // --- State ---
     void save(void* canvas) override;
     void restore(void* canvas) override;
@@ -82,6 +90,13 @@ private:
     // Canvas drawing state (single-threaded; one active draw at a time)
     visage::Path currentPath_;
 
+    struct GradientData {
+        enum class Type { Linear, Radial } type = Type::Linear;
+        float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+        float r0 = 0, r1 = 0;
+        std::vector<std::pair<float, visage::Color>> stops;
+    };
+
     struct DrawState {
         visage::Color fillColor{ 0xff000000u };
         visage::Color strokeColor{ 0xff000000u };
@@ -94,10 +109,13 @@ private:
         float translateY{ 0.0f };
         float scaleX{ 1.0f };
         float scaleY{ 1.0f };
+        int fillGradientId = -1;
+        int strokeGradientId = -1;
     };
 
     DrawState state_;
     std::vector<DrawState> stateStack_;
+    std::vector<GradientData> gradients_;
     std::function<void(void*, float, float)> componentMouseDownCallback_;
     std::function<void(void*, float, float)> componentMouseUpCallback_;
     std::function<void(void*, float, float)> componentMouseDragCallback_;

@@ -247,6 +247,63 @@ static JSValue js_measureText(JSContext* ctx, JSValueConst this_val, int argc, J
     return obj;
 }
 
+static JSValue js_addColorStop(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    JSValue idVal = JS_GetPropertyStr(ctx, this_val, "_id");
+    int id = -1;
+    if (!JS_IsUndefined(idVal)) {
+        JS_ToInt32(ctx, &id, idVal);
+    }
+    JS_FreeValue(ctx, idVal);
+    if (id < 0) return JS_ThrowTypeError(ctx, "addColorStop called on invalid gradient");
+
+    double offset = 0.0;
+    JS_ToFloat64(ctx, &offset, argv[0]);
+    const char* color = JS_ToCString(ctx, argv[1]);
+    if (color) {
+        data->renderer->addColorStop(data->canvas, id, (float)offset, color);
+        JS_FreeCString(ctx, color);
+    }
+    return JS_UNDEFINED;
+}
+
+static JSValue js_createLinearGradient(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    JS_ToFloat64(ctx, &x0, argv[0]);
+    JS_ToFloat64(ctx, &y0, argv[1]);
+    JS_ToFloat64(ctx, &x1, argv[2]);
+    JS_ToFloat64(ctx, &y1, argv[3]);
+
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    int id = data->renderer->createLinearGradient(data->canvas, (float)x0, (float)y0, (float)x1, (float)y1);
+
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "_id", JS_NewInt32(ctx, id));
+    JS_SetPropertyStr(ctx, obj, "addColorStop", JS_NewCFunction(ctx, js_addColorStop, "addColorStop", 2));
+    return obj;
+}
+
+static JSValue js_createRadialGradient(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double x0 = 0, y0 = 0, r0 = 0, x1 = 0, y1 = 0, r1 = 0;
+    JS_ToFloat64(ctx, &x0, argv[0]);
+    JS_ToFloat64(ctx, &y0, argv[1]);
+    JS_ToFloat64(ctx, &r0, argv[2]);
+    JS_ToFloat64(ctx, &x1, argv[3]);
+    JS_ToFloat64(ctx, &y1, argv[4]);
+    JS_ToFloat64(ctx, &r1, argv[5]);
+
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    int id = data->renderer->createRadialGradient(data->canvas, (float)x0, (float)y0, (float)r0, (float)x1, (float)y1, (float)r1);
+
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "_id", JS_NewInt32(ctx, id));
+    JS_SetPropertyStr(ctx, obj, "addColorStop", JS_NewCFunction(ctx, js_addColorStop, "addColorStop", 2));
+    return obj;
+}
+
 // ---------------------------------------------------------------------------
 // Style property setters
 // ---------------------------------------------------------------------------
@@ -254,6 +311,18 @@ static JSValue js_measureText(JSContext* ctx, JSValueConst this_val, int argc, J
 static JSValue js_fillStyle(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
 {
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    // If passed an object with an _id property, treat it as a gradient
+    if (JS_IsObject(argv[0])) {
+        JSValue idVal = JS_GetPropertyStr(ctx, argv[0], "_id");
+        if (!JS_IsUndefined(idVal) && JS_IsNumber(idVal)) {
+            int id = 0; JS_ToInt32(ctx, &id, idVal);
+            JS_FreeValue(ctx, idVal);
+            data->renderer->setFillStyleGradient(data->canvas, id);
+            return JS_UNDEFINED;
+        }
+        JS_FreeValue(ctx, idVal);
+    }
+
     const char* color = JS_ToCString(ctx, argv[0]);
     if (color) {
         data->fillColor = color;
@@ -266,6 +335,18 @@ static JSValue js_fillStyle(JSContext* ctx, JSValueConst this_val, int argc, JSV
 static JSValue js_strokeStyle(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
 {
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    // Gradient object?
+    if (JS_IsObject(argv[0])) {
+        JSValue idVal = JS_GetPropertyStr(ctx, argv[0], "_id");
+        if (!JS_IsUndefined(idVal) && JS_IsNumber(idVal)) {
+            int id = 0; JS_ToInt32(ctx, &id, idVal);
+            JS_FreeValue(ctx, idVal);
+            data->renderer->setStrokeStyleGradient(data->canvas, id);
+            return JS_UNDEFINED;
+        }
+        JS_FreeValue(ctx, idVal);
+    }
+
     const char* color = JS_ToCString(ctx, argv[0]);
     if (color) {
         data->renderer->setStrokeStyle(data->canvas, color);

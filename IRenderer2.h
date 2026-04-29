@@ -68,6 +68,13 @@ public:
     virtual void setTextAlign(void* canvas, const std::string& align) = 0;
     virtual void setTextBaseline(void* canvas, const std::string& baseline) = 0;
 
+    // --- Gradients ---
+    virtual int createLinearGradient(void* canvas, float x0, float y0, float x1, float y1) = 0;
+    virtual int createRadialGradient(void* canvas, float x0, float y0, float r0, float x1, float y1, float r1) = 0;
+    virtual void addColorStop(void* canvas, int id, float offset, const std::string& color) = 0;
+    virtual void setFillStyleGradient(void* canvas, int id) = 0;
+    virtual void setStrokeStyleGradient(void* canvas, int id) = 0;
+
     // --- State ---
     virtual void save(void* canvas) = 0;
     virtual void restore(void* canvas) = 0;

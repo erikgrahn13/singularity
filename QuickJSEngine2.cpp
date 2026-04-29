@@ -224,6 +224,8 @@ JS_FreeValue(ctx, postEffectProp);
             JS_SetPropertyStr(ctx, jsCtx, "rotate",             JS_NewCFunction(ctx, js_rotate,             "rotate",             1));
             JS_SetPropertyStr(ctx, jsCtx, "scale",              JS_NewCFunction(ctx, js_scale,              "scale",              2));
             JS_SetPropertyStr(ctx, jsCtx, "resetTransform",     JS_NewCFunction(ctx, js_resetTransform,     "resetTransform",     0));
+            JS_SetPropertyStr(ctx, jsCtx, "createLinearGradient", JS_NewCFunction(ctx, js_createLinearGradient, "createLinearGradient", 4));
+            JS_SetPropertyStr(ctx, jsCtx, "createRadialGradient", JS_NewCFunction(ctx, js_createRadialGradient, "createRadialGradient", 6));
 
             // Add ctx.time() for animation
             auto js_time = [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {

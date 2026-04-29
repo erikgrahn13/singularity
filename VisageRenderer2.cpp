@@ -125,6 +125,9 @@ void VisageRenderer::clear()
 {
     while (!rootFrame_->children().empty())
         rootFrame_->removeChild(rootFrame_->children().back());
+    gradients_.clear();
+    state_ = DrawState{};
+    stateStack_.clear();
     rootFrame_->redraw();
     std::cout << "Renderer cleared" << std::endl;
 }
@@ -132,7 +135,28 @@ void VisageRenderer::clear()
 void VisageRenderer::fillRect(void *canvas, float x, float y, float w, float h)
 {
     auto* c = static_cast<visage::Canvas*>(canvas);
-    c->setColor(state_.fillColor);
+
+    if (state_.fillGradientId >= 0 && state_.fillGradientId < static_cast<int>(gradients_.size())) {
+        const auto& g = gradients_[state_.fillGradientId];
+        visage::Gradient grad;
+        for (const auto& stop : g.stops)
+            grad.addColorStop(stop.second, stop.first);
+
+        if (grad.numColors() == 0) {
+            c->setColor(state_.fillColor);
+        } else if (g.type == GradientData::Type::Linear) {
+            c->setColor(visage::Brush::linear(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY),
+                visage::Point(g.x1 + state_.translateX, g.y1 + state_.translateY)));
+        } else {
+            float radius = std::max(g.r0, g.r1);
+            c->setColor(visage::Brush::radial(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY), radius));
+        }
+    } else {
+        c->setColor(state_.fillColor);
+    }
+
     c->fill(x + state_.translateX, y + state_.translateY, w, h);
 }
 
@@ -194,6 +218,41 @@ void VisageRenderer::setTextAlign(void* canvas, const std::string& align)
 void VisageRenderer::setTextBaseline(void* canvas, const std::string& baseline)
 {
     state_.textBaseline = baseline;
+}
+
+// Gradient APIs
+int VisageRenderer::createLinearGradient(void* canvas, float x0, float y0, float x1, float y1)
+{
+    GradientData g;
+    g.type = GradientData::Type::Linear;
+    g.x0 = x0; g.y0 = y0; g.x1 = x1; g.y1 = y1;
+    gradients_.push_back(std::move(g));
+    return static_cast<int>(gradients_.size()) - 1;
+}
+
+int VisageRenderer::createRadialGradient(void* canvas, float x0, float y0, float r0, float x1, float y1, float r1)
+{
+    GradientData g;
+    g.type = GradientData::Type::Radial;
+    g.x0 = x0; g.y0 = y0; g.r0 = r0; g.x1 = x1; g.y1 = y1; g.r1 = r1;
+    gradients_.push_back(std::move(g));
+    return static_cast<int>(gradients_.size()) - 1;
+}
+
+void VisageRenderer::addColorStop(void* canvas, int id, float offset, const std::string& color)
+{
+    if (id < 0 || id >= static_cast<int>(gradients_.size())) return;
+    gradients_[id].stops.push_back({ offset, parseColorString(color) });
+}
+
+void VisageRenderer::setFillStyleGradient(void* canvas, int i)
+{
+    state_.fillGradientId = i;
+}
+
+void VisageRenderer::setStrokeStyleGradient(void* canvas, int i)
+{
+    state_.strokeGradientId = i;
 }
 
 // ---------------------------------------------------------------------------
@@ -394,7 +453,28 @@ void VisageRenderer::fill(void* canvas)
 {
     if (currentPath_.numPoints() == 0) return;
     auto* c = static_cast<visage::Canvas*>(canvas);
-    c->setColor(state_.fillColor);
+
+    if (state_.fillGradientId >= 0 && state_.fillGradientId < static_cast<int>(gradients_.size())) {
+        const auto& g = gradients_[state_.fillGradientId];
+        visage::Gradient grad;
+        for (const auto& stop : g.stops)
+            grad.addColorStop(stop.second, stop.first);
+
+        if (grad.numColors() == 0) {
+            c->setColor(state_.fillColor);
+        } else if (g.type == GradientData::Type::Linear) {
+            c->setColor(visage::Brush::linear(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY),
+                visage::Point(g.x1 + state_.translateX, g.y1 + state_.translateY)));
+        } else {
+            float radius = std::max(g.r0, g.r1);
+            c->setColor(visage::Brush::radial(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY), radius));
+        }
+    } else {
+        c->setColor(state_.fillColor);
+    }
+
     c->fill(currentPath_);
 }
 
@@ -440,7 +520,26 @@ void VisageRenderer::fillText(void* canvas, const std::string& text, float x, fl
     else                                       drawY -= lineH * 0.8f; // alphabetic
 
     visage::Font vFont = makeFont(state_.fontSize);
-    c->setColor(state_.fillColor);
+
+    // Apply gradient if present
+    if (state_.fillGradientId >= 0 && state_.fillGradientId < static_cast<int>(gradients_.size())) {
+        const auto& g = gradients_[state_.fillGradientId];
+        visage::Gradient grad;
+        for (const auto& stop : g.stops)
+            grad.addColorStop(stop.second, stop.first);
+
+        if (g.type == GradientData::Type::Linear) {
+            c->setColor(visage::Brush::linear(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY),
+                visage::Point(g.x1 + state_.translateX, g.y1 + state_.translateY)));
+        } else {
+            float radius = std::max(g.r0, g.r1);
+            c->setColor(visage::Brush::radial(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY), radius));
+        }
+    } else {
+        c->setColor(state_.fillColor);
+    }
 
     float boxX, boxW;
     if (just == visage::Font::kCenter) {
