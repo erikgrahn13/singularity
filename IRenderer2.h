@@ -71,7 +71,7 @@ public:
     // --- Gradients ---
     virtual int createLinearGradient(void* canvas, float x0, float y0, float x1, float y1) = 0;
     virtual int createRadialGradient(void* canvas, float x0, float y0, float r0, float x1, float y1, float r1) = 0;
-    virtual void addColorStop(void* canvas, int id, float offset, const std::string& color) = 0;
+    virtual void addColorStop(void* canvas, int id, float offset, const std::string& color, float hdr = 1.0f) = 0;
     virtual void setFillStyleGradient(void* canvas, int id) = 0;
     virtual void setStrokeStyleGradient(void* canvas, int id) = 0;
 
@@ -84,6 +84,15 @@ public:
     virtual void rotate(void* canvas, float angle) = 0;
     virtual void scale(void* canvas, float x, float y) = 0;
     virtual void resetTransform(void* canvas) = 0;
+
+    // --- HDR ---
+    // hdrMultiplier > 1.0 makes colors brighter than white, driving bloom/glow effects.
+    // Reset to 1.0 by save()/restore() as part of draw state.
+    virtual void setHdrMultiplier(void* canvas, float mult) {}
+
+    // --- Layers (Canvas 2D Level 2 spec) ---
+    virtual void beginLayer(void* canvas, float opacity) {}
+    virtual void endLayer(void* canvas) {}
 
     virtual ~IRenderer() = default;
 };

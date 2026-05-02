@@ -261,8 +261,14 @@ static JSValue js_addColorStop(JSContext* ctx, JSValueConst this_val, int argc, 
     double offset = 0.0;
     JS_ToFloat64(ctx, &offset, argv[0]);
     const char* color = JS_ToCString(ctx, argv[1]);
+    // Optional 3rd argument: per-stop HDR multiplier (default 1.0).
+    // Allows matching Visage's per-gradient-stop HDR (e.g. rainbow * boost).
+    double hdr = 1.0;
+    if (argc >= 3 && !JS_IsUndefined(argv[2])) {
+        JS_ToFloat64(ctx, &hdr, argv[2]);
+    }
     if (color) {
-        data->renderer->addColorStop(data->canvas, id, (float)offset, color);
+        data->renderer->addColorStop(data->canvas, id, (float)offset, color, (float)hdr);
         JS_FreeCString(ctx, color);
     }
     return JS_UNDEFINED;
@@ -403,6 +409,17 @@ static JSValue js_textBaseline(JSContext* ctx, JSValueConst this_val, int argc, 
         data->renderer->setTextBaseline(data->canvas, baseline);
         JS_FreeCString(ctx, baseline);
     }
+    return JS_UNDEFINED;
+}
+
+// ctx.hdrMultiplier = 2.0  — brightness factor >1 makes colors over-bright, driving bloom/glow.
+// Reset to 1.0 with ctx.restore() or by assigning ctx.hdrMultiplier = 1.
+static JSValue js_hdrMultiplier(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double mult = 1.0;
+    JS_ToFloat64(ctx, &mult, argv[0]);
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->setHdrMultiplier(data->canvas, static_cast<float>(mult));
     return JS_UNDEFINED;
 }
 

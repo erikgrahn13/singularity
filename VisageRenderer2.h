@@ -70,7 +70,7 @@ public:
     // --- Gradients ---
     int  createLinearGradient(void* canvas, float x0, float y0, float x1, float y1) override;
     int  createRadialGradient(void* canvas, float x0, float y0, float r0, float x1, float y1, float r1) override;
-    void addColorStop(void* canvas, int id, float offset, const std::string& color) override;
+    void addColorStop(void* canvas, int id, float offset, const std::string& color, float hdr = 1.0f) override;
     void setFillStyleGradient(void* canvas, int i) override;
     void setStrokeStyleGradient(void* canvas, int i) override;
 
@@ -83,6 +83,13 @@ public:
     void rotate(void* canvas, float angle) override;
     void scale(void* canvas, float x, float y) override;
     void resetTransform(void* canvas) override;
+
+    // --- Blend modes & layers ---
+    void beginLayer(void* canvas, float opacity) override;
+    void endLayer(void* canvas) override;
+
+    // --- HDR ---
+    void setHdrMultiplier(void* canvas, float mult) override;
 
 private:
     visage::ApplicationWindow* rootFrame_{ nullptr };
@@ -102,6 +109,7 @@ private:
         visage::Color strokeColor{ 0xff000000u };
         float lineWidth{ 1.0f };
         float globalAlpha{ 1.0f };
+        float hdrMultiplier{ 1.0f };
         float fontSize{ 16.0f };
         std::string textAlign{ "left" };
         std::string textBaseline{ "alphabetic" };
@@ -111,11 +119,20 @@ private:
         float scaleY{ 1.0f };
         int fillGradientId = -1;
         int strokeGradientId = -1;
+        visage::BlendMode blendMode{ visage::BlendMode::Alpha };
+    };
+
+    struct LayerState {
+        float opacity;
     };
 
     DrawState state_;
     std::vector<DrawState> stateStack_;
     std::vector<GradientData> gradients_;
+    std::vector<std::unique_ptr<visage::Region>> layerPool_;
+    std::vector<LayerState> layerStack_;
+    int width_{ 0 };
+    int height_{ 0 };
     std::function<void(void*, float, float)> componentMouseDownCallback_;
     std::function<void(void*, float, float)> componentMouseUpCallback_;
     std::function<void(void*, float, float)> componentMouseDragCallback_;

@@ -249,14 +249,45 @@ JS_FreeValue(ctx, postEffectProp);
             };
             JS_SetPropertyStr(ctx, jsCtx, "redraw", JS_NewCFunction(ctx, js_redraw, "redraw", 0));
 
+            // ctx.beginLayer({ opacity }) — Canvas 2D Level 2: composite children into an isolated layer
+            auto js_beginLayer = [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
+                void* opaque = JS_GetContextOpaque(ctx);
+                if (!opaque) return JS_UNDEFINED;
+                DrawContextData* d = static_cast<DrawContextData*>(opaque);
+                float opacity = 1.0f;
+                if (argc > 0 && JS_IsObject(argv[0])) {
+                    JSValue opVal = JS_GetPropertyStr(ctx, argv[0], "opacity");
+                    if (!JS_IsUndefined(opVal)) {
+                        double v; JS_ToFloat64(ctx, &v, opVal); opacity = (float)v;
+                    }
+                    JS_FreeValue(ctx, opVal);
+                } else if (argc > 0 && JS_IsNumber(argv[0])) {
+                    double v; JS_ToFloat64(ctx, &v, argv[0]); opacity = (float)v;
+                }
+                d->renderer->beginLayer(d->canvas, opacity);
+                return JS_UNDEFINED;
+            };
+            JS_SetPropertyStr(ctx, jsCtx, "beginLayer", JS_NewCFunction(ctx, js_beginLayer, "beginLayer", 1));
+
+            // ctx.endLayer() — Canvas 2D Level 2
+            auto js_endLayer = [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
+                void* opaque = JS_GetContextOpaque(ctx);
+                if (!opaque) return JS_UNDEFINED;
+                DrawContextData* d = static_cast<DrawContextData*>(opaque);
+                d->renderer->endLayer(d->canvas);
+                return JS_UNDEFINED;
+            };
+            JS_SetPropertyStr(ctx, jsCtx, "endLayer", JS_NewCFunction(ctx, js_endLayer, "endLayer", 0));
+
             // CANVAS API PROPERTIES (setters)
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "fillStyle"),    JS_UNDEFINED, JS_NewCFunction(ctx, js_fillStyle,    "fillStyle",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "strokeStyle"),  JS_UNDEFINED, JS_NewCFunction(ctx, js_strokeStyle,  "strokeStyle",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "lineWidth"),    JS_UNDEFINED, JS_NewCFunction(ctx, js_lineWidth,    "lineWidth",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "font"),         JS_UNDEFINED, JS_NewCFunction(ctx, js_font,         "font",         1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "globalAlpha"),  JS_UNDEFINED, JS_NewCFunction(ctx, js_globalAlpha,  "globalAlpha",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "textAlign"),    JS_UNDEFINED, JS_NewCFunction(ctx, js_textAlign,    "textAlign",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "textBaseline"), JS_UNDEFINED, JS_NewCFunction(ctx, js_textBaseline, "textBaseline", 1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "fillStyle"),                JS_UNDEFINED, JS_NewCFunction(ctx, js_fillStyle,                "fillStyle",                1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "strokeStyle"),              JS_UNDEFINED, JS_NewCFunction(ctx, js_strokeStyle,              "strokeStyle",              1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "lineWidth"),                JS_UNDEFINED, JS_NewCFunction(ctx, js_lineWidth,                "lineWidth",                1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "font"),                     JS_UNDEFINED, JS_NewCFunction(ctx, js_font,                     "font",                     1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "globalAlpha"),              JS_UNDEFINED, JS_NewCFunction(ctx, js_globalAlpha,              "globalAlpha",              1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "textAlign"),                JS_UNDEFINED, JS_NewCFunction(ctx, js_textAlign,                "textAlign",                1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "textBaseline"),             JS_UNDEFINED, JS_NewCFunction(ctx, js_textBaseline,             "textBaseline",             1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "hdrMultiplier"),             JS_UNDEFINED, JS_NewCFunction(ctx, js_hdrMultiplier,             "hdrMultiplier",             1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
 
             JSValue argv[1] = { jsCtx };
             JSValue result = JS_Call(ctx, drawFn, JS_UNDEFINED, 1, argv);

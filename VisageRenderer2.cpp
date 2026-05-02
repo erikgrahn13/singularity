@@ -1,6 +1,7 @@
 #include <memory>
 #include "VisageRenderer2.h"
 #include <visage_graphics/tests/lato_regular.h>
+#include <visage_graphics/post_effects.h>
 #include <cmath>
 #include <algorithm>
 #include <iostream>
@@ -54,13 +55,19 @@ static visage::Color parseColorString(const std::string& color)
     return visage::Color(0xff000000u);
 }
 
+// Apply an HDR multiplier to a color (values >1 drive bloom/glow).
+static visage::Color withHdr(visage::Color c, float hdr) {
+    c.setHdr(hdr);
+    return c;
+}
+
 VisageRenderer::VisageRenderer(void *parentHandle)
 {
     rootFrame_ = static_cast<visage::ApplicationWindow*>(parentHandle);
     rootFrame_->setDpiScale(visage::defaultDpiScale());
 
     rootFrame_->onDraw() += [this](visage::Canvas& canvas) {
-        canvas.setColor(0xff000000);
+        canvas.setColor(0xff0000ff);
         canvas.fill(0, 0, rootFrame_->width(), rootFrame_->height());
     };
 }
@@ -93,9 +100,6 @@ void *VisageRenderer::createComponent(void *parentComponent)
         }
     };
     
-    std::cout << "VisageRenderer created child: " << childPtr
-    << " parent: " << parentFrame << std::endl;
-    
     parentFrame->addChild(std::move(child));
     
 
@@ -106,9 +110,6 @@ void VisageRenderer::setBounds(void *component, float x, float y, float w, float
 {
     auto* frame = static_cast<visage::Frame*>(component);
     frame->setBounds(x, y, w, h);
-
-    std::cout << "VisageRenderer set bounds on: " << frame
-              << " -> " << x << ", " << y << ", " << w << ", " << h << std::endl;
 }
 
 void VisageRenderer::setDrawCallback(void *component, std::function<void(void *canvas)> cb)
@@ -116,7 +117,6 @@ void VisageRenderer::setDrawCallback(void *component, std::function<void(void *c
     auto* frame = static_cast<visage::Frame*>(component);
 
     frame->onDraw() = [cb, frame](visage::Canvas& canvas) {
-        std::cout << "onDraw fired for frame: " << frame << std::endl;
         cb(&canvas);
     };
 }
@@ -129,7 +129,6 @@ void VisageRenderer::clear()
     state_ = DrawState{};
     stateStack_.clear();
     rootFrame_->redraw();
-    std::cout << "Renderer cleared" << std::endl;
 }
 
 void VisageRenderer::fillRect(void *canvas, float x, float y, float w, float h)
@@ -140,10 +139,10 @@ void VisageRenderer::fillRect(void *canvas, float x, float y, float w, float h)
         const auto& g = gradients_[state_.fillGradientId];
         visage::Gradient grad;
         for (const auto& stop : g.stops)
-            grad.addColorStop(stop.second, stop.first);
+            grad.addColorStop(stop.second, stop.first); // HDR is per-stop, stored in color
 
         if (grad.numColors() == 0) {
-            c->setColor(state_.fillColor);
+            c->setColor(withHdr(state_.fillColor, state_.hdrMultiplier));
         } else if (g.type == GradientData::Type::Linear) {
             c->setColor(visage::Brush::linear(grad,
                 visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY),
@@ -154,16 +153,15 @@ void VisageRenderer::fillRect(void *canvas, float x, float y, float w, float h)
                 visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY), radius));
         }
     } else {
-        c->setColor(state_.fillColor);
+        c->setColor(withHdr(state_.fillColor, state_.hdrMultiplier));
     }
-
     c->fill(x + state_.translateX, y + state_.translateY, w, h);
 }
 
 void VisageRenderer::strokeRect(void *canvas, float x, float y, float w, float h)
 {
     auto* c = static_cast<visage::Canvas*>(canvas);
-    c->setColor(state_.strokeColor);
+    c->setColor(withHdr(state_.strokeColor, state_.hdrMultiplier));
     c->rectangleBorder(x + state_.translateX, y + state_.translateY, w, h, state_.lineWidth);
 }
 
@@ -181,11 +179,13 @@ void VisageRenderer::clearRect(void *canvas, float x, float y, float width, floa
 void VisageRenderer::setFillStyle(void* canvas, const std::string& color)
 {
     state_.fillColor = parseColorString(color);
+    state_.fillGradientId = -1;
 }
 
 void VisageRenderer::setStrokeStyle(void* canvas, const std::string& color)
 {
     state_.strokeColor = parseColorString(color);
+    state_.strokeGradientId = -1;
 }
 
 void VisageRenderer::setLineWidth(void* canvas, float width)
@@ -239,10 +239,12 @@ int VisageRenderer::createRadialGradient(void* canvas, float x0, float y0, float
     return static_cast<int>(gradients_.size()) - 1;
 }
 
-void VisageRenderer::addColorStop(void* canvas, int id, float offset, const std::string& color)
+void VisageRenderer::addColorStop(void* canvas, int id, float offset, const std::string& color, float hdr)
 {
     if (id < 0 || id >= static_cast<int>(gradients_.size())) return;
-    gradients_[id].stops.push_back({ offset, parseColorString(color) });
+    visage::Color c = parseColorString(color);
+    c.setHdr(hdr);
+    gradients_[id].stops.push_back({ offset, c });
 }
 
 void VisageRenderer::setFillStyleGradient(void* canvas, int i)
@@ -458,10 +460,10 @@ void VisageRenderer::fill(void* canvas)
         const auto& g = gradients_[state_.fillGradientId];
         visage::Gradient grad;
         for (const auto& stop : g.stops)
-            grad.addColorStop(stop.second, stop.first);
+            grad.addColorStop(stop.second, stop.first); // HDR is per-stop, stored in color
 
         if (grad.numColors() == 0) {
-            c->setColor(state_.fillColor);
+            c->setColor(withHdr(state_.fillColor, state_.hdrMultiplier));
         } else if (g.type == GradientData::Type::Linear) {
             c->setColor(visage::Brush::linear(grad,
                 visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY),
@@ -472,7 +474,7 @@ void VisageRenderer::fill(void* canvas)
                 visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY), radius));
         }
     } else {
-        c->setColor(state_.fillColor);
+        c->setColor(withHdr(state_.fillColor, state_.hdrMultiplier));
     }
 
     c->fill(currentPath_);
@@ -484,17 +486,35 @@ void VisageRenderer::stroke(void* canvas)
         return;
 
     auto* c = static_cast<visage::Canvas*>(canvas);
-    c->setColor(state_.strokeColor);
+
+    if (state_.strokeGradientId >= 0 && state_.strokeGradientId < static_cast<int>(gradients_.size())) {
+        const auto& g = gradients_[state_.strokeGradientId];
+        visage::Gradient grad;
+        for (const auto& stop : g.stops)
+            grad.addColorStop(stop.second, stop.first); // HDR is per-stop, stored in color
+
+        if (grad.numColors() == 0) {
+            c->setColor(withHdr(state_.strokeColor, state_.hdrMultiplier));
+        } else if (g.type == GradientData::Type::Linear) {
+            c->setColor(visage::Brush::linear(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY),
+                visage::Point(g.x1 + state_.translateX, g.y1 + state_.translateY)));
+        } else {
+            float radius = std::max(g.r0, g.r1);
+            c->setColor(visage::Brush::radial(grad,
+                visage::Point(g.x0 + state_.translateX, g.y0 + state_.translateY), radius));
+        }
+    } else {
+        c->setColor(withHdr(state_.strokeColor, state_.hdrMultiplier));
+    }
 
     auto stroked = currentPath_.stroke(
         state_.lineWidth,
         visage::Path::Join::Round,
         visage::Path::EndCap::Round
     );
-
     c->fill(stroked);
-
-    currentPath_.clear(); // temporary test
+    currentPath_.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -626,6 +646,45 @@ void VisageRenderer::setPostEffectForComponent(void* component, const PostEffect
         bloom->setBloomSize(spec.size);
         bloom->setBloomIntensity(spec.intensity);
         static_cast<visage::Frame*>(component)->setPostEffect(bloom);
+    } else if (spec.type == "blur") {
+        auto* blur = new visage::BlurPostEffect();
+        blur->setBlurRadius(spec.size > 0.0f ? spec.size : 20.0f);
+        static_cast<visage::Frame*>(component)->setPostEffect(blur);
     }
-    // ...handle other types...
+}
+
+void VisageRenderer::beginLayer(void* canvas, float opacity)
+{
+    auto* c = static_cast<visage::Canvas*>(canvas);
+    if (!c) return;
+    int depth = static_cast<int>(layerStack_.size());
+    if (depth >= static_cast<int>(layerPool_.size())) {
+        auto reg = std::make_unique<visage::Region>();
+        c->addRegion(reg.get());
+        int w = c->width(), h = c->height();
+        reg->setBounds(0, 0, w, h);
+        reg->setNeedsLayer(true);
+        layerPool_.push_back(std::move(reg));
+    }
+    layerStack_.push_back({ opacity });
+    c->beginRegion(layerPool_[depth].get());
+}
+
+void VisageRenderer::endLayer(void* canvas)
+{
+    auto* c = static_cast<visage::Canvas*>(canvas);
+    if (!c || layerStack_.empty()) return;
+    float opacity = layerStack_.back().opacity;
+    layerStack_.pop_back();
+    if (opacity < 1.0f) {
+        c->setBlendMode(visage::BlendMode::Mult);
+        c->setColor(visage::Color(0xffffffff).withAlpha(opacity));
+        c->fill(0, 0, static_cast<float>(c->width()), static_cast<float>(c->height()));
+    }
+    c->endRegion();
+    c->setBlendMode(state_.blendMode);
+}
+void VisageRenderer::setHdrMultiplier(void* canvas, float mult)
+{
+    state_.hdrMultiplier = std::max(0.0f, mult);
 }
