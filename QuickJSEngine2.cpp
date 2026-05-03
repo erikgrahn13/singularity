@@ -181,13 +181,26 @@ JS_FreeValue(ctx, postEffectProp);
 //
 
 
+    std::string backgroundColor;
+    JSValue bgColorVal = JS_GetPropertyStr(ctx, props, "backgroundColor");
+    if (JS_IsString(bgColorVal)) {
+        const char* bgStr = JS_ToCString(ctx, bgColorVal);
+        if (bgStr) { backgroundColor = bgStr; JS_FreeCString(ctx, bgStr); }
+    }
+    JS_FreeValue(ctx, bgColorVal);
+
     JSValue draw = JS_GetPropertyStr(ctx, props, "draw");
 
-    if (JS_IsFunction(ctx, draw)) {
+    if (JS_IsFunction(ctx, draw) || !backgroundColor.empty()) {
         auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
-        JSValue drawFn = JS_DupValue(ctx, draw);
-        engine->drawCallbacks_.push_back(drawFn);
-        renderer->setDrawCallback(component, [ctx, drawFn, renderer, component](void* canvas) mutable {
+        JSValue drawFn = JS_IsFunction(ctx, draw) ? JS_DupValue(ctx, draw) : JS_UNDEFINED;
+        if (!JS_IsUndefined(drawFn)) engine->drawCallbacks_.push_back(drawFn);
+        renderer->setDrawCallback(component, [ctx, drawFn, renderer, component, backgroundColor, width, height](void* canvas) mutable {
+            if (!backgroundColor.empty()) {
+                renderer->setFillStyle(canvas, backgroundColor);
+                renderer->fillRect(canvas, 0, 0, (float)width, (float)height);
+            }
+
             DrawContextData drawData;
             drawData.renderer = renderer;
             drawData.canvas = canvas;
@@ -289,13 +302,15 @@ JS_FreeValue(ctx, postEffectProp);
             JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "textBaseline"),             JS_UNDEFINED, JS_NewCFunction(ctx, js_textBaseline,             "textBaseline",             1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
             JS_DefinePropertyGetSet(ctx, jsCtx, JS_NewAtom(ctx, "hdrMultiplier"),             JS_UNDEFINED, JS_NewCFunction(ctx, js_hdrMultiplier,             "hdrMultiplier",             1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
 
-            JSValue argv[1] = { jsCtx };
-            JSValue result = JS_Call(ctx, drawFn, JS_UNDEFINED, 1, argv);
+            if (JS_IsFunction(ctx, drawFn)) {
+                JSValue argv[1] = { jsCtx };
+                JSValue result = JS_Call(ctx, drawFn, JS_UNDEFINED, 1, argv);
 
-            if (JS_IsException(result))
-                js_std_dump_error(ctx);
+                if (JS_IsException(result))
+                    js_std_dump_error(ctx);
 
-            JS_FreeValue(ctx, result);
+                JS_FreeValue(ctx, result);
+            }
             JS_FreeValue(ctx, jsCtx);
 
             JS_SetContextOpaque(ctx, previousOpaque);
@@ -328,6 +343,20 @@ JS_FreeValue(ctx, postEffectProp);
     }
 
     JS_FreeValue(ctx, onMouseDrag);
+
+    JSValue onMouseEnter = JS_GetPropertyStr(ctx, props, "onMouseEnter");
+    if (JS_IsFunction(ctx, onMouseEnter)) {
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        engine->registerMouseEnterHandler(component, ctx, onMouseEnter);
+    }
+    JS_FreeValue(ctx, onMouseEnter);
+
+    JSValue onMouseExit = JS_GetPropertyStr(ctx, props, "onMouseExit");
+    if (JS_IsFunction(ctx, onMouseExit)) {
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        engine->registerMouseExitHandler(component, ctx, onMouseExit);
+    }
+    JS_FreeValue(ctx, onMouseExit);
 
 }
 
@@ -403,6 +432,14 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
         for (auto& [component, fn] : mouseDragHandlers_)
             JS_FreeValue(ctx_, fn);
         mouseDragHandlers_.clear();
+
+        for (auto& [component, fn] : mouseEnterHandlers_)
+            JS_FreeValue(ctx_, fn);
+        mouseEnterHandlers_.clear();
+
+        for (auto& [component, fn] : mouseExitHandlers_)
+            JS_FreeValue(ctx_, fn);
+        mouseExitHandlers_.clear();
 
         if (!JS_IsUndefined(appFn_)) {
             JS_FreeValue(ctx_, appFn_);
@@ -485,6 +522,22 @@ void QuickJSEngine::registerMouseDragHandler(void* component, JSContext* ctx, JS
     mouseDragHandlers_[component] = JS_DupValue(ctx, fn);
 }
 
+void QuickJSEngine::registerMouseEnterHandler(void* component, JSContext* ctx, JSValue fn)
+{
+    auto it = mouseEnterHandlers_.find(component);
+    if (it != mouseEnterHandlers_.end())
+        JS_FreeValue(ctx, it->second);
+    mouseEnterHandlers_[component] = JS_DupValue(ctx, fn);
+}
+
+void QuickJSEngine::registerMouseExitHandler(void* component, JSContext* ctx, JSValue fn)
+{
+    auto it = mouseExitHandlers_.find(component);
+    if (it != mouseExitHandlers_.end())
+        JS_FreeValue(ctx, it->second);
+    mouseExitHandlers_[component] = JS_DupValue(ctx, fn);
+}
+
 void QuickJSEngine::onMouseDown(void *component, float x, float y)
 {
     auto it = mouseDownHandlers_.find(component);
@@ -503,6 +556,8 @@ void QuickJSEngine::onMouseDown(void *component, float x, float y)
 
     JS_FreeValue(ctx_, result);
     JS_FreeValue(ctx_, eventObj);
+
+    renderer_->redraw(component);
 }
 
 void QuickJSEngine::onMouseUp(void* component, float x, float y)
@@ -523,6 +578,8 @@ void QuickJSEngine::onMouseUp(void* component, float x, float y)
 
     JS_FreeValue(ctx_, result);
     JS_FreeValue(ctx_, eventObj);
+
+    renderer_->redraw(component);
 }
 
 void QuickJSEngine::onMouseDrag(void* component, float x, float y)
@@ -547,6 +604,34 @@ void QuickJSEngine::onMouseDrag(void* component, float x, float y)
     renderer_->redraw(component);
 }
 
+void QuickJSEngine::onMouseEnter(void* component)
+{
+    auto it = mouseEnterHandlers_.find(component);
+    if (it == mouseEnterHandlers_.end())
+        return;
+
+    JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 0, nullptr);
+    if (JS_IsException(result))
+        js_std_dump_error(ctx_);
+    JS_FreeValue(ctx_, result);
+
+    renderer_->redraw(component);
+}
+
+void QuickJSEngine::onMouseExit(void* component)
+{
+    auto it = mouseExitHandlers_.find(component);
+    if (it == mouseExitHandlers_.end())
+        return;
+
+    JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 0, nullptr);
+    if (JS_IsException(result))
+        js_std_dump_error(ctx_);
+    JS_FreeValue(ctx_, result);
+
+    renderer_->redraw(component);
+}
+
 JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv)
 {
     int32_t parameterId;
@@ -555,8 +640,10 @@ JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, 
     JS_ToInt32(ctx, &parameterId, argv[0]);
     JS_ToFloat64(ctx, &parameterValue, argv[1]);
 
-    auto* self = (QuickJSEngine*)JS_GetContextOpaque(ctx);
     parameterStore_.setParameter(parameterId, parameterValue);
+
+    // Redraw root so all components bound to this parameter update
+    renderer_->redrawAll();
 
     return JS_UNDEFINED;
 }

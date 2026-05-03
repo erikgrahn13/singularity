@@ -34,6 +34,18 @@ void SingularityController::initialize()
         }
     );
 
+    renderer_->setComponentMouseEnterCallback(
+        [this](void* component) {
+            jsEngine_->onMouseEnter(component);
+        }
+    );
+
+    renderer_->setComponentMouseExitCallback(
+        [this](void* component) {
+            jsEngine_->onMouseExit(component);
+        }
+    );
+
     fileWatcher_->setCallback([this](const std::string& filePath) {
         std::cout << "File changed" << std::endl;
         reloadPending_ = true;

@@ -23,9 +23,13 @@ class QuickJSEngine : public IJSEngine {
     void registerMouseDownHandler(void* component, JSContext* ctx, JSValue fn);
     void registerMouseUpHandler(void* component, JSContext* ctx, JSValue fn);
     void registerMouseDragHandler(void* component, JSContext* ctx, JSValue fn);
+    void registerMouseEnterHandler(void* component, JSContext* ctx, JSValue fn);
+    void registerMouseExitHandler(void* component, JSContext* ctx, JSValue fn);
     void onMouseDown(void* component, float x, float y) override;
     void onMouseUp(void* component, float x, float y) override;
     void onMouseDrag(void* component, float x, float y) override;
+    void onMouseEnter(void* component) override;
+    void onMouseExit(void* component) override;
 
     JSValue getParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
     JSValue setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
@@ -43,6 +47,8 @@ class QuickJSEngine : public IJSEngine {
     std::unordered_map<void*, JSValue> mouseDownHandlers_;
     std::unordered_map<void*, JSValue> mouseUpHandlers_;
     std::unordered_map<void*, JSValue> mouseDragHandlers_;
+    std::unordered_map<void*, JSValue> mouseEnterHandlers_;
+    std::unordered_map<void*, JSValue> mouseExitHandlers_;
 
     IParameterProvider& parameterStore_;
 

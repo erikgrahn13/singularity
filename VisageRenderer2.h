@@ -20,7 +20,10 @@ public:
     void setComponentMouseDownCallback(std::function<void(void*, float, float)> cb) override;
     void setComponentMouseUpCallback(std::function<void(void*, float, float)> cb) override;
     void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) override;
+    void setComponentMouseEnterCallback(std::function<void(void*)> cb) override;
+    void setComponentMouseExitCallback(std::function<void(void*)> cb) override;
     void redraw(void *component) override;
+    void redrawAll() override;
     double getTime(void* canvas) override;
     void setPostEffectForComponent(void* component, const PostEffectSpec& spec) override;
 
@@ -136,4 +139,6 @@ private:
     std::function<void(void*, float, float)> componentMouseDownCallback_;
     std::function<void(void*, float, float)> componentMouseUpCallback_;
     std::function<void(void*, float, float)> componentMouseDragCallback_;
+    std::function<void(void*)> componentMouseEnterCallback_;
+    std::function<void(void*)> componentMouseExitCallback_;
 };

@@ -67,7 +67,7 @@ VisageRenderer::VisageRenderer(void *parentHandle)
     rootFrame_->setDpiScale(visage::defaultDpiScale());
 
     rootFrame_->onDraw() += [this](visage::Canvas& canvas) {
-        canvas.setColor(0xff0000ff);
+        // canvas.setColor(0xff0000ff);
         canvas.fill(0, 0, rootFrame_->width(), rootFrame_->height());
     };
 }
@@ -98,6 +98,14 @@ void *VisageRenderer::createComponent(void *parentComponent)
         if (componentMouseDragCallback_) {
             componentMouseDragCallback_(childPtr, e.position.x, e.position.y);
         }
+    };
+    childPtr->onMouseEnter() += [this, childPtr](const visage::MouseEvent& e) {
+        if (componentMouseEnterCallback_)
+            componentMouseEnterCallback_(childPtr);
+    };
+    childPtr->onMouseExit() += [this, childPtr](const visage::MouseEvent& e) {
+        if (componentMouseExitCallback_)
+            componentMouseExitCallback_(childPtr);
     };
     
     parentFrame->addChild(std::move(child));
@@ -630,9 +638,24 @@ void VisageRenderer::setComponentMouseDragCallback(std::function<void(void*, flo
     componentMouseDragCallback_ = std::move(cb);
 }
 
+void VisageRenderer::setComponentMouseEnterCallback(std::function<void(void*)> cb)
+{
+    componentMouseEnterCallback_ = std::move(cb);
+}
+
+void VisageRenderer::setComponentMouseExitCallback(std::function<void(void*)> cb)
+{
+    componentMouseExitCallback_ = std::move(cb);
+}
+
 void VisageRenderer::redraw(void *component)
 {
-    static_cast<visage::ApplicationWindow*>(component)->redraw();
+    static_cast<visage::Frame*>(component)->redraw();
+}
+
+void VisageRenderer::redrawAll()
+{
+    rootFrame_->redrawAll();
 }
 
 double VisageRenderer::getTime(void *canvas)

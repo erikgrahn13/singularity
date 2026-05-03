@@ -4,9 +4,9 @@ export function Knob({ x, y, size = 40, parameterId, theme = {} }) {
   let lastY = null;
 
   const t = {
-    bodyColor: "#1e1e2e",
+    bodyColor: "#ffffff00",
     trackColor: "#3a3a5c",
-    valueColor: "#00d4ff",
+    valueColor: "#8000ff",
     dotColor: "#ffffff",
     trackWidth: size * 0.13,
     ...theme,
@@ -46,6 +46,10 @@ export function Knob({ x, y, size = 40, parameterId, theme = {} }) {
       const value = getParameter(parameterId);
       if (Number.isNaN(value)) return;
 
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, size, size);
+
+
       const radius = size / 2;
       const cx = radius;
       const cy = radius;
@@ -60,7 +64,6 @@ export function Knob({ x, y, size = 40, parameterId, theme = {} }) {
 
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fillStyle = t.bodyColor;
       ctx.fill();
 
       ctx.beginPath();
@@ -79,7 +82,7 @@ export function Knob({ x, y, size = 40, parameterId, theme = {} }) {
       const dotY = cy + Math.sin(valueAngle) * trackRadius;
 
       ctx.beginPath();
-      ctx.arc(dotX, dotY, radius * 0.07, 0, Math.PI * 2);
+      ctx.arc(dotX, dotY, radius * 0.2, 0, Math.PI * 2);
       ctx.fillStyle = t.dotColor;
       ctx.fill();
 

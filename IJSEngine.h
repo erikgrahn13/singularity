@@ -22,6 +22,8 @@ class IJSEngine {
     virtual void onMouseDown(void* component, float x, float y) = 0;
     virtual void onMouseUp(void* component, float x, float y) = 0;
     virtual void onMouseDrag(void* component, float x, float y) = 0;
+    virtual void onMouseEnter(void* component) = 0;
+    virtual void onMouseExit(void* component) = 0;
     // // Callbacks
     // virtual void setOnOpenSettings(std::function<void()> cb) = 0;
     // virtual void setOnSetBloom(std::function<void(float, float)> cb) {}
