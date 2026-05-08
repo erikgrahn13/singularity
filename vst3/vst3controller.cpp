@@ -4,6 +4,7 @@
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ibstream.h"
 #include "../SingularityPlugin.h"
+#include <limits>
 #include <memory>
 
 using namespace Steinberg;
@@ -32,6 +33,10 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 		return result;
 	}
 
+	parameters.addParameter (STR16 ("Bypass"), nullptr, 1, 0,
+							Vst::ParameterInfo::kCanAutomate | Vst::ParameterInfo::kIsBypass,
+							std::numeric_limits<int>::max());
+
 	g_controller = this;
 	registerParameters();
 	g_controller = nullptr;
@@ -58,21 +63,19 @@ tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 
 	IBStreamer streamer (state, kLittleEndian);
 
-	// float savedParam1 = 0.f;
-	// if (streamer.readFloat (savedParam1) == false)
-	// 	return kResultFalse;
-	// setParamNormalized (VST3Params::kParamVolId, savedParam1);
+	float savedParam1 = 0.f;
+	if (streamer.readFloat (savedParam1) == false)
+		return kResultFalse;
 
-	// int8 savedParam2 = 0;
-	// if (streamer.readInt8 (savedParam2) == false)
-	// 	return kResultFalse;
-	// setParamNormalized (VST3Params::kParamOnId, savedParam2);
+	int32 savedParam2 = 0;
+	if (streamer.readInt32 (savedParam2) == false)
+		return kResultFalse;
 
-	// // read the bypass
-	// int32 bypassState;
-	// if (streamer.readInt32 (bypassState) == false)
-	// 	return kResultFalse;
-	// setParamNormalized (kBypassId, bypassState ? 1 : 0);
+	// read the bypass
+	int32 bypassState;
+	if (streamer.readInt32 (bypassState) == false)
+		return kResultFalse;
+	setParamNormalized (std::numeric_limits<int>::max(), bypassState ? 1 : 0);
 
 	return kResultOk;
 }

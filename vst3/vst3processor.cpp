@@ -14,12 +14,17 @@ using namespace Steinberg;
 namespace {
 struct VST3ParamChanges : IParameterChanges {
     Vst::IParameterChanges* src = nullptr;
+
+    static bool isInternal(Vst::ParamID id) {
+        return id == (Vst::ParamID)std::numeric_limits<int>::max(); // bypass
+    }
+
     int getCount() const override {
         if (!src) return 0;
         int count = 0;
         for (int i = 0; i < src->getParameterCount(); ++i) {
             auto* q = src->getParameterData(i);
-            if (q && q->getPointCount() > 0) ++count;
+            if (q && q->getPointCount() > 0 && !isInternal(q->getParameterId())) ++count;
         }
         return count;
     }
@@ -28,7 +33,7 @@ struct VST3ParamChanges : IParameterChanges {
         int found = 0;
         for (int i = 0; i < src->getParameterCount(); ++i) {
             auto* q = src->getParameterData(i);
-            if (!q || q->getPointCount() == 0) continue;
+            if (!q || q->getPointCount() == 0 || isInternal(q->getParameterId())) continue;
             if (found++ == index) {
                 Vst::ParamValue val = 0; int32 offset = 0;
                 q->getPoint(0, offset, val);
@@ -97,6 +102,22 @@ tresult PLUGIN_API VST3Processor::setActive (TBool state)
 tresult PLUGIN_API VST3Processor::process (Vst::ProcessData& data)
 {
     //--- Read inputs parameter changes-----------
+	if (data.inputParameterChanges)
+	{
+		for (int i = 0; i < data.inputParameterChanges->getParameterCount(); ++i)
+		{
+			Vst::IParamValueQueue* paramQueue = data.inputParameterChanges->getParameterData(i);
+			if (paramQueue && paramQueue->getParameterId() == std::numeric_limits<int>::max())
+			{
+				Vst::ParamValue value{0};
+				int32 sampleOffset{0};
+				int32 numPoints = paramQueue->getPointCount ();
+
+				paramQueue->getPoint(paramQueue->getPointCount() - 1, sampleOffset, value);
+				mBypass = (value >= 0.5);
+			}
+		}
+	}
     //--- Process Audio---------------------
     if (data.numSamples > 0 && mPlugin
         && data.numInputs > 0 && data.numOutputs > 0
@@ -112,11 +133,23 @@ tresult PLUGIN_API VST3Processor::process (Vst::ProcessData& data)
         VST3ParamChanges paramChanges;
         paramChanges.src = data.inputParameterChanges;
 
-        mPlugin->process(
-            std::span<const float* const>(reinterpret_cast<const float* const*>(in),  numIn),
-            std::span<float* const>(out, numOut),
-            data.numSamples,
-            paramChanges);
+		if(mBypass)
+		{
+			// Pass-through: copy input → output
+             auto** in  = data.inputs[0].channelBuffers32;
+             auto** out = data.outputs[0].channelBuffers32;
+             int numCh = std::min(data.inputs[0].numChannels, data.outputs[0].numChannels);
+             for (int ch = 0; ch < numCh; ++ch)
+                 std::memcpy(out[ch], in[ch], data.numSamples * sizeof(float));
+		}
+		else
+		{
+			mPlugin->process(
+				std::span<const float* const>(reinterpret_cast<const float* const*>(in),  numIn),
+				std::span<float* const>(out, numOut),
+				data.numSamples,
+				paramChanges);
+		}
     }
     return kResultOk;
 
