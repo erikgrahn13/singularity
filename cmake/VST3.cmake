@@ -9,17 +9,15 @@ FetchContent_Declare(
     SOURCE_SUBDIR IGNORE
 )
 
-FetchContent_MakeAvailable(vst3sdk)
-
-set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
-
 option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
 option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" OFF)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
 option(JS_HOT_RELOAD "Watch and hot-reload JS scripts at runtime" ON)
 option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
 
+FetchContent_MakeAvailable(vst3sdk)
 add_subdirectory(${vst3sdk_SOURCE_DIR})
+
 smtg_enable_vst3_sdk()
 
 # Export resolved VST3 SDK paths for consumers (e.g. SingularityPlugin.cmake)
