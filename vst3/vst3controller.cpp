@@ -103,7 +103,7 @@ IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)
 	if (FIDStringsEqual (name, Vst::ViewType::kEditor))
 	{
         // Default editor size — host may resize after creation
-        return new SingularityView(_paramAdapter);
+        return new SingularityView(this);
 	}
 	return nullptr;
 }

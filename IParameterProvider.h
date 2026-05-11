@@ -22,7 +22,7 @@ struct Parameter {
 
 class IParameterProvider {
 public:
-    virtual double getParameter(int id) const = 0;
+    virtual double getParameter(int id) = 0;
     virtual void setParameter(int id, double value) = 0;
     virtual ~IParameterProvider() = default;
 };

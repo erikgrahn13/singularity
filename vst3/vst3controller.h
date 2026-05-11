@@ -10,30 +10,11 @@
 
 namespace Steinberg {
 
-// Bridges VST3 parameter system to IParameterProvider
-class VST3ParameterAdapter : public IParameterProvider
-{
-public:
-    VST3ParameterAdapter(Vst::EditController* c) : _controller(c) {}
-    double getParameter(int id) const override {
-        if (!_controller->getParameterObject(id))
-            return std::numeric_limits<double>::quiet_NaN();
-        return _controller->getParamNormalized(id);
-    }
-    void setParameter(int id, double value) override
-    {
-        _controller->beginEdit(id);
-        _controller->setParamNormalized(id, value);
-        _controller->performEdit(id, value);
-        _controller->endEdit(id);
-    }
-private:
-    Vst::EditController* _controller;
-};
 //------------------------------------------------------------------------
 //  VST3Controller
 //------------------------------------------------------------------------
-class VST3Controller : public Steinberg::Vst::EditControllerEx1
+class VST3Controller : public Steinberg::Vst::EditControllerEx1,
+                       public IParameterProvider
 {
 public:
 //------------------------------------------------------------------------
@@ -80,10 +61,24 @@ public:
             Vst::ParameterInfo::kCanAutomate, id);
     }
 
+    // IParameterProvider
+    double getParameter(int id) override
+    {
+        if (!getParameterObject(id))
+            return std::numeric_limits<double>::quiet_NaN();
+        return getParamNormalized(id);
+    }
+    void setParameter(int id, double value) override
+    {
+        beginEdit(id);
+        EditControllerEx1::setParamNormalized(id, value);
+        performEdit(id, value);
+        endEdit(id);
+    }
+
 protected:
 
 private:
-    VST3ParameterAdapter _paramAdapter{this};
 };
 
 //------------------------------------------------------------------------

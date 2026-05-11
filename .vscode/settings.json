@@ -6,7 +6,9 @@
     },
     "cmake.sourceDirectory": "${workspaceFolder}/Example",
     "cmake.configureSettings": {
-        "VISAGE_BUILD_EXAMPLES":true
+        "VISAGE_BUILD_EXAMPLES": true,
+        "SINGULARITY_BUILD_EXAMPLES": true,
+        "SMTG_ENABLE_VST3_HOSTING_EXAMPLES":true,
     }
     // "cmake.sourceDirectory": [
     //     "${workspaceFolder}/Example",

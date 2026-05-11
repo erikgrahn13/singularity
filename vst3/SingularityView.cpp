@@ -1,39 +1,30 @@
 #include "SingularityView.h"
+#include "vst3controller.h"
 #include "base/source/fdebug.h"
 
 namespace Steinberg {
 
-SingularityView::SingularityView(IParameterProvider& params)
-    : m_params(params) {
-
-    app_ = std::make_unique<visage::ApplicationWindow>();
+SingularityView::SingularityView(Vst::EditController* editController)
+    : Vst::EditorView(editController)
+{
+    // Create the app and controller now (before attached()) so getSize() can
+    // return the real JS-driven dimensions when the host queries it.
+    auto& params = static_cast<IParameterProvider&>(*static_cast<VST3Controller*>(editController));
+    app_        = std::make_unique<visage::ApplicationWindow>();
     controller_ = std::make_unique<SingularityController>(app_.get(), params);
-
-#ifndef NDEBUG
-    hotReloadtimer.startTimer(50);
-    hotReloadtimer.onTimerCallback().add([&]{
-        controller_->tick();
-        if (frame) {
-            auto newWidth  = app_->width();
-            auto newHeight = app_->height();
-            if (newWidth != currentWidth || newHeight != currentHeight) {
-                ViewRect rect{0, 0, (int32)newWidth, (int32)newHeight};
-                frame->resizeView(this, &rect);
-            }
-        }
-    });
-#endif
-
-    controller_->setLogger([](const std::string& msg) {
-        SMTG_DBPRT1("%s\n", msg.c_str());
-    });
-    
     controller_->initialize();
-    currentWidth = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame())->width();
-    currentHeight = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame())->height();
+
+    auto* win = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame());
+    setRect({0, 0, static_cast<int32>(win->width()), static_cast<int32>(win->height())});
 }
 
-SingularityView::~SingularityView() { removed(); }
+SingularityView::~SingularityView()
+{
+    hotReloadtimer.stopTimer();
+    if (app_) app_->hide();
+    controller_.reset();
+    app_.reset();
+}
 
 tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 {
@@ -47,46 +38,47 @@ tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
     return kResultFalse;
 }
 
-tresult PLUGIN_API SingularityView::attached(void* parent, FIDString type)
+void SingularityView::attachedToParent()
 {
-    app_->show(visage::Dimension::logicalPixels(currentWidth),
-            visage::Dimension::logicalPixels(currentHeight), parent);
+    Vst::EditorView::attachedToParent(); // notifies EditController
 
-    return kResultOk;
+    // app_ and controller_ are already initialized; just show in the parent.
+    app_->show(systemWindow);
+
+#ifndef NDEBUG
+    hotReloadtimer.startTimer(50);
+    hotReloadtimer.onTimerCallback().add([&]{
+        controller_->tick();
+        if (plugFrame) {
+            int newW = app_->width();
+            int newH = app_->height();
+            if (newW != rect.getWidth() || newH != rect.getHeight()) {
+                rect = {0, 0, newW, newH};
+                plugFrame->resizeView(this, &rect);
+            }
+        }
+    });
+#endif
 }
 
-tresult PLUGIN_API SingularityView::removed()
+void SingularityView::removedFromParent()
 {
-    // m_win.reset();
-    // m_graphics.reset();
-    // TODO implement corret remove routine
-    return kResultOk;
+    Vst::EditorView::removedFromParent(); // notifies EditController
+
+    hotReloadtimer.stopTimer();
+    app_->hide();
+
+    // Recreate for the next attach so JS re-runs cleanly.
+    controller_.reset();
+    app_.reset();
 }
 
-tresult PLUGIN_API SingularityView::getSize(ViewRect* rect)
+tresult PLUGIN_API SingularityView::onSize(ViewRect* newSize)
 {
-    // fprintf(stderr, "[SingularityView] getSize: %dx%d\n", currentWidth, currentHeight);
-    if (!rect) return kResultFalse;
-    rect->left = 0; rect->top = 0; rect->right = currentWidth; rect->bottom = currentHeight;
-
-    return kResultOk;
-}
-
-tresult PLUGIN_API SingularityView::onSize(ViewRect* rect) {
-    if (rect && app_)
-    {
-        currentWidth = rect->right - rect->left;
-        currentHeight = rect->bottom - rect->top;
-        app_->setWindowDimensions(currentWidth, currentHeight);
-    }
-    return kResultOk;
-}
-
-tresult PLUGIN_API SingularityView::queryInterface(const TUID iid, void** obj)
-{
-    if (memcmp(iid, IPlugView::iid, sizeof(TUID)) == 0) { *obj = static_cast<IPlugView*>(this); addRef(); return kResultOk; }
-    *obj = nullptr;
-    return kNoInterface;
+    CPluginView::onSize(newSize); // stores in rect
+    if (app_)
+        app_->setWindowDimensions(rect.getWidth(), rect.getHeight());
+    return kResultTrue;
 }
 
 } // namespace Steinberg

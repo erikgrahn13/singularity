@@ -14,7 +14,7 @@ std::vector<std::string> ISingularityAudio::backends;
 class ParameterContainer : public IParameterProvider {
 public:
     std::function<void(int, double)> onParameterChanged;
-    double getParameter(int id) const override {
+    double getParameter(int id) override {
         auto it = params.find(id);
         if (it != params.end()) return it->second.value;
         return std::numeric_limits<double>::quiet_NaN();
