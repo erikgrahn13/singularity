@@ -4,7 +4,7 @@
     #include "coreAudio.h"
 #elif defined(_WIN32)
     #include "ASIO.h"
-    #include "WASAPI.h"
+    // #include "WASAPI.h"
 #endif
 
 // std::vector<std::string> ISingularityAudio::backends;
