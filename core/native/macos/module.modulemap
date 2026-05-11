@@ -1,0 +1,9 @@
+module coreAudio {
+    header "coreAudio.h"
+    requires cplusplus
+}
+
+module skiaGui {
+    header "EditorFactory.h"
+    requires cplusplus
+}

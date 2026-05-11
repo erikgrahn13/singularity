@@ -1,0 +1,4 @@
+module StandaloneHelper {
+    header "StandaloneHelper.h"
+    export *
+}
