@@ -39,6 +39,14 @@ void createParameter(int id, const char* name, ParamType type,
     parameterContainer.params[id] = { name, type, defaultValue, minValue, maxValue, defaultValue };
 }
 
+std::map<int, double> getDefaultParams()
+{
+    std::map<int, double> result;
+    for (auto& [id, param] : parameterContainer.params)
+        result[id] = param.defaultValue;
+    return result;
+}
+
 std::unique_ptr<ISingularityAudio> ISingularityAudio::createSingularityAudio()
 {
 #if defined(__APPLE__)

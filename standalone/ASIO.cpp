@@ -234,7 +234,7 @@ ASIOTime* ASIO::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool pr
         std::span<const float* const>(inputPtrs, instance->inputBuffers),
         std::span<float* const>(outputPtrs, instance->outputBuffers),
         buffSize,
-        instance->_currentChanges);
+        instance->_params);
 
     // --- Convert non-interleaved float → ASIO native buffers ---
     for (int ch = 0; ch < instance->outputBuffers; ++ch) {

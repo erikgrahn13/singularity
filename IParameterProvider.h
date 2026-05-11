@@ -26,10 +26,3 @@ public:
     virtual void setParameter(int id, double value) = 0;
     virtual ~IParameterProvider() = default;
 };
-
-class IParameterChanges {
-public:
-    virtual int getCount() const = 0;
-    virtual ParameterChange get(int index) const = 0;
-    virtual ~IParameterChanges() = default;
-};

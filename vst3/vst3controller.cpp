@@ -57,25 +57,25 @@ tresult PLUGIN_API VST3Controller::terminate ()
 //------------------------------------------------------------------------
 tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 {
-	// Here you get the state of the component (Processor part)
 	if (!state)
 		return kResultFalse;
 
 	IBStreamer streamer (state, kLittleEndian);
 
-	float savedParam1 = 0.f;
-	if (streamer.readFloat (savedParam1) == false)
-		return kResultFalse;
+	// Read bypass first (written as int32 by processor)
+	int32 bypassState = 0;
+	if (!streamer.readInt32(bypassState)) return kResultFalse;
+	setParamNormalized(std::numeric_limits<int>::max(), bypassState ? 1 : 0);
 
-	int32 savedParam2 = 0;
-	if (streamer.readInt32 (savedParam2) == false)
-		return kResultFalse;
-
-	// read the bypass
-	int32 bypassState;
-	if (streamer.readInt32 (bypassState) == false)
-		return kResultFalse;
-	setParamNormalized (std::numeric_limits<int>::max(), bypassState ? 1 : 0);
+	// Read remaining plugin parameters in the same order the processor wrote them
+	for (int32 i = 0; i < parameters.getParameterCount(); ++i) {
+		auto* param = parameters.getParameterByIndex(i);
+		if (!param) continue;
+		if (param->getInfo().id == (Vst::ParamID)std::numeric_limits<int>::max()) continue; // bypass already read
+		double value = 0.0;
+		if (!streamer.readDouble(value)) break;
+		setParamNormalized(param->getInfo().id, value);
+	}
 
 	return kResultOk;
 }

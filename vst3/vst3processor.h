@@ -4,6 +4,7 @@
 #include "../SingularityPlugin.h"
 #include <memory>
 #include <span>
+#include <map>
 
 namespace Steinberg {
 
@@ -30,8 +31,7 @@ public:
 
 protected:
 	std::unique_ptr<SingularityPlugin> mPlugin;
-	Vst::ParamValue mParam1 = 0;
-	int16 mParam2 = 0;
+	std::map<int, double> mParamValues; // sorted by id for stable serialization
 	bool mBypass = false;
 };
 

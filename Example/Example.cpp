@@ -9,12 +9,10 @@ void registerParameters()
 void ExamplePlugin::process(std::span<const float *const> inputs,
                             std::span<float *const> outputs,
                             int numSamples,
-                            IParameterChanges& paramChanges)
+                            const std::map<int, double>& params)
 {
-    for (int i = 0; i < paramChanges.getCount(); ++i) {
-        auto [id, value] = paramChanges.get(i);
-        if (id == 13) _volume = static_cast<float>(value);
-    }
+    if (auto it = params.find(13); it != params.end())
+        _volume = static_cast<float>(it->second);
 
     const float* mono = inputs.empty() ? nullptr : inputs[0];
     for (int ch = 0; ch < (int)outputs.size(); ++ch) {
