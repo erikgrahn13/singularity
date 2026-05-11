@@ -20,15 +20,15 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            cmake_flags: -DCMAKE_BUILD_TYPE=Release
+            cmake_flags: -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-macOS
           - os: windows-latest
-            cmake_flags: -G "Visual Studio 17 2022" -A x64
+            cmake_flags: -G "Visual Studio 17 2022" -A x64 -DSINGULARITY_BUILD_EXAMPLES=ON
             artifact_path: build/VST3/Release/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Windows
           - os: ubuntu-latest
-            cmake_flags: -DCMAKE_BUILD_TYPE=Release
+            cmake_flags: -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Linux
 
@@ -58,7 +58,7 @@ jobs:
             deps-${{ runner.os }}-
 
       - name: Configure
-        run: cmake -S Example -B build ${{ matrix.cmake_flags }}
+        run: cmake -S . -B build ${{ matrix.cmake_flags }}
 
       - name: Build VST3
         run: cmake --build build --config Release --target ExamplePlugin_VST3 --parallel

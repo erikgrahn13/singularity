@@ -1,11 +1,6 @@
 import { Component, getParameter } from "singularity";
 import { Knob } from "./knob.js"
-import { Basic } from "./basic.js";
-import { Bloom } from "./bloom.js";
-import { Test } from "./test.js";
-import { Gradients } from "./gradients.js";
 import { Button } from "./button.js";
-import { PostEffects } from "./post_effects.js";
 import { Slider } from "./slider.js"
 
 export default function App() {

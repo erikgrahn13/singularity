@@ -5,8 +5,6 @@ project(ExamplePlugin
         DESCRIPTION "This is my example plugin"
 )
 
-add_subdirectory(../ ${CMAKE_BINARY_DIR}/singularity)
-
 singularity_create_plugin(
     ${PROJECT_NAME}
     SOURCES
