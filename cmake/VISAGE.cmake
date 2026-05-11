@@ -7,7 +7,11 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(visage)
 
-# On Linux, visage is linked into a VST3 .so — must be compiled with -fPIC.
+# On Linux, visage is linked into a VST3 .so — all targets must be compiled with -fPIC.
 if(UNIX AND NOT APPLE)
-    set_target_properties(visage PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    foreach(_visage_target IN ITEMS visage VisageApp VisageWindowing VisageGraphics VisageWidgets VisageUi VisageUtils)
+        if(TARGET ${_visage_target})
+            set_target_properties(${_visage_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        endif()
+    endforeach()
 endif()

@@ -20,15 +20,15 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            cmake_flags: -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+            cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-macOS
           - os: windows-latest
-            cmake_flags: -G "Visual Studio 17 2022" -A x64 -DSINGULARITY_BUILD_EXAMPLES=ON
-            artifact_path: build/VST3/Release/**/ExamplePlugin.vst3
+            cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+            artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Windows
           - os: ubuntu-latest
-            cmake_flags: -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+            cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Linux
 
@@ -59,13 +59,37 @@ jobs:
             deps-${{ runner.os }}-
 
       - name: Configure
+        if: runner.os != 'Windows'
         run: cmake -S . -B build ${{ matrix.cmake_flags }}
 
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -S . -B build ${{ matrix.cmake_flags }}
+
       - name: Build VST3
+        if: runner.os != 'Windows'
         run: cmake --build build --config Release --target ExamplePlugin_VST3 --parallel
 
+      - name: Build VST3 (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake --build build --config Release --target ExamplePlugin_VST3 --parallel
+
       - name: Build Standalone APP
+        if: runner.os != 'Windows'
         run: cmake --build build --config Release --target ExamplePlugin_APP --parallel
+
+      - name: Build Standalone APP (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake --build build --config Release --target ExamplePlugin_APP --parallel
 
       - name: Upload VST3 artifact
         uses: actions/upload-artifact@v4
