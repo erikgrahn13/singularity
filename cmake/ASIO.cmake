@@ -1,6 +1,7 @@
 FetchContent_Declare(
     asiosdk
     URL https://www.steinberg.net/asiosdk
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 FetchContent_MakeAvailable(asiosdk)
