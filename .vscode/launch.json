@@ -1,102 +1,73 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "(gdb) Launch",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/core/native/linux/linux_window",
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${fileDirname}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "setupCommands": [
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
         {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
+            "name": "VST3PluginTestHost Mac",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/Applications/VST3PluginTestHost.app",
+            "args": ["--pluginfolder", "${command:cmake.buildDirectory}/vst3/Debug"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "lldb"
         },
         {
-          "description": "Set Disassembly Flavor to Intel",
-          "text": "-gdb-set disassembly-flavor intel",
-          "ignoreFailures": true
+            "name": "EditorHost Mac",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost.app/Contents/MacOS/editorhost",
+            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExamplePlugin.vst3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/Example",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+        {
+            "name": "VST3PluginTestHost Windows",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "C:/Program Files/Steinberg/VST3PluginTestHost/VST3PluginTestHost.exe",
+            "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "newExternalWindow",
+            "preLaunchTask": "CMake: build"
+        },
+        {
+            "name": "Editorhost Windows",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost.exe",
+            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExamplePlugin.vst3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "newExternalWindow",
+            "preLaunchTask": "CMake: build"
+        },
+        {
+            "name": "ExamplePlugin APP Windows",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}/Example",
+            "environment": [],
+            "args": []
+        },
+        {
+            "name": "ExamplePlugin APP Mac",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}/Example",
+            "environment": [],
+            "args": [],
+            "MIMode": "lldb"
         }
-      ]
-    },
-    {
-      "name": "(lldb) Launch",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/core/native/macos/Debug/mainMacos.app/Contents/MacOS/mainMacos",
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${fileDirname}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "lldb"
-    },
-    {
-      "name": "ExamplePlugin_App (CodeLLDB)",
-      "type": "lldb",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/ExamplePlugin/app/macos/ExamplePlugin_App.app/Contents/MacOS/ExamplePlugin_App",
-      "args": [],
-      "stopOnEntry": false,
-      "cwd": "${workspaceFolder}",
-      "env": {},
-      "console": "internalConsole",
-      "preLaunchTask": "CMake: build"
-    },
-    {
-      "name": "(Windows) Launch",
-      "type": "cppvsdbg",
-      "request": "launch",
-      "program": "${workspaceRoot}/build/core/native/windows/Debug/windows.exe",
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${fileDirname}",
-      "environment": [],
-      "console": "newExternalWindow"
-    },
-    {
-      "name": "VST3PluginTestHost Windows",
-      "type": "cppvsdbg",
-      "request": "launch",
-      "program": "C:/Program Files/Steinberg/VST3PluginTestHost/VST3PluginTestHost.exe",
-      "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "console": "newExternalWindow",
-      "preLaunchTask": "CMake: build"
-    },
-    {
-      "name": "VST3PluginTestHost Mac",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "/Applications/VST3PluginTestHost.app",
-      "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "preLaunchTask": "CMake: build",
-      "MIMode": "lldb"
-    },
-    {
-      "name": "Validator Debugging",
-      "type": "cppvsdbg",
-      "request": "launch",
-      "program": "${command:cmake.launchTargetPath}",
-      "args": [
-        "${command:cmake.buildDirectory}/ExamplePlugin/vst3/VST3/ExamplePlugin.vst3"
-      ],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      // "console": "newExternalWindow",
-      "preLaunchTask": "CMake: build"
-    }
-  ]
+    ]
 }

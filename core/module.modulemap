@@ -1,4 +1,0 @@
-module SingularityController {
-    header "SingularityController.h"
-    export *
-}
