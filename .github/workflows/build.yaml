@@ -52,7 +52,6 @@ jobs:
         with:
           path: |
             build/_deps
-            Example/external
           key: deps-${{ runner.os }}-${{ hashFiles('cmake/**/*.cmake', 'Example/CMakeLists.txt', 'CMakeLists.txt') }}
           restore-keys: |
             deps-${{ runner.os }}-

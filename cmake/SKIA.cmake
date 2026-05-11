@@ -10,7 +10,6 @@ FetchContent_Declare(
     skia
     URL ${SKIA_URL}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/skia
 )
 
 FetchContent_MakeAvailable(skia)

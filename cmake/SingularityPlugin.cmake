@@ -170,7 +170,7 @@ function(singularity_create_plugin target)
                 "${SINGULARITY_ROOT_DIR}/vst3/vst3plugincids.h.in"
                 "${CMAKE_CURRENT_BINARY_DIR}/plugincids.h"
             )
-            set(public_sdk_SOURCE_DIR ${SINGULARITY_ROOT_DIR}/external/vst3sdk/public.sdk)
+            set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
             smtg_add_vst3plugin(${target}_VST3
                 PACKAGE_NAME ${target}
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h

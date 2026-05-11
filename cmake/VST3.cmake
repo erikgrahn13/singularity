@@ -6,7 +6,6 @@ FetchContent_Declare(
     GIT_SUBMODULES "base" "cmake" "pluginterfaces" "public.sdk"
     GIT_SUBMODULES_RECURSE FALSE
     GIT_SUBMODULES_SHALLOW TRUE
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/vst3sdk
     SOURCE_SUBDIR IGNORE
 )
 
@@ -22,6 +21,10 @@ option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
 
 add_subdirectory(${vst3sdk_SOURCE_DIR})
 smtg_enable_vst3_sdk()
+
+# Export resolved VST3 SDK paths for consumers (e.g. SingularityPlugin.cmake)
+set(SINGULARITY_VST3SDK_SOURCE_DIR "${vst3sdk_SOURCE_DIR}" CACHE INTERNAL "" FORCE)
+set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
 
 if(WIN32 AND MSVC)
     # SMTG_PlatformToolset adds /MTd for Debug to all vst3sdk targets.
