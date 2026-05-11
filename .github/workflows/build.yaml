@@ -21,14 +21,17 @@ jobs:
         include:
           - os: macos-latest
             cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+            cache_key: ninja
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-macOS
           - os: windows-latest
             cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+            cache_key: ninja
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Windows
           - os: ubuntu-latest
             cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+            cache_key: ninja
             artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Linux
 
@@ -54,9 +57,9 @@ jobs:
             build/_deps
             build/CMakeCache.txt
             build/CMakeFiles
-          key: deps-${{ runner.os }}-${{ hashFiles('cmake/**/*.cmake', 'Example/CMakeLists.txt', 'CMakeLists.txt') }}
+          key: deps-${{ runner.os }}-${{ matrix.cache_key }}-${{ hashFiles('cmake/**/*.cmake', 'Example/CMakeLists.txt', 'CMakeLists.txt') }}
           restore-keys: |
-            deps-${{ runner.os }}-
+            deps-${{ runner.os }}-${{ matrix.cache_key }}-
 
       - name: Configure
         if: runner.os != 'Windows'

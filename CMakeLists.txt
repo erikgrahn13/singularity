@@ -21,6 +21,9 @@ if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 elseif(APPLE)
     enable_language(OBJCXX)
+elseif(UNIX)
+    # All static libs linked into VST3 .so must be compiled with -fPIC.
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")

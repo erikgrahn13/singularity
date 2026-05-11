@@ -5,8 +5,3 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(quickjs)
-
-# On Linux, QuickJS is linked into a VST3 .so — must be compiled with -fPIC.
-if(UNIX AND NOT APPLE)
-    set_target_properties(qjs qjs-libc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-endif()
