@@ -7,11 +7,32 @@ namespace Steinberg {
 SingularityView::SingularityView(Vst::EditController* editController)
     : Vst::EditorView(editController)
 {
-    // Create the app and controller now (before attached()) so getSize() can
-    // return the real JS-driven dimensions when the host queries it.
     auto& params = static_cast<IParameterProvider&>(*static_cast<VST3Controller*>(editController));
     app_        = std::make_unique<visage::ApplicationWindow>();
     controller_ = std::make_unique<SingularityController>(app_.get(), params);
+
+#ifndef NDEBUG
+    hotReloadtimer.startTimer(50);
+    hotReloadtimer.onTimerCallback().add([&]{
+        controller_->tick();
+        if (plugFrame) {
+            auto newWidth  = static_cast<int32>(app_->width());
+            auto newHeight = static_cast<int32>(app_->height());
+            if (newWidth != rect.right - rect.left || newHeight != rect.bottom - rect.top) {
+                ViewRect newRect{0, 0, newWidth, newHeight};
+                setRect(newRect);
+                plugFrame->resizeView(this, &newRect);
+            }
+        }
+    });
+#endif
+
+    controller_->setLogger([](const std::string& msg) {
+        SMTG_DBPRT1("%s\n", msg.c_str());
+        fprintf(stderr, "[singularity] %s\n", msg.c_str());
+        fflush(stderr);
+    });
+
     controller_->initialize();
 
     auto* win = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame());
@@ -40,45 +61,44 @@ tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 
 void SingularityView::attachedToParent()
 {
-    Vst::EditorView::attachedToParent(); // notifies EditController
+    app_->show(visage::Dimension::logicalPixels(rect.right - rect.left),
+               visage::Dimension::logicalPixels(rect.bottom - rect.top),
+               systemWindow);
 
-    // app_ and controller_ are already initialized; just show in the parent.
-    app_->show(systemWindow);
-
-#ifndef NDEBUG
-    hotReloadtimer.startTimer(50);
-    hotReloadtimer.onTimerCallback().add([&]{
-        controller_->tick();
-        if (plugFrame) {
-            int newW = app_->width();
-            int newH = app_->height();
-            if (newW != rect.getWidth() || newH != rect.getHeight()) {
-                rect = {0, 0, newW, newH};
-                plugFrame->resizeView(this, &rect);
-            }
+#if defined(__linux__)
+    if (plugFrame && app_->window()) {
+        Linux::IRunLoop* runLoop = nullptr;
+        if (plugFrame->queryInterface(Linux::IRunLoop::iid, (void**)&runLoop) == kResultOk && runLoop) {
+            runLoop->registerEventHandler(this, app_->window()->posixFd());
+            runLoop->release();
         }
-    });
+    }
 #endif
+
+    Vst::EditorView::attachedToParent(); // notifies EditController
 }
 
 void SingularityView::removedFromParent()
 {
+#if defined(__linux__)
+    if (plugFrame && app_->window()) {
+        Linux::IRunLoop* runLoop = nullptr;
+        if (plugFrame->queryInterface(Linux::IRunLoop::iid, (void**)&runLoop) == kResultOk && runLoop) {
+            runLoop->unregisterEventHandler(this);
+            runLoop->release();
+        }
+    }
+#endif
+
     Vst::EditorView::removedFromParent(); // notifies EditController
-
-    hotReloadtimer.stopTimer();
-    app_->hide();
-
-    // Recreate for the next attach so JS re-runs cleanly.
-    controller_.reset();
-    app_.reset();
 }
 
 tresult PLUGIN_API SingularityView::onSize(ViewRect* newSize)
 {
-    CPluginView::onSize(newSize); // stores in rect
-    if (app_)
-        app_->setWindowDimensions(rect.getWidth(), rect.getHeight());
-    return kResultTrue;
+    tresult res = CPluginView::onSize(newSize);
+    if (res == kResultTrue && app_)
+        app_->setWindowDimensions(rect.right - rect.left, rect.bottom - rect.top);
+    return res;
 }
 
 } // namespace Steinberg

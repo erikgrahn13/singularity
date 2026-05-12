@@ -129,6 +129,8 @@ function(singularity_create_plugin target)
                     "-framework CoreAudio"
                     "-framework AudioToolbox"
                 )
+            elseif(UNIX AND NOT APPLE)
+                target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/PipeWire.cpp)
             endif()
 
             target_include_directories(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/platform)

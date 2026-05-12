@@ -29,6 +29,18 @@
             "MIMode": "lldb"
         },
         {
+            "name": "EditorHost Linux",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost",
+            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExamplePlugin.vst3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/Example",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "gdb"
+        },
+        {
             "name": "VST3PluginTestHost Windows",
             "type": "cppvsdbg",
             "request": "launch",
@@ -68,6 +80,16 @@
             "environment": [],
             "args": [],
             "MIMode": "lldb"
+        },
+        {
+            "name": "ExamplePlugin APP Linux",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}/Example",
+            "environment": [],
+            "args": [],
+            "MIMode": "gdb"
         }
     ]
 }

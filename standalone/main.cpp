@@ -150,9 +150,9 @@ int main()
   visage::ApplicationWindow app;
 
   auto audio    = ISingularityAudio::createSingularityAudio();
-    setOnParameterChanged([&](int id, double value) {
-    audio->pushParameterChange(id, value);
-  });
+  // setOnParameterChanged([&](int id, double value) {
+  //   audio->pushParameterChange(id, value);
+  // });
 
 
   // auto renderer = IRenderer::createRenderer(&app);
@@ -173,13 +173,14 @@ int main()
   controller->setLogger([](const std::string& msg) {
     std::cout << msg << std::endl;
   });
+
   controller->initialize();
 
-  auto width = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
+  auto width  = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
   auto height = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->height();
 
   app.show(visage::Dimension::logicalPixels(width),
-          visage::Dimension::logicalPixels(height));
+           visage::Dimension::logicalPixels(height));
   
   app.runEventLoop();
 

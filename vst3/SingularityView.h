@@ -9,6 +9,9 @@
 namespace Steinberg {
 
 class SingularityView : public Vst::EditorView
+#if defined(__linux__)
+                      , public Linux::IEventHandler
+#endif
 {
 public:
     explicit SingularityView(Vst::EditController* controller);
@@ -29,6 +32,14 @@ public:
 protected:
     void attachedToParent() override;
     void removedFromParent() override;
+
+#if defined(__linux__)
+    // Linux::IEventHandler
+    void PLUGIN_API onFDIsSet(Linux::FileDescriptor fd) override {
+        if (app_->window())
+            app_->window()->processPluginFdEvents();
+    }
+#endif
 
 private:
     std::unique_ptr<visage::ApplicationWindow> app_;
