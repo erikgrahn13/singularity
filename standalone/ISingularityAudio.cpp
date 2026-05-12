@@ -4,7 +4,7 @@
     #include "coreAudio.h"
 #elif defined(_WIN32)
     #include "ASIO.h"
-    #include "WASAPI.h"
+    // #include "WASAPI.h"
 #elif defined(__linux__)
     #include "PipeWire.h"
 #endif
