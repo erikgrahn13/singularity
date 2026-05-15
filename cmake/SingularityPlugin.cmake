@@ -5,7 +5,7 @@ set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 
 function(singularity_create_plugin target)
-    set(oneValueArgs PACKAGE_NAME VENDOR BUNDLE_ID URL EMAIL PLUGIN_CATEGORY)
+    set(oneValueArgs PACKAGE_NAME VENDOR BUNDLE_ID URL EMAIL PLUGIN_CATEGORY PLUGIN_CLASS PLUGIN_CLASS_HEADER)
     set(multiValueArgs SOURCES UI FORMATS)
 
     # Parse the arguments
@@ -44,7 +44,7 @@ function(singularity_create_plugin target)
         set(EMAIL "erikgrahn13@gmail.com")
     endif()
 
-    if(NOT SOURCES AND NOT PARAMS_UNPARSED_ARGUMENTS)
+    if(NOT PARAMS_PLUGIN_CLASS_HEADER AND NOT PARAMS_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "No sources provided for target '${target}'. You must provide at least one source file.")
     endif()
 
@@ -137,9 +137,14 @@ function(singularity_create_plugin target)
                 target_link_libraries(${target}_APP PRIVATE ${PIPEWIRE_LIBRARIES})
             endif()
 
-            target_include_directories(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/platform)
+            target_include_directories(${target}_APP PRIVATE
+                ${SINGULARITY_ROOT_DIR}/platform
+                ${CMAKE_CURRENT_SOURCE_DIR}
+            )
             target_compile_definitions(${target}_APP PRIVATE
                 SINGULARITY_STANDALONE=1
+                PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
+                PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
             )
             set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
             target_link_libraries(${target}_APP PRIVATE ${target}-shared)
@@ -181,7 +186,6 @@ function(singularity_create_plugin target)
                 PACKAGE_NAME ${target}
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.h
-                ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.cpp
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.h
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3entry.cpp
@@ -194,6 +198,8 @@ function(singularity_create_plugin target)
                 VENDOR="${VENDOR}"
                 URL="${URL}"
                 EMAIL="${EMAIL}"
+                PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
+                PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
             )
 
             target_link_libraries(${target}_VST3
@@ -206,6 +212,7 @@ function(singularity_create_plugin target)
                 ${SINGULARITY_ROOT_DIR}/platform
                 ${SINGULARITY_ROOT_DIR}
                 ${CMAKE_CURRENT_BINARY_DIR}
+                ${CMAKE_CURRENT_SOURCE_DIR}
             )
 
             smtg_target_configure_version_file(${target}_VST3)

@@ -4,6 +4,7 @@
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ibstream.h"
 #include "../SingularityPlugin.h"
+#include PLUGIN_CLASS_HEADER
 #include <limits>
 #include <memory>
 
@@ -38,7 +39,7 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 							std::numeric_limits<int>::max());
 
 	g_controller = this;
-	registerParameters();
+	PLUGIN_CLASS::registerParameters();
 	g_controller = nullptr;
 
 

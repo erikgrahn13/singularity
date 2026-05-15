@@ -3,7 +3,8 @@
 #include "ISingularityAudio.h"
 #include <pipewire/pipewire.h>
 
-class PipeWire : public ISingularityAudio 
+template<typename PluginType>
+class PipeWire : public ISingularityAudio<PluginType>
 {
     public:
     PipeWire();

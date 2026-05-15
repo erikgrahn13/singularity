@@ -7,10 +7,10 @@ project(ExamplePlugin
 
 singularity_create_plugin(
     ${PROJECT_NAME}
-    SOURCES
-        Example.cpp
     UI
         main.js
     FORMATS APP VST3
+    PLUGIN_CLASS ExamplePlugin
+    PLUGIN_CLASS_HEADER "Example.h"
 )
 

@@ -319,9 +319,7 @@ JS_FreeValue(ctx, postEffectProp);
     JS_FreeValue(ctx, draw);
 
     JSValue onMouseDown = JS_GetPropertyStr(ctx, props, "onMouseDown");
-    std::cout << "before has onMouseDown" << std::endl;
     if (JS_IsFunction(ctx, onMouseDown)) {
-        std::cout << "component has onMouseDown" << std::endl;
         auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
         engine->registerMouseDownHandler(component, ctx, onMouseDown);
     }
@@ -329,7 +327,6 @@ JS_FreeValue(ctx, postEffectProp);
 
     JSValue onMouseUp = JS_GetPropertyStr(ctx, props, "onMouseUp");
     if (JS_IsFunction(ctx, onMouseUp)) {
-        std::cout << "component has onMouseUp" << std::endl;
         auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
         engine->registerMouseUpHandler(component, ctx, onMouseUp);
     }

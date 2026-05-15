@@ -1,7 +1,9 @@
 #include "coreAudio.h"
+#include PLUGIN_CLASS_HEADER
 #include <print>
 
-CoreAudio::CoreAudio() : ISingularityAudio("CoreAudio")
+template<typename PluginType>
+CoreAudio<PluginType>::CoreAudio() : ISingularityAudio<PluginType>()
 {
     OSStatus err = noErr;
 
@@ -48,7 +50,8 @@ CoreAudio::CoreAudio() : ISingularityAudio("CoreAudio")
     std::println("CoreAudio initialized on device {}", device);
 }
 
-CoreAudio::~CoreAudio()
+template<typename PluginType>
+CoreAudio<PluginType>::~CoreAudio()
 {
     if (mAudioUnit) {
         AudioOutputUnitStop(mAudioUnit);
@@ -58,14 +61,15 @@ CoreAudio::~CoreAudio()
 }
 
 // Single callback: AUHAL asks for output, we pull input directly and run DSP in-place
-OSStatus CoreAudio::OutputRenderCallBack(void *inRefCon,
+template<typename PluginType>
+OSStatus CoreAudio<PluginType>::OutputRenderCallBack(void *inRefCon,
                                           AudioUnitRenderActionFlags *ioActionFlags,
                                           const AudioTimeStamp *inTimeStamp,
                                           UInt32 inBusNumber,
                                           UInt32 inNumberFrames,
                                           AudioBufferList *ioData)
 {
-    CoreAudio *self = static_cast<CoreAudio*>(inRefCon);
+    CoreAudio<PluginType> *self = static_cast<CoreAudio<PluginType>*>(inRefCon);
 
     // Pull input from hardware directly into ioData (element 1 = input bus)
     OSStatus err = AudioUnitRender(self->mAudioUnit, ioActionFlags, inTimeStamp,
@@ -77,7 +81,8 @@ OSStatus CoreAudio::OutputRenderCallBack(void *inRefCon,
     return err;
 }
 
-std::vector<AudioDevice> CoreAudio::probeDevices() const
+template<typename PluginType>
+std::vector<AudioDevice> CoreAudio<PluginType>::probeDevices() const
 {
     uint32_t propSize;
 
@@ -105,7 +110,8 @@ std::vector<AudioDevice> CoreAudio::probeDevices() const
     return devices;
 }
 
-std::string CoreAudio::getDeviceName(AudioDeviceID deviceID) const
+template<typename PluginType>
+std::string CoreAudio<PluginType>::getDeviceName(AudioDeviceID deviceID) const
 {
     AudioObjectPropertyAddress addr = {
         .mSelector = kAudioObjectPropertyName,
@@ -124,7 +130,8 @@ std::string CoreAudio::getDeviceName(AudioDeviceID deviceID) const
     return buf;
 }
 
-int CoreAudio::countChannels(AudioDeviceID deviceID, bool isInput) const
+template<typename PluginType>
+int CoreAudio<PluginType>::countChannels(AudioDeviceID deviceID, bool isInput) const
 {
     AudioObjectPropertyAddress addr = {
         .mSelector = kAudioDevicePropertyStreamConfiguration,
@@ -145,7 +152,8 @@ int CoreAudio::countChannels(AudioDeviceID deviceID, bool isInput) const
     return result;
 }
 
-AudioDeviceID CoreAudio::getDefaultInputDevice() const
+template<typename PluginType>
+AudioDeviceID CoreAudio<PluginType>::getDefaultInputDevice() const
 {
     AudioDeviceID deviceID = kAudioObjectUnknown;
     uint32_t size = sizeof(deviceID);
@@ -158,7 +166,8 @@ AudioDeviceID CoreAudio::getDefaultInputDevice() const
     return deviceID;
 }
 
-AudioDeviceID CoreAudio::getDefaultOutputDevice() const
+template<typename PluginType>
+AudioDeviceID CoreAudio<PluginType>::getDefaultOutputDevice() const
 {
     AudioDeviceID deviceID = kAudioObjectUnknown;
     uint32_t size = sizeof(deviceID);
@@ -170,3 +179,5 @@ AudioDeviceID CoreAudio::getDefaultOutputDevice() const
     AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, nullptr, &size, &deviceID);
     return deviceID;
 }
+
+template class CoreAudio<PLUGIN_CLASS>;

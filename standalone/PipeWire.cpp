@@ -1,4 +1,5 @@
 #include "PipeWire.h"
+#include PLUGIN_CLASS_HEADER
 
 #include <iostream>
 #include <span>
@@ -9,9 +10,10 @@
 
  
 /* [on_process] */
-void PipeWire::on_process(void *userdata, struct spa_io_position *position)
+template<typename PluginType>
+void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *position)
 {
-        PipeWire *instance = static_cast<PipeWire*>(userdata);
+        PipeWire<PluginType> *instance = static_cast<PipeWire<PluginType>*>(userdata);
         uint32_t n_samples = position->clock.duration;
 
         pw_log_trace("do process %d", n_samples);
@@ -29,16 +31,12 @@ void PipeWire::on_process(void *userdata, struct spa_io_position *position)
         const float* inputPtrs[1]  = { in  };
         float*       outputPtrs[1] = { out };
 
-        instance->mPlugin->process(
+        instance->mPlugin.template process<float>(
                 std::span<const float* const>(inputPtrs,  1),
                 std::span<float* const>(outputPtrs, 1),
                 n_samples,
                 instance->_params);
 }
-static const struct pw_filter_events filter_events = {
-        .version = PW_VERSION_FILTER_EVENTS,
-        .process = PipeWire::on_process,
-};
 
 // static void do_quit(void *userdata, int signal_number)
 // {
@@ -47,13 +45,19 @@ static const struct pw_filter_events filter_events = {
 //         pw_thread_loop_destroy(data->loop);
 // }
 
-PipeWire::PipeWire() : ISingularityAudio("PipeWire")
+template<typename PluginType>
+PipeWire<PluginType>::PipeWire() : ISingularityAudio<PluginType>()
 {
         // struct data data = { 0, };
         const struct spa_pod *params[1];
         uint32_t n_params = 0;
         uint8_t buffer[1024];
         struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+
+        static const struct pw_filter_events filter_events = {
+                .version = PW_VERSION_FILTER_EVENTS,
+                .process = PipeWire<PluginType>::on_process,
+        };
  
         pw_init(nullptr, nullptr);
  
@@ -85,7 +89,7 @@ PipeWire::PipeWire() : ISingularityAudio("PipeWire")
                         this);
  
         /* make an audio DSP input port */
-        data_.in_port = static_cast<PipeWire::port*>(pw_filter_add_port(data_.filter,
+        data_.in_port = static_cast<typename PipeWire<PluginType>::port*>(pw_filter_add_port(data_.filter,
                         PW_DIRECTION_INPUT,
                         PW_FILTER_PORT_FLAG_MAP_BUFFERS,
                         sizeof(struct port),
@@ -96,7 +100,7 @@ PipeWire::PipeWire() : ISingularityAudio("PipeWire")
                         NULL, 0));
  
         /* make an audio DSP output port */
-        data_.out_port = static_cast<PipeWire::port*>(pw_filter_add_port(data_.filter,
+        data_.out_port = static_cast<typename PipeWire<PluginType>::port*>(pw_filter_add_port(data_.filter,
                         PW_DIRECTION_OUTPUT,
                         PW_FILTER_PORT_FLAG_MAP_BUFFERS,
                         sizeof(struct port),
@@ -126,7 +130,8 @@ PipeWire::PipeWire() : ISingularityAudio("PipeWire")
         pw_thread_loop_start(data_.loop);
 }
 
-PipeWire::~PipeWire()
+template<typename PluginType>
+PipeWire<PluginType>::~PipeWire()
 {
         pw_filter_destroy(data_.filter);
         pw_thread_loop_stop(data_.loop);
@@ -134,7 +139,10 @@ PipeWire::~PipeWire()
         pw_deinit();
 }
 
-std::vector<AudioDevice> PipeWire::probeDevices() const
+template<typename PluginType>
+std::vector<AudioDevice> PipeWire<PluginType>::probeDevices() const
 {
     return {};
 }
+
+template class PipeWire<PLUGIN_CLASS>;

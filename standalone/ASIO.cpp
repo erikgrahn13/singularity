@@ -1,4 +1,5 @@
 #include "ASIO.h"
+#include PLUGIN_CLASS_HEADER
 #include <asiodrivers.h>
 #include <iostream>
 #include <cstdint>
@@ -8,9 +9,11 @@
 extern AsioDrivers* asioDrivers;
 bool loadAsioDriver(char *name);
 
-ASIO* ASIO::instance = nullptr;
+template<typename PluginType>
+ASIO<PluginType>* ASIO<PluginType>::instance = nullptr;
 
-ASIO::ASIO() : ISingularityAudio("ASIO")
+template<typename PluginType>
+ASIO<PluginType>::ASIO() : ISingularityAudio<PluginType>()
 {
     instance = this;
     AsioDrivers tmpDriver;
@@ -131,7 +134,8 @@ ASIO::ASIO() : ISingularityAudio("ASIO")
     }
 }
 
-ASIO::~ASIO()
+template<typename PluginType>
+ASIO<PluginType>::~ASIO()
 {
     ASIOStop();
     ASIODisposeBuffers();
@@ -139,7 +143,8 @@ ASIO::~ASIO()
     asioDrivers->removeCurrentDriver();
 }
 
-std::vector<AudioDevice> ASIO::probeDevices() const
+template<typename PluginType>
+std::vector<AudioDevice> ASIO<PluginType>::probeDevices() const
 {
     AsioDrivers tmpDrivers;
     auto numDevices = tmpDrivers.asioGetNumDev();
@@ -166,7 +171,8 @@ std::vector<AudioDevice> ASIO::probeDevices() const
     #define ASIO64toDouble(a) ((a).lo + (a).hi * twoRaisedTo32)
 #endif
 
-ASIOTime* ASIO::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow)
+template<typename PluginType>
+ASIOTime* ASIO<PluginType>::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow)
 {
     // Drain parameter changes from the GUI thread — no locks, no allocation
     instance->processParameterChanges();
@@ -230,7 +236,7 @@ ASIOTime* ASIO::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool pr
     }
 
     // --- Call plugin ---
-    instance->mPlugin->process(
+    instance->mPlugin.template process<float>(
         std::span<const float* const>(inputPtrs, instance->inputBuffers),
         std::span<float* const>(outputPtrs, instance->outputBuffers),
         buffSize,
@@ -264,7 +270,8 @@ ASIOTime* ASIO::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool pr
     return nullptr;
 }
 
-void ASIO::bufferSwitch(long doubleBufferIndex, ASIOBool directProcess)
+template<typename PluginType>
+void ASIO<PluginType>::bufferSwitch(long doubleBufferIndex, ASIOBool directProcess)
 {
     ASIOTime timeInfo;
     memset(&timeInfo, 0, sizeof(timeInfo));
@@ -276,7 +283,8 @@ void ASIO::bufferSwitch(long doubleBufferIndex, ASIOBool directProcess)
     bufferSwitchTimeInfo(&timeInfo, doubleBufferIndex, directProcess);
 }
 
-void ASIO::sampleRateDidChange(ASIOSampleRate sRate)
+template<typename PluginType>
+void ASIO<PluginType>::sampleRateDidChange(ASIOSampleRate sRate)
 {
     // From the ASIO SDK:
     // do whatever you need to do if the sample rate changed
@@ -287,7 +295,8 @@ void ASIO::sampleRateDidChange(ASIOSampleRate sRate)
     // You might have to update time/sample related conversion routines, etc.
 }
 
-long ASIO::asioMessage(long selector, long value, void* message, double *opt)
+template<typename PluginType>
+long ASIO<PluginType>::asioMessage(long selector, long value, void* message, double *opt)
 {
     int returnValue{0};
     switch (selector)
@@ -345,3 +354,4 @@ long ASIO::asioMessage(long selector, long value, void* message, double *opt)
     return returnValue;
 }
 
+template class ASIO<PLUGIN_CLASS>;

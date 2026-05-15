@@ -28,13 +28,10 @@ class AudioDevice {
     std::vector<int> supportedSampleRates;
 };
 
+template<::SingularityPlugin PluginType>
 class ISingularityAudio
 {
     public:
-    static std::vector<std::string> backends;
-
-    static std::unique_ptr<ISingularityAudio> createSingularityAudio();
-
     virtual ~ISingularityAudio() = default;
     virtual std::vector<AudioDevice> probeDevices() const = 0;
 
@@ -45,15 +42,13 @@ class ISingularityAudio
     }
 
     protected:
-    ISingularityAudio(std::string type)
+    ISingularityAudio()
     {
-        backends.push_back(type);
-        registerParameters();
+        PluginType::registerParameters();
         // Pre-populate _params with all registered defaults so the audio
         // thread only ever updates existing keys — never allocates
         for (auto& [id, value] : getDefaultParams())
             _params[id] = value;
-        mPlugin = createPlugin();
     }
 
     // Called at the top of each audio callback: drains queue into local RT-safe array
@@ -65,7 +60,7 @@ class ISingularityAudio
     }
 
     std::map<int, double> _params;
-    std::unique_ptr<SingularityPlugin> mPlugin;
+    PluginType mPlugin;
 
     private:
     SingularityQueue<ParameterChange, 256> _paramChanges;

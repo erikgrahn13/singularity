@@ -4,7 +4,8 @@
 #include <asiosys.h>
 #include <asio.h>
 
-class ASIO : public ISingularityAudio
+template<typename PluginType>
+class ASIO : public ISingularityAudio<PluginType>
 {
     public:
     ASIO();

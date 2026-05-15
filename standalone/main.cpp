@@ -73,6 +73,18 @@
 #include "../IRenderer2.h"
 #include "../IJSEngine.h"
 #include "../IFileWatcher.h"
+#include PLUGIN_CLASS_HEADER
+
+#if defined(__linux__)
+#include "PipeWire.h"
+using PlatformAudio = PipeWire<PLUGIN_CLASS>;
+#elif defined(__APPLE__)
+#include "coreAudio.h"
+using PlatformAudio = CoreAudio<PLUGIN_CLASS>;
+#elif defined(_WIN32)
+#include "ASIO.h"
+using PlatformAudio = ASIO<PLUGIN_CLASS>;
+#endif
 
 #include <iostream>
 
@@ -149,7 +161,7 @@ int main()
 {
   visage::ApplicationWindow app;
 
-  auto audio    = ISingularityAudio::createSingularityAudio();
+  auto audio = std::make_unique<PlatformAudio>();
   setOnParameterChanged([&](int id, double value) {
     audio->pushParameterChange(id, value);
   });

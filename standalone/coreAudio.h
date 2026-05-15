@@ -13,7 +13,8 @@
 
 #define checkErr(err) do { if (err) { fprintf(stderr, "CoreAudio Error: %d at %s:%d\n", (int)err, __FILE__, __LINE__); } } while(0)
 
-class CoreAudio : public ISingularityAudio 
+template<typename PluginType>
+class CoreAudio : public ISingularityAudio<PluginType>
 {
     public:
     CoreAudio();

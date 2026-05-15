@@ -1,17 +1,5 @@
 #include "ISingularityAudio.h"
 
-#if defined(__APPLE__)
-    #include "coreAudio.h"
-#elif defined(_WIN32)
-    #include "ASIO.h"
-    // #include "WASAPI.h"
-#elif defined(__linux__)
-    #include "PipeWire.h"
-#endif
-
-// std::vector<std::string> ISingularityAudio::backends;
-std::vector<std::string> ISingularityAudio::backends;
-
 // static std::unordered_map<int, Parameter> params;
 class ParameterContainer : public IParameterProvider {
 public:
@@ -47,16 +35,4 @@ std::map<int, double> getDefaultParams()
     for (auto& [id, param] : parameterContainer.params)
         result[id] = param.defaultValue;
     return result;
-}
-
-std::unique_ptr<ISingularityAudio> ISingularityAudio::createSingularityAudio()
-{
-#if defined(__APPLE__)
-    return std::make_unique<CoreAudio>();
-#elif defined(_WIN32)
-    return std::make_unique<ASIO>();
-    // return std::make_unique<WASAPI>();
-#elif defined(__linux__)
-    return std::make_unique<PipeWire>();
-#endif
 }

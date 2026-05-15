@@ -2,6 +2,7 @@
 #include "vst3controller.h"
 #include "plugincids.h"
 #include "vst3version.h"
+#include PLUGIN_CLASS_HEADER
 
 #include "public.sdk/source/main/pluginfactory.h"
 
@@ -31,7 +32,7 @@ BEGIN_FACTORY_DEF (VENDOR,
 				VST3VST3Category, // Subcategory for this Plug-in (to be changed)
 				FULL_VERSION_STR,		// Plug-in version (to be changed)
 				kVstVersionString,		// the VST 3 SDK version (do not changed this, use always this define)
-				VST3Processor::createInstance)	// function pointer called when this component should be instantiated
+				VST3Processor<PLUGIN_CLASS>::createInstance)	// function pointer called when this component should be instantiated
 
 	// its kVstComponentControllerClass component
 	DEF_CLASS2 (INLINE_UID_FROM_FUID (kVST3ControllerUID),
