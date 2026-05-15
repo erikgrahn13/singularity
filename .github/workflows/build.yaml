@@ -20,19 +20,10 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
-            cache_key: ninja
-            artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-macOS
           - os: windows-latest
-            cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
-            cache_key: ninja
-            artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Windows
           - os: ubuntu-latest
-            cmake_flags: -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
-            cache_key: ninja
-            artifact_path: build/VST3/**/ExamplePlugin.vst3
             artifact_name: ExamplePlugin-Linux
 
     steps:
@@ -41,6 +32,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set up MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -48,7 +43,8 @@ jobs:
           sudo apt-get install -y \
             libasound2-dev libx11-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev \
-            libfreetype6-dev libfontconfig1-dev ninja-build
+            libfreetype6-dev libfontconfig1-dev ninja-build \
+            libpipewire-0.3-dev
 
       - name: Cache build dependencies
         uses: actions/cache@v5
@@ -57,48 +53,24 @@ jobs:
             build/_deps
             build/CMakeCache.txt
             build/CMakeFiles
-          key: deps-${{ runner.os }}-${{ matrix.cache_key }}-${{ hashFiles('cmake/**/*.cmake', 'Example/CMakeLists.txt', 'CMakeLists.txt') }}
+          key: deps-${{ runner.os }}-ninja-${{ hashFiles('cmake/**/*.cmake', 'Example/CMakeLists.txt', 'CMakeLists.txt') }}
           restore-keys: |
-            deps-${{ runner.os }}-${{ matrix.cache_key }}-
+            deps-${{ runner.os }}-ninja-
 
       - name: Configure
-        if: runner.os != 'Windows'
-        run: cmake -S . -B build ${{ matrix.cmake_flags }}
-
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cmake -S . -B build ${{ matrix.cmake_flags }}
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
 
       - name: Build VST3
-        if: runner.os != 'Windows'
         run: cmake --build build --config Release --target ExamplePlugin_VST3 --parallel
 
-      - name: Build VST3 (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cmake --build build --config Release --target ExamplePlugin_VST3 --parallel
-
       - name: Build Standalone APP
-        if: runner.os != 'Windows'
         run: cmake --build build --config Release --target ExamplePlugin_APP --parallel
-
-      - name: Build Standalone APP (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cmake --build build --config Release --target ExamplePlugin_APP --parallel
 
       - name: Upload VST3 artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_path }}
+          path: build/VST3/**/ExamplePlugin.vst3
           if-no-files-found: warn
 
   release:
