@@ -130,7 +130,11 @@ function(singularity_create_plugin target)
                     "-framework AudioToolbox"
                 )
             elseif(UNIX AND NOT APPLE)
+                find_package(PkgConfig REQUIRED)
+                pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
                 target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/PipeWire.cpp)
+                target_include_directories(${target}_APP PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
+                target_link_libraries(${target}_APP PRIVATE ${PIPEWIRE_LIBRARIES})
             endif()
 
             target_include_directories(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/platform)

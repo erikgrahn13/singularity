@@ -150,14 +150,9 @@ int main()
   visage::ApplicationWindow app;
 
   auto audio    = ISingularityAudio::createSingularityAudio();
-  // setOnParameterChanged([&](int id, double value) {
-  //   audio->pushParameterChange(id, value);
-  // });
-
-
-  // auto renderer = IRenderer::createRenderer(&app);
-  // auto rootWindow = renderer->getRootComponent();
-  // auto fileWathcer = IFileWatcher::createFileWatcher(UI_DIR);
+  setOnParameterChanged([&](int id, double value) {
+    audio->pushParameterChange(id, value);
+  });
 
   auto controller = std::make_unique<SingularityController>(&app, getParameterContainer());
 
