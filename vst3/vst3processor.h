@@ -50,6 +50,7 @@ public:
 	{
 		mBypassProcessorFloat.setup  (*this, newSetup, getLatencySamples ());
 		mBypassProcessorDouble.setup (*this, newSetup, getLatencySamples ());
+		mPlugin.prepare(newSetup.sampleRate, newSetup.maxSamplesPerBlock);
 		return AudioEffect::setupProcessing (newSetup);
 	}
 

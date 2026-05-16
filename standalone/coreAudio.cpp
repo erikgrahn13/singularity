@@ -44,6 +44,17 @@ CoreAudio<PluginType>::CoreAudio() : ISingularityAudio<PluginType>()
     err = AudioUnitInitialize(mAudioUnit);
     checkErr(err);
 
+    // Query sample rate and block size now that the AU is initialized
+    Float64 sr = 0.0;
+    UInt32  srSize = sizeof(sr);
+    AudioUnitGetProperty(mAudioUnit, kAudioUnitProperty_SampleRate,
+                         kAudioUnitScope_Output, 0, &sr, &srSize);
+    UInt32 maxFrames = 512;
+    UInt32 mfSize = sizeof(maxFrames);
+    AudioUnitGetProperty(mAudioUnit, kAudioUnitProperty_MaximumFramesPerSlice,
+                         kAudioUnitScope_Global, 0, &maxFrames, &mfSize);
+    this->callPrepare(sr, static_cast<int>(maxFrames));
+
     err = AudioOutputUnitStart(mAudioUnit);
     checkErr(err);
 

@@ -15,6 +15,8 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
 {
         PipeWire<PluginType> *instance = static_cast<PipeWire<PluginType>*>(userdata);
         uint32_t n_samples = position->clock.duration;
+        double sample_rate = static_cast<double>(position->clock.rate.denom) / position->clock.rate.num;
+        instance->callPrepare(sample_rate, static_cast<int>(n_samples));
 
         pw_log_trace("do process %d", n_samples);
 

@@ -127,6 +127,8 @@ ASIO<PluginType>::ASIO() : ISingularityAudio<PluginType>()
 		}
 	}
 
+    this->callPrepare(static_cast<double>(sampleRate), static_cast<int>(preferredSize));
+
     if (ASIOStart() == ASE_OK)
     {
         // Now all is up and running

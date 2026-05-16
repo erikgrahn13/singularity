@@ -59,9 +59,19 @@ class ISingularityAudio
             _params[change.id] = change.value;
     }
 
+    // Call once when sample rate and block size are first known.
+    // Safe to call from a real-time thread on first process callback.
+    void callPrepare(double sampleRate, int maxBlockSize)
+    {
+        if (_prepared) return;
+        _prepared = true;
+        mPlugin.prepare(sampleRate, maxBlockSize);
+    }
+
     std::map<int, double> _params;
     PluginType mPlugin;
 
     private:
+    bool _prepared = false;
     SingularityQueue<ParameterChange, 256> _paramChanges;
 };
