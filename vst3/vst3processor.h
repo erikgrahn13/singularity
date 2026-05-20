@@ -2,15 +2,21 @@
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "public.sdk/source/vst/vstbypassprocessor.h"
+#include "public.sdk/source/vst/utility/audiobuffers.h"
+#include "public.sdk/source/vst/utility/sampleaccurate.h"
+#include "public.sdk/source/vst/utility/processdataslicer.h"
 #include "public.sdk/source/vst/vstaudioprocessoralgo.h"
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "plugincids.h"
+#include PLUGIN_CLASS_HEADER
 #include "../SingularityPlugin.h"
 #include <span>
-#include <map>
+#include <vector>
+#include <algorithm>
 #include <limits>
 #include <cstring>
+#include <type_traits>
 
 namespace Steinberg {
 
@@ -33,6 +39,12 @@ public:
 		addAudioInput  (STR16 ("Stereo In"),  Vst::SpeakerArr::kStereo);
 		addAudioOutput (STR16 ("Stereo Out"), Vst::SpeakerArr::kStereo);
 		addEventInput  (STR16 ("Event In"), 1);
+
+		mParams.clear();
+		for (auto& parameter : PluginType::getParameters ())
+		{
+			mParams.push_back ({parameter.type, { parameter.id, parameter.defaultValue}, parameter.defaultValue, 0.0});
+		}		
 		return kResultOk;
 	}
 
@@ -50,7 +62,12 @@ public:
 	{
 		mBypassProcessorFloat.setup  (*this, newSetup, getLatencySamples ());
 		mBypassProcessorDouble.setup (*this, newSetup, getLatencySamples ());
-		mPlugin.prepare(newSetup.sampleRate, newSetup.maxSamplesPerBlock);
+		mPlugin.prepare (newSetup.sampleRate, newSetup.maxSamplesPerBlock);
+
+		mSmoothSteps = static_cast<int> (newSetup.sampleRate * 0.005);
+		if (mSmoothSteps < 1) 
+			mSmoothSteps = 1;
+
 		return AudioEffect::setupProcessing (newSetup);
 	}
 
@@ -61,75 +78,133 @@ public:
 		return kResultFalse;
 	}
 
+	void handleParameterChanges (Vst::IParameterChanges* inputParameterChanges)
+	{
+		Vst::Algo::foreach (inputParameterChanges, [&] (Vst::IParamValueQueue& queue)
+		{
+			Vst::ParamID paramID = queue.getParameterId ();
+			if (paramID == Steinberg::Vst::kMaxParamId) // Bypass parameter id
+			{
+				Vst::ParamValue value; 
+				int32 offset;
+				queue.getPoint (queue.getPointCount () - 1, offset, value);
+				mBypassProcessorFloat.setActive  (value >= 0.5);
+				mBypassProcessorDouble.setActive (value >= 0.5);
+			}
+			else 
+			{
+				for (auto& param : mParams)
+				{
+					if (param.saParam.getParamID () == paramID)
+					{
+						if (param.type == ParamType::Float)
+							param.saParam.beginChanges (&queue);
+						else
+						{
+							Vst::ParamValue value; int32 offset;
+							queue.getPoint (queue.getPointCount () - 1, offset, value);
+							param.saParam.setValue (value);
+						}
+						break;
+					}
+				}
+			}
+		});
+	}
+
 	tresult PLUGIN_API process (Vst::ProcessData& data) SMTG_OVERRIDE
 	{
-		//--- Read inputs parameter changes-----------
-		if (data.inputParameterChanges)
-		{
-			for (int i = 0; i < data.inputParameterChanges->getParameterCount (); ++i)
-			{
-				Vst::IParamValueQueue* paramQueue = data.inputParameterChanges->getParameterData (i);
-				if (!paramQueue || paramQueue->getPointCount () == 0) continue;
-				Vst::ParamValue value {0};
-				int32 sampleOffset {0};
-				paramQueue->getPoint (paramQueue->getPointCount () - 1, sampleOffset, value);
-				if (paramQueue->getParameterId () == (Vst::ParamID)std::numeric_limits<int>::max ())
-				{
-					mBypassProcessorFloat.setActive  (value >= 0.5);
-					mBypassProcessorDouble.setActive (value >= 0.5);
-				}
-				else
-					mParamValues[(int)paramQueue->getParameterId ()] = value;
-			}
-		}
+		handleParameterChanges (data.inputParameterChanges);
 
-		//--- Process Audio---------------------
 		if (data.numSamples > 0 && data.numInputs > 0 && data.numOutputs > 0)
 		{
-			int32 numChannels    = data.inputs[0].numChannels;
-			auto  sampleFramesSz = getSampleFramesSizeInBytes (processSetup, data.numSamples);
-			auto** in  = getChannelBuffersPointer (processSetup, data.inputs[0]);
-			auto** out = getChannelBuffersPointer (processSetup, data.outputs[0]);
-			int numIn  = data.inputs[0].numChannels;
-			int numOut = data.outputs[0].numChannels;
-			const bool host64 = data.symbolicSampleSize == Vst::kSample64;
-
-			if (data.inputs[0].silenceFlags == Vst::getChannelMask (data.inputs[0].numChannels))
-			{
-				data.outputs[0].silenceFlags = data.inputs[0].silenceFlags;
-				for (int32 i = 0; i < numChannels; i++)
-					if (in[i] != out[i])
-						std::memset (out[i], 0, sampleFramesSz);
-			}
+			if (processSetup.symbolicSampleSize == Vst::kSample32)
+				processAudio<Vst::kSample32> (data);
 			else
-			{
-				data.outputs[0].silenceFlags = 0;
-				if (mBypassProcessorFloat.isActive ())
-				{
-					if (host64) mBypassProcessorDouble.process (data);
-					else        mBypassProcessorFloat.process  (data);
-				}
-				else if (host64)
-				{
-					auto** in64  = data.inputs[0].channelBuffers64;
-					auto** out64 = data.outputs[0].channelBuffers64;
-					mPlugin.template process<double> (
-						std::span<const double* const> (in64,  numIn),
-						std::span<double* const>       (out64, numOut),
-						data.numSamples, mParamValues);
-				}
-				else
-				{
-					auto** in32  = data.inputs[0].channelBuffers32;
-					auto** out32 = data.outputs[0].channelBuffers32;
-					mPlugin.template process<float> (
-						std::span<const float* const> (in32,  numIn),
-						std::span<float* const>       (out32, numOut),
-						data.numSamples, mParamValues);
-				}
-			}
+				processAudio<Vst::kSample64> (data);
 		}
+
+		//--- Cleanup SA params ---
+		for (auto& parameter : mParams)
+			parameter.saParam.endChanges ();
+
 		return kResultOk;
+	}
+
+	template <Vst::SymbolicSampleSizes SampleSize>
+	void processAudio (Vst::ProcessData& data)
+	{
+		using SampleT = std::conditional_t<SampleSize == Vst::kSample32, float, double>;
+		Vst::AudioBusBuffers* inputs = data.inputs;
+		Vst::AudioBusBuffers* outputs = data.outputs;
+		auto inputBuffers  = Vst::getChannelBuffers<SampleSize> (*inputs);
+		auto outputBuffers = Vst::getChannelBuffers<SampleSize> (*outputs);
+
+		if (inputs->silenceFlags == Vst::getChannelMask (inputs->numChannels))
+		{
+			outputs->silenceFlags = inputs->silenceFlags;
+			for (int i = 0; i < inputs->numChannels; ++i)
+				if (inputBuffers[i] != outputBuffers[i])
+					std::memset (outputBuffers[i], 0, data.numSamples * sizeof (SampleT));
+			return;
+		}
+
+		
+		if (mBypassProcessorFloat.isActive ())
+		{
+			if constexpr (SampleSize == Vst::kSample64) 
+				mBypassProcessorDouble.process (data);
+			else
+				mBypassProcessorFloat.process  (data);
+			
+			outputs->silenceFlags = inputs->silenceFlags;
+			return;
+		}
+		
+		outputs->silenceFlags = 0;
+
+		auto doProcessing = [&] (Vst::ProcessData& slice)
+		{
+			std::array<std::pair<unsigned int, double>, std::tuple_size_v<decltype(PluginType::getParameters())>> params;
+			for (int i = 0; i < mParams.size(); ++i)
+			{
+				double target = mParams[i].saParam.advance (slice.numSamples);
+				if (mParams[i].type != ParamType::Float)
+				{
+					mParams[i].smoothed = target;
+					params[i] = { mParams[i].saParam.getParamID(), mParams[i].smoothed };
+					continue;
+				}
+				if (target != mParams[i].rampTarget)
+				{
+					mParams[i].rampPerStep = (target - mParams[i].smoothed) / (double)mSmoothSteps;
+					mParams[i].rampTarget  = target;
+				}
+				if (mParams[i].rampPerStep != 0.0)
+				{
+					mParams[i].smoothed += mParams[i].rampPerStep * slice.numSamples;
+					if ((mParams[i].rampPerStep > 0.0 && mParams[i].smoothed >= mParams[i].rampTarget) ||
+					    (mParams[i].rampPerStep < 0.0 && mParams[i].smoothed <= mParams[i].rampTarget))
+					{
+						mParams[i].smoothed    = mParams[i].rampTarget;
+						mParams[i].rampPerStep = 0.0;
+					}
+				}
+				params[i] = { mParams[i].saParam.getParamID(), mParams[i].smoothed };
+			}
+
+			Vst::AudioBusBuffers* inputs = slice.inputs;
+			Vst::AudioBusBuffers* outputs = slice.outputs;
+			auto inputBuffers  = Vst::getChannelBuffers<SampleSize> (*inputs);
+			auto outputBuffers = Vst::getChannelBuffers<SampleSize> (*outputs);
+
+			auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
+			auto outputSpan = std::span<SampleT* const>(outputBuffers, outputs->numChannels);
+			mPlugin.template process<SampleT> (inputSpan, outputSpan, slice.numSamples, ParamList{params});
+		};
+
+		Vst::ProcessDataSlicer slicer (16);
+		slicer.process<SampleSize> (data, doProcessing);
 	}
 
 	tresult PLUGIN_API setState (IBStream* state) SMTG_OVERRIDE
@@ -141,8 +216,14 @@ public:
 		bool bypass = savedBypass > 0;
 		mBypassProcessorFloat.setActive  (bypass);
 		mBypassProcessorDouble.setActive (bypass);
-		for (auto& [id, value] : mParamValues)
+		for (auto& parameter : mParams)
+		{
+			double value = 0.0;
 			if (!streamer.readDouble (value)) break;
+			parameter.smoothed   = value;
+			parameter.rampTarget = value;
+			parameter.saParam.setValue (value);
+		}
 		return kResultOk;
 	}
 
@@ -150,8 +231,8 @@ public:
 	{
 		IBStreamer streamer (state, kLittleEndian);
 		streamer.writeInt32 (mBypassProcessorFloat.isActive () ? 1 : 0);
-		for (auto& [id, value] : mParamValues)
-			streamer.writeDouble (value);
+		for (auto& parameter : mParams)
+			streamer.writeDouble (parameter.smoothed);
 		return kResultOk;
 	}
 
@@ -159,7 +240,17 @@ protected:
 	PluginType mPlugin;
 	Vst::BypassProcessor<Vst::Sample32> mBypassProcessorFloat;
 	Vst::BypassProcessor<Vst::Sample64> mBypassProcessorDouble;
-	std::map<int, double> mParamValues;
+	struct Param
+	{
+		ParamType type;
+		Vst::SampleAccurate::Parameter saParam;
+		double smoothed    = 0.0;
+		double rampTarget  = 0.0;
+		double rampPerStep = 0.0;
+	};
+
+	std::vector<Param> mParams;
+	int mSmoothSteps = 0;
 };
 
 } // namespace Steinberg

@@ -37,7 +37,7 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
                 std::span<const float* const>(inputPtrs,  1),
                 std::span<float* const>(outputPtrs, 1),
                 n_samples,
-                instance->_params);
+                ParamList{instance->_params});
 }
 
 // static void do_quit(void *userdata, int signal_number)

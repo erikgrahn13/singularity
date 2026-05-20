@@ -10,20 +10,10 @@
 
 using namespace Steinberg;
 
-// VST3 implementation of createParameter — routes to the active controller
-static VST3Controller* g_controller = nullptr;
-
-void createParameter(int id, const char* name, ParamType type,
-                     double defaultValue, double minValue, double maxValue)
-{
-    if (!g_controller) return;
-    g_controller->addSingularityParameter(id, name, defaultValue);
-}
-
 namespace Steinberg {
 
 //------------------------------------------------------------------------
-// VST3Controller Implementation
+// VST3Controller Implpementation
 //------------------------------------------------------------------------
 tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 {
@@ -36,11 +26,10 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 
 	parameters.addParameter (STR16 ("Bypass"), nullptr, 1, 0,
 							Vst::ParameterInfo::kCanAutomate | Vst::ParameterInfo::kIsBypass,
-							std::numeric_limits<int>::max());
+							Steinberg::Vst::kMaxParamId);
 
-	g_controller = this;
-	PLUGIN_CLASS::registerParameters();
-	g_controller = nullptr;
+	for (auto& p : PLUGIN_CLASS::getParameters ())
+		addSingularityParameter (p.id, p.name.c_str (), p.defaultValue);
 
 
 	return result;
@@ -66,13 +55,13 @@ tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 	// Read bypass first (written as int32 by processor)
 	int32 bypassState = 0;
 	if (!streamer.readInt32(bypassState)) return kResultFalse;
-	setParamNormalized(std::numeric_limits<int>::max(), bypassState ? 1 : 0);
+	setParamNormalized(Steinberg::Vst::kMaxParamId, bypassState ? 1 : 0);
 
 	// Read remaining plugin parameters in the same order the processor wrote them
 	for (int32 i = 0; i < parameters.getParameterCount(); ++i) {
 		auto* param = parameters.getParameterByIndex(i);
 		if (!param) continue;
-		if (param->getInfo().id == (Vst::ParamID)std::numeric_limits<int>::max()) continue; // bypass already read
+		if (param->getInfo().id == Steinberg::Vst::kMaxParamId) continue; // bypass already read
 		double value = 0.0;
 		if (!streamer.readDouble(value)) break;
 		setParamNormalized(param->getInfo().id, value);

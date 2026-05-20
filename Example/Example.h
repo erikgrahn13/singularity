@@ -1,41 +1,30 @@
 #pragma once
 
 #include "../SingularityPlugin.h"
-#include <span>
-#include <map>
-#include <cstring>
 
 class ExamplePlugin {
 public:
-    static void registerParameters()
+    static auto getParameters()
     {
-        createParameter(13, "Volume", ParamType::Float, 0.5, 0.0, 1.0);
+        return std::to_array<Parameter>({
+            { .id = 13, .name = "Volume", .type = ParamType::Float, .minValue = 0.0, .maxValue = 1.0, .defaultValue = 0.5 }
+        });
     }
 
-    void prepare(double sampleRate, int maxBlockSize)
-    {
-        _sampleRate = sampleRate;
-    }
+    void prepare(double sampleRate, int maxBlockSize) {}
 
     template<typename SampleType>
     void process(std::span<const SampleType* const> inputs,
                  std::span<SampleType* const> outputs,
                  int numSamples,
-                 const std::map<int, double>& params)
+                 ParamList params)
     {
-        // Parameters
-        if (auto it = params.find(13); it != params.end())
-            _volume = it->second;
+        double volume = params.get (13);
 
-        // Process audio
-        for (int ch = 0; ch < outputs.size(); ++ch) {
-                for (int s = 0; s < numSamples; ++s)
-                    outputs[ch][s] = inputs[0][s] * _volume;
-        }
+        for (int s = 0; s < numSamples; ++s)
+            for (int ch = 0; ch < (int)outputs.size(); ++ch)
+                outputs[ch][s] = static_cast<SampleType>(inputs[0][s] * volume);
     }
-private:
-    double _volume = 0.5;
-    double _sampleRate = 48000.0;
 };
 
 static_assert(SingularityPlugin<ExamplePlugin>);

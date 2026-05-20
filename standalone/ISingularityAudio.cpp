@@ -1,38 +1,30 @@
 #include "ISingularityAudio.h"
+#include <map>
 
-// static std::unordered_map<int, Parameter> params;
 class ParameterContainer : public IParameterProvider {
 public:
     std::function<void(int, double)> onParameterChanged;
     double getParameter(int id) override {
-        auto it = params.find(id);
-        if (it != params.end()) return it->second.value;
+        auto it = values.find(id);
+        if (it != values.end()) return it->second;
         return std::numeric_limits<double>::quiet_NaN();
     }
     void setParameter(int id, double value) override {
-        auto it = params.find(id);
-        if (it != params.end()) 
+        auto it = values.find(id);
+        if (it != values.end())
         {
-            it->second.value = value;
+            it->second = value;
             if (onParameterChanged) onParameterChanged(id, value);
         }
     }
-    std::unordered_map<int, Parameter> params;
+    std::map<int, double> values;
 } parameterContainer;
 
 IParameterProvider& getParameterContainer() { return parameterContainer; }
 void setOnParameterChanged(std::function<void(int, double)> cb) { parameterContainer.onParameterChanged = std::move(cb); }
 
-void createParameter(int id, const char* name, ParamType type,
-                     double defaultValue, double minValue, double maxValue)
+void populateParameterContainer(std::span<const Parameter> params)
 {
-    parameterContainer.params[id] = { name, type, defaultValue, minValue, maxValue, defaultValue };
-}
-
-std::map<int, double> getDefaultParams()
-{
-    std::map<int, double> result;
-    for (auto& [id, param] : parameterContainer.params)
-        result[id] = param.defaultValue;
-    return result;
+    for (auto& p : params)
+        parameterContainer.values[p.id] = p.defaultValue;
 }

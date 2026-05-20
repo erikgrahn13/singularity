@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -12,7 +11,7 @@
 
 IParameterProvider& getParameterContainer();
 void setOnParameterChanged(std::function<void(int, double)> cb);
-std::map<int, double> getDefaultParams();
+void populateParameterContainer(std::span<const Parameter> params);
 
 class AudioDevice {
     public:
@@ -44,11 +43,10 @@ class ISingularityAudio
     protected:
     ISingularityAudio()
     {
-        PluginType::registerParameters();
-        // Pre-populate _params with all registered defaults so the audio
-        // thread only ever updates existing keys — never allocates
-        for (auto& [id, value] : getDefaultParams())
-            _params[id] = value;
+        auto params = PluginType::getParameters ();
+        populateParameterContainer (params);
+        for (auto& p : params)
+            _params.push_back ({p.id, p.defaultValue});
     }
 
     // Called at the top of each audio callback: drains queue into local RT-safe array
@@ -56,7 +54,8 @@ class ISingularityAudio
     {
         ParameterChange change;
         while (_paramChanges.pop(change))
-            _params[change.id] = change.value;
+            for (auto& [id, val] : _params)
+                if (id == (unsigned int)change.id) { val = change.value; break; }
     }
 
     // Call once when sample rate and block size are first known.
@@ -68,7 +67,7 @@ class ISingularityAudio
         mPlugin.prepare(sampleRate, maxBlockSize);
     }
 
-    std::map<int, double> _params;
+    std::vector<std::pair<unsigned int, double>> _params;
     PluginType mPlugin;
 
     private:

@@ -6,6 +6,7 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "IParameterProvider.h"
+#include "pluginterfaces/vst/vsttypes.h"
 #include <limits>
 
 namespace Steinberg {
