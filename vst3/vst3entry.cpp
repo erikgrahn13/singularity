@@ -29,7 +29,7 @@ BEGIN_FACTORY_DEF (VENDOR,
 				kVstAudioEffectClass,	// the component category (do not changed this)
 				stringPluginName,		// here the Plug-in name (to be changed)
 				Vst::kDistributable,	// means that component and controller could be distributed on different computers
-				VST3VST3Category, // Subcategory for this Plug-in (to be changed)
+				(PLUGIN_CLASS::isInstrument ? "Instrument" : "Fx"), // Subcategory derived from plugin class
 				FULL_VERSION_STR,		// Plug-in version (to be changed)
 				kVstVersionString,		// the VST 3 SDK version (do not changed this, use always this define)
 				VST3Processor<PLUGIN_CLASS>::createInstance)	// function pointer called when this component should be instantiated

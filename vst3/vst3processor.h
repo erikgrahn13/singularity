@@ -36,7 +36,9 @@ public:
 	{
 		tresult result = AudioEffect::initialize (context);
 		if (result != kResultOk) return result;
-		addAudioInput  (STR16 ("Stereo In"),  Vst::SpeakerArr::kStereo);
+		
+		if constexpr (!PluginType::isInstrument)
+			addAudioInput  (STR16 ("Stereo In"),  Vst::SpeakerArr::kStereo);
 		addAudioOutput (STR16 ("Stereo Out"), Vst::SpeakerArr::kStereo);
 		addEventInput  (STR16 ("Event In"), 1);
 
@@ -116,7 +118,7 @@ public:
 	{
 		handleParameterChanges (data.inputParameterChanges);
 
-		if (data.numSamples > 0 && data.numInputs > 0 && data.numOutputs > 0)
+		if (data.numSamples > 0 && (PluginType::isInstrument || data.numInputs > 0) && data.numOutputs > 0)
 		{
 			if (processSetup.symbolicSampleSize == Vst::kSample32)
 				processAudio<Vst::kSample32> (data);
@@ -135,30 +137,33 @@ public:
 	void processAudio (Vst::ProcessData& data)
 	{
 		using SampleT = std::conditional_t<SampleSize == Vst::kSample32, float, double>;
-		Vst::AudioBusBuffers* inputs = data.inputs;
 		Vst::AudioBusBuffers* outputs = data.outputs;
-		auto inputBuffers  = Vst::getChannelBuffers<SampleSize> (*inputs);
 		auto outputBuffers = Vst::getChannelBuffers<SampleSize> (*outputs);
 
-		if (inputs->silenceFlags == Vst::getChannelMask (inputs->numChannels))
+		if constexpr (!PluginType::isInstrument)
 		{
-			outputs->silenceFlags = inputs->silenceFlags;
-			for (int i = 0; i < inputs->numChannels; ++i)
-				if (inputBuffers[i] != outputBuffers[i])
-					std::memset (outputBuffers[i], 0, data.numSamples * sizeof (SampleT));
-			return;
-		}
+			Vst::AudioBusBuffers* inputs = data.inputs;
+			auto inputBuffers  = Vst::getChannelBuffers<SampleSize> (*inputs);
 
-		
-		if (mBypassProcessorFloat.isActive ())
-		{
-			if constexpr (SampleSize == Vst::kSample64) 
-				mBypassProcessorDouble.process (data);
-			else
-				mBypassProcessorFloat.process  (data);
-			
-			outputs->silenceFlags = inputs->silenceFlags;
-			return;
+			if (inputs->silenceFlags == Vst::getChannelMask (inputs->numChannels))
+			{
+				outputs->silenceFlags = inputs->silenceFlags;
+				for (int i = 0; i < inputs->numChannels; ++i)
+					if (inputBuffers[i] != outputBuffers[i])
+						std::memset (outputBuffers[i], 0, data.numSamples * sizeof (SampleT));
+				return;
+			}
+
+			if (mBypassProcessorFloat.isActive ())
+			{
+				if constexpr (SampleSize == Vst::kSample64) 
+					mBypassProcessorDouble.process (data);
+				else
+					mBypassProcessorFloat.process  (data);
+				
+				outputs->silenceFlags = inputs->silenceFlags;
+				return;
+			}
 		}
 		
 		outputs->silenceFlags = 0;
@@ -193,14 +198,21 @@ public:
 				params[i] = { mParams[i].saParam.getParamID(), mParams[i].smoothed };
 			}
 
-			Vst::AudioBusBuffers* inputs = slice.inputs;
 			Vst::AudioBusBuffers* outputs = slice.outputs;
-			auto inputBuffers  = Vst::getChannelBuffers<SampleSize> (*inputs);
 			auto outputBuffers = Vst::getChannelBuffers<SampleSize> (*outputs);
 
-			auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
 			auto outputSpan = std::span<SampleT* const>(outputBuffers, outputs->numChannels);
-			mPlugin.template process<SampleT> (inputSpan, outputSpan, slice.numSamples, ParamList{params});
+			if constexpr (PluginType::isInstrument)
+			{
+				mPlugin.template process<SampleT> (outputSpan, slice.numSamples, ParamList{params});
+			}
+			else
+			{
+				Vst::AudioBusBuffers* inputs = slice.inputs;
+				auto inputBuffers = Vst::getChannelBuffers<SampleSize> (*inputs);
+				auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
+				mPlugin.template process<SampleT> (inputSpan, outputSpan, slice.numSamples, ParamList{params});
+			}
 		};
 
 		Vst::ProcessDataSlicer slicer (16);

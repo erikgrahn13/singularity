@@ -4,6 +4,8 @@
 
 class ExamplePlugin {
 public:
+    static constexpr bool isInstrument = false;
+
     static auto getParameters()
     {
         return std::to_array<Parameter>({

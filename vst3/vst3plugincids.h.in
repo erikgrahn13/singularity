@@ -10,6 +10,5 @@ static const Steinberg::FUID kVST3ProcessorUID (
 static const Steinberg::FUID kVST3ControllerUID (
     0x@CTRL_UID_0@, 0x@CTRL_UID_1@, 0x@CTRL_UID_2@, 0x@CTRL_UID_3@);
 
-#define VST3VST3Category "@PLUGIN_CATEGORY@"
 
 } // namespace Steinberg

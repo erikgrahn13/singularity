@@ -5,7 +5,7 @@ set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 
 function(singularity_create_plugin target)
-    set(oneValueArgs PACKAGE_NAME VENDOR BUNDLE_ID URL EMAIL PLUGIN_CATEGORY PLUGIN_CLASS PLUGIN_CLASS_HEADER)
+    set(oneValueArgs PACKAGE_NAME VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER)
     set(multiValueArgs SOURCES UI FORMATS)
 
     # Parse the arguments
@@ -151,10 +151,6 @@ function(singularity_create_plugin target)
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name
             set(_uid_seed "${target}")
-            set(PLUGIN_CATEGORY "${PARAMS_PLUGIN_CATEGORY}")
-            if(NOT PLUGIN_CATEGORY)
-                set(PLUGIN_CATEGORY "Fx")
-            endif()
 
             string(MD5 _proc_hash "${_uid_seed}_processor")
             string(MD5 _ctrl_hash "${_uid_seed}_controller")

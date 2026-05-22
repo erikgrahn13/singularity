@@ -238,11 +238,21 @@ ASIOTime* ASIO<PluginType>::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index,
     }
 
     // --- Call plugin ---
-    instance->mPlugin.template process<float>(
-        std::span<const float* const>(inputPtrs, instance->inputBuffers),
-        std::span<float* const>(outputPtrs, instance->outputBuffers),
-        buffSize,
-        ParamList{instance->_params});
+    if constexpr (PluginType::isInstrument)
+    {
+        instance->mPlugin.template process<float>(
+            std::span<float* const>(outputPtrs, instance->outputBuffers),
+            buffSize,
+            ParamList{instance->_params});
+    }
+    else
+    {
+        instance->mPlugin.template process<float>(
+            std::span<const float* const>(inputPtrs, instance->inputBuffers),
+            std::span<float* const>(outputPtrs, instance->outputBuffers),
+            buffSize,
+            ParamList{instance->_params});
+    }
 
     // --- Convert non-interleaved float → ASIO native buffers ---
     for (int ch = 0; ch < instance->outputBuffers; ++ch) {

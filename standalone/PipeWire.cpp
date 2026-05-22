@@ -30,14 +30,25 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
         instance->processParameterChanges();
 
         // Wrap raw pointers in span arrays matching the plugin interface
-        const float* inputPtrs[1]  = { in  };
         float*       outputPtrs[1] = { out };
+        auto outputSpan = std::span<float* const>(outputPtrs, 1);
 
-        instance->mPlugin.template process<float>(
-                std::span<const float* const>(inputPtrs,  1),
-                std::span<float* const>(outputPtrs, 1),
-                n_samples,
-                ParamList{instance->_params});
+        if constexpr (PluginType::isInstrument)
+        {
+                instance->mPlugin.template process<float>(
+                        outputSpan,
+                        n_samples,
+                        ParamList{instance->_params});
+        }
+        else
+        {
+                const float* inputPtrs[1]  = { in  };
+                instance->mPlugin.template process<float>(
+                        std::span<const float* const>(inputPtrs,  1),
+                        outputSpan,
+                        n_samples,
+                        ParamList{instance->_params});
+        }
 }
 
 // static void do_quit(void *userdata, int signal_number)
