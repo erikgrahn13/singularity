@@ -22,11 +22,11 @@ concept SingularityInstrumentPlugin =
     requires(P& plugin,
         std::span<float* const>  fout,
         std::span<double* const> dout,
-        int n, ParamList params,
+        int n, std::span<const MidiEvent> events, ParamList params,
         double sampleRate, int maxBlockSize)
     {
-        plugin.template process<float>  (fout, n, params);
-        plugin.template process<double> (dout, n, params);
+        plugin.template process<float>  (fout, n, events, params);
+        plugin.template process<double> (dout, n, events, params);
         plugin.prepare(sampleRate, maxBlockSize);
         { P::getParameters() };
         requires P::isInstrument;

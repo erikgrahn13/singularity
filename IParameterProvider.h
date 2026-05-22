@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cstdint>
 #include <string>
 #include <span>
 #include <utility>
@@ -34,6 +35,15 @@ struct ParamList
             if (pid == id) return val;
         return fallback;
     }
+};
+
+struct MidiEvent
+{
+    enum class Type : uint8_t { NoteOn, NoteOff };
+
+    Type    type;
+    int16_t pitch;    ///< [0, 127]
+    float   velocity; ///< [0.0, 1.0]
 };
 
 class IParameterProvider {

@@ -38,6 +38,7 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
                 instance->mPlugin.template process<float>(
                         outputSpan,
                         n_samples,
+                        std::span<const MidiEvent>{},
                         ParamList{instance->_params});
         }
         else

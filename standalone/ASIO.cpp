@@ -243,6 +243,7 @@ ASIOTime* ASIO<PluginType>::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index,
         instance->mPlugin.template process<float>(
             std::span<float* const>(outputPtrs, instance->outputBuffers),
             buffSize,
+            std::span<const MidiEvent>{},
             ParamList{instance->_params});
     }
     else

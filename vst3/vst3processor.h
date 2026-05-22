@@ -8,6 +8,7 @@
 #include "public.sdk/source/vst/vstaudioprocessoralgo.h"
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
+#include "pluginterfaces/vst/ivstevents.h"
 #include "plugincids.h"
 #include PLUGIN_CLASS_HEADER
 #include "../SingularityPlugin.h"
@@ -118,6 +119,38 @@ public:
 	{
 		handleParameterChanges (data.inputParameterChanges);
 
+
+		// Collect MIDI events for this block
+		mMidiEvents.clear ();
+		if (data.inputEvents)
+		{
+			auto numEvents = data.inputEvents->getEventCount ();
+			for (int i = 0; i < numEvents; ++i)
+			{
+				Vst::Event e;
+				if (data.inputEvents->getEvent (i, e) != kResultTrue)
+					continue;
+				switch (e.type)
+				{
+				case Vst::Event::kNoteOnEvent:
+					mMidiEvents.push_back ({ MidiEvent::Type::NoteOn,  e.noteOn.pitch,  e.noteOn.velocity });
+					break;
+				case Vst::Event::kNoteOffEvent:
+					mMidiEvents.push_back ({ MidiEvent::Type::NoteOff, e.noteOff.pitch, e.noteOff.velocity });
+					break;
+				case Vst::Event::kDataEvent:                  break;
+				case Vst::Event::kPolyPressureEvent:          break;
+				case Vst::Event::kNoteExpressionValueEvent:   break;
+				case Vst::Event::kNoteExpressionTextEvent:    break;
+				case Vst::Event::kChordEvent:                 break;
+				case Vst::Event::kScaleEvent:                 break;
+				case Vst::Event::kNoteExpressionIntValueEvent: break;
+				case Vst::Event::kLegacyMIDICCOutEvent:       break;
+				default:                                      break;
+				}
+			}
+		}
+
 		if (data.numSamples > 0 && (PluginType::isInstrument || data.numInputs > 0) && data.numOutputs > 0)
 		{
 			if (processSetup.symbolicSampleSize == Vst::kSample32)
@@ -204,7 +237,7 @@ public:
 			auto outputSpan = std::span<SampleT* const>(outputBuffers, outputs->numChannels);
 			if constexpr (PluginType::isInstrument)
 			{
-				mPlugin.template process<SampleT> (outputSpan, slice.numSamples, ParamList{params});
+				mPlugin.template process<SampleT> (outputSpan, slice.numSamples, mMidiEvents, ParamList{params});
 			}
 			else
 			{
@@ -262,6 +295,7 @@ protected:
 	};
 
 	std::vector<Param> mParams;
+	std::vector<MidiEvent> mMidiEvents;
 	int mSmoothSteps = 0;
 };
 
