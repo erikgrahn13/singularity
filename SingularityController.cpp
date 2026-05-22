@@ -46,6 +46,12 @@ void SingularityController::initialize()
         }
     );
 
+    renderer_->setComponentMouseWheelCallback(
+        [this](void* component, float deltaX, float deltaY) {
+            jsEngine_->onMouseWheel(component, deltaX, deltaY);
+        }
+    );
+
     fileWatcher_->setCallback([this](const std::string& filePath) {
         std::cout << "File changed" << std::endl;
         reloadPending_ = true;

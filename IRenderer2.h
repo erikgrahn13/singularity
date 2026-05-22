@@ -24,6 +24,7 @@ public:
     virtual void setComponentMouseDragCallback(std::function<void(void*, float, float)> cb) = 0;
     virtual void setComponentMouseEnterCallback(std::function<void(void*)> cb) = 0;
     virtual void setComponentMouseExitCallback(std::function<void(void*)> cb) = 0;
+    virtual void setComponentMouseWheelCallback(std::function<void(void*, float, float)> cb) = 0;
     virtual void redraw(void *component) = 0;
     virtual void redrawAll() = 0;
     virtual double getTime(void* canvas) = 0;

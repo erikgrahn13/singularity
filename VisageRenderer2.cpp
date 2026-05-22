@@ -107,6 +107,11 @@ void *VisageRenderer::createComponent(void *parentComponent)
         if (componentMouseExitCallback_)
             componentMouseExitCallback_(childPtr);
     };
+    childPtr->onMouseWheel() += [this, childPtr](const visage::MouseEvent& e) {
+        if (componentMouseWheelCallback_)
+            componentMouseWheelCallback_(childPtr, e.wheel_delta_x, e.wheel_delta_y);
+        return false;
+    };
     
     parentFrame->addChild(std::move(child));
     
@@ -646,6 +651,11 @@ void VisageRenderer::setComponentMouseEnterCallback(std::function<void(void*)> c
 void VisageRenderer::setComponentMouseExitCallback(std::function<void(void*)> cb)
 {
     componentMouseExitCallback_ = std::move(cb);
+}
+
+void VisageRenderer::setComponentMouseWheelCallback(std::function<void(void*, float, float)> cb)
+{
+    componentMouseWheelCallback_ = std::move(cb);
 }
 
 void VisageRenderer::redraw(void *component)

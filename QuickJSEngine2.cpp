@@ -355,6 +355,13 @@ JS_FreeValue(ctx, postEffectProp);
     }
     JS_FreeValue(ctx, onMouseExit);
 
+    JSValue onMouseWheel = JS_GetPropertyStr(ctx, props, "onMouseWheel");
+    if (JS_IsFunction(ctx, onMouseWheel)) {
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        engine->registerMouseWheelHandler(component, ctx, onMouseWheel);
+    }
+    JS_FreeValue(ctx, onMouseWheel);
+
 }
 
 static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* renderer, void* component) {
@@ -535,6 +542,14 @@ void QuickJSEngine::registerMouseExitHandler(void* component, JSContext* ctx, JS
     mouseExitHandlers_[component] = JS_DupValue(ctx, fn);
 }
 
+void QuickJSEngine::registerMouseWheelHandler(void* component, JSContext* ctx, JSValue fn)
+{
+    auto it = mouseWheelHandlers_.find(component);
+    if (it != mouseWheelHandlers_.end())
+        JS_FreeValue(ctx, it->second);
+    mouseWheelHandlers_[component] = JS_DupValue(ctx, fn);
+}
+
 void QuickJSEngine::onMouseDown(void *component, float x, float y)
 {
     auto it = mouseDownHandlers_.find(component);
@@ -625,6 +640,28 @@ void QuickJSEngine::onMouseExit(void* component)
     if (JS_IsException(result))
         js_std_dump_error(ctx_);
     JS_FreeValue(ctx_, result);
+
+    renderer_->redraw(component);
+}
+
+void QuickJSEngine::onMouseWheel(void* component, float deltaX, float deltaY)
+{
+    auto it = mouseWheelHandlers_.find(component);
+    if (it == mouseWheelHandlers_.end())
+        return;
+
+    JSValue eventObj = JS_NewObject(ctx_);
+    JS_SetPropertyStr(ctx_, eventObj, "deltaX", JS_NewFloat64(ctx_, deltaX));
+    JS_SetPropertyStr(ctx_, eventObj, "deltaY", JS_NewFloat64(ctx_, deltaY));
+
+    JSValue argv[1] = { eventObj };
+    JSValue result = JS_Call(ctx_, it->second, JS_UNDEFINED, 1, argv);
+
+    if (JS_IsException(result))
+        js_std_dump_error(ctx_);
+
+    JS_FreeValue(ctx_, result);
+    JS_FreeValue(ctx_, eventObj);
 
     renderer_->redraw(component);
 }

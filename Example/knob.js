@@ -42,6 +42,14 @@ export function Knob({ x, y, size = 40, parameterId, theme = {} }) {
       setParameter(parameterId, value);
     },
 
+    onMouseWheel: (e) => {
+      let value = getParameter(parameterId);
+      if (Number.isNaN(value)) return;
+
+      value = Math.max(0, Math.min(1, value + e.deltaY / size));
+      setParameter(parameterId, value);
+    },
+
     draw: (ctx) => {
       const value = getParameter(parameterId);
       if (Number.isNaN(value)) return;

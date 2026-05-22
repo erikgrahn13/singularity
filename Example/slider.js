@@ -70,6 +70,15 @@ export function Slider({ x = 0, y = 0, width = 160, height = 20,
     onMouseDrag: (e) => {
       setParameter(parameterId, valueFromPosition(e.x, e.y));
     },
+    
+    onMouseWheel: (e) => {
+      let value = getParameter(parameterId);
+      if (Number.isNaN(value)) return;
+
+      const trackLength = vertical ? height : width;
+      value = Math.max(0, Math.min(1, value + e.deltaY / trackLength));
+      setParameter(parameterId, value);
+    },
 
     draw: (ctx) => {
       const value = getParameter(parameterId);

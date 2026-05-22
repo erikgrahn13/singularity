@@ -38,7 +38,14 @@
             "cwd": "${workspaceFolder}/Example",
             "preLaunchTask": "CMake: build",
             "externalConsole": false,
-            "MIMode": "gdb"
+            "MIMode": "gdb",
+            "symbolLoadInfo": {
+                "loadAll": false,
+                "exceptionList": "*Example*;*singularity*;*editorhost*"
+            },
+            "setupCommands": [
+                { "text": "set debuginfod enabled off", "ignoreFailures": true }
+            ]
         },
         {
             "name": "VST3PluginTestHost Windows",
