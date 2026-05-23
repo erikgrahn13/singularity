@@ -6,7 +6,7 @@ set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 function(singularity_create_plugin target)
     set(oneValueArgs PACKAGE_NAME VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER)
-    set(multiValueArgs SOURCES UI FORMATS)
+    set(multiValueArgs SOURCES UI FORMATS RESOURCES)
 
     # Parse the arguments
     cmake_parse_arguments(PARAMS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -23,6 +23,7 @@ function(singularity_create_plugin target)
     set(SOURCES "${PARAMS_SOURCES}")
     set(UI "${PARAMS_UI}")
     set(FORMATS "${PARAMS_FORMATS}")
+    set(RESOURCES "${PARAMS_RESOURCES}")
     set(VENDOR ${PARAMS_VENDOR})
     set(URL ${PARAMS_URL})
     set(EMAIL ${PARAMS_EMAIL})
@@ -52,7 +53,7 @@ function(singularity_create_plugin target)
         set(SOURCES ${PARAMS_UNPARSED_ARGUMENTS})
     endif()
 
-    add_library(${target}-shared STATIC 
+    add_library(${target} STATIC 
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
@@ -60,20 +61,20 @@ function(singularity_create_plugin target)
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
     )
 
-    target_link_libraries(${target}-shared PUBLIC 
+    target_link_libraries(${target} PUBLIC 
         qjs-libc
         choc::choc
         visage
     )
 
-    target_include_directories(${target}-shared PRIVATE
+    target_include_directories(${target} PRIVATE
         ${SINGULARITY_QUICKJS_DIR}
     )
 
-    target_compile_features(${target}-shared PUBLIC cxx_std_23)
+    target_compile_features(${target} PUBLIC cxx_std_23)
 
     if(UNIX AND NOT APPLE)
-        set_target_properties(${target}-shared PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
 
@@ -84,7 +85,7 @@ function(singularity_create_plugin target)
     endif()
 
     cmake_path(GET UI_MAIN_FILE STEM _ui_stem)
-    target_compile_definitions(${target}-shared PUBLIC
+    target_compile_definitions(${target} PUBLIC
         UI_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         UI_MAIN="${UI_MAIN_FILE}"
         QSJC_SYMBOL=qjsc_${_ui_stem}
@@ -109,11 +110,11 @@ function(singularity_create_plugin target)
         VERBATIM
     )
 
-    target_sources(${target}-shared PRIVATE
+    target_sources(${target} PRIVATE
         $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/generated.h>
     )
 
-    target_include_directories(${target}-shared PRIVATE
+    target_include_directories(${target} PRIVATE
         $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}>
     )
 
@@ -152,7 +153,7 @@ function(singularity_create_plugin target)
                 PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
             )
             set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
-            target_link_libraries(${target}_APP PRIVATE ${target}-shared)
+            target_link_libraries(${target}_APP PRIVATE ${target})
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name
             set(_uid_seed "${target}")
@@ -194,6 +195,12 @@ function(singularity_create_plugin target)
                 ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
             )
 
+            if(RESOURCES)
+                smtg_target_add_plugin_resources(${target}_VST3
+                    RESOURCES "${RESOURCES}"
+                )
+            endif()
+
             target_compile_definitions(${target}_VST3 PRIVATE
                 PLUGIN_NAME="${target}"
                 VENDOR="${VENDOR}"
@@ -206,7 +213,7 @@ function(singularity_create_plugin target)
             target_link_libraries(${target}_VST3
                 PRIVATE
                     sdk
-                    ${target}-shared
+                    ${target}
             )
 
             target_include_directories(${target}_VST3 PRIVATE
