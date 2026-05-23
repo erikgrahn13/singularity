@@ -18,13 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            artifact_name: ExamplePlugin-macOS
-          - os: windows-latest
-            artifact_name: ExamplePlugin-Windows
-          - os: ubuntu-latest
-            artifact_name: ExamplePlugin-Linux
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
     steps:
       - name: Checkout repository
@@ -53,24 +47,37 @@ jobs:
             build/_deps
             build/CMakeCache.txt
             build/CMakeFiles
-          key: deps-${{ runner.os }}-ninja-${{ hashFiles('cmake/**/*.cmake', 'Example/CMakeLists.txt', 'CMakeLists.txt') }}
+          key: deps-${{ runner.os }}-ninja-${{ hashFiles('cmake/**/*.cmake', 'examples/**/CMakeLists.txt', 'CMakeLists.txt') }}
           restore-keys: |
             deps-${{ runner.os }}-ninja-
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
 
-      - name: Build VST3
-        run: cmake --build build --config Release --target ExamplePlugin_VST3 --parallel
+      - name: Build ExampleEffect VST3
+        run: cmake --build build --config Release --target ExampleEffect_VST3 --parallel
 
-      - name: Build Standalone APP
-        run: cmake --build build --config Release --target ExamplePlugin_APP --parallel
+      - name: Build ExampleEffect Standalone APP
+        run: cmake --build build --config Release --target ExampleEffect_APP --parallel
 
-      - name: Upload VST3 artifact
+      - name: Build ExampleInstrument VST3
+        run: cmake --build build --config Release --target ExampleInstrument_VST3 --parallel
+
+      - name: Build ExampleInstrument Standalone APP
+        run: cmake --build build --config Release --target ExampleInstrument_APP --parallel
+
+      - name: Upload ExampleEffect VST3 artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.artifact_name }}
-          path: build/VST3/**/ExamplePlugin.vst3
+          name: ExampleEffect-${{ runner.os }}
+          path: build/VST3/**/ExampleEffect.vst3
+          if-no-files-found: warn
+
+      - name: Upload ExampleInstrument VST3 artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ExampleInstrument-${{ runner.os }}
+          path: build/VST3/**/ExampleInstrument.vst3
           if-no-files-found: warn
 
   release:
