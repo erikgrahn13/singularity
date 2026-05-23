@@ -29,13 +29,32 @@
             "MIMode": "lldb"
         },
         {
-            "name": "EditorHost Linux",
+            "name": "EditorHost Linux ExampleEffect",
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost",
-            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExamplePlugin.vst3"],
+            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExampleEffect.vst3"],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/Example",
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "symbolLoadInfo": {
+                "loadAll": false,
+                "exceptionList": "*Example*;*singularity*;*editorhost*"
+            },
+            "setupCommands": [
+                { "text": "set debuginfod enabled off", "ignoreFailures": true }
+            ]
+        },
+        {
+            "name": "EditorHost Linux ExampleInstrument",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost",
+            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExampleInstrument.vst3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/examples/ExampleInstrument",
             "preLaunchTask": "CMake: build",
             "externalConsole": false,
             "MIMode": "gdb",

@@ -5,10 +5,18 @@ import { Slider } from "./slider.js"
 
 export default function App() {
   console.log("Hello From JavaScript");
+  const width = 800;
+  const height = 600;
   return Component({
-    width: 800,
-    height: 600,
+    width,
+    height,
     backgroundColor: "#000000",
+    draw(ctx) {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center"
+      ctx.fillText("ExampleEffect", width / 2, 40);
+    },
     children: [
       Knob({ x: 0, y: 0, size: 80, parameterId: 13 }),
       Knob({ x: 0, y: 100, size: 80, parameterId: 13 }),

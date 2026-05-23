@@ -2,9 +2,9 @@
 
 #include "../SingularityPlugin.h"
 
-class ExamplePlugin {
+class ExampleInstrument {
 public:
-    static constexpr bool isInstrument = false;
+    static constexpr bool isInstrument = true;
 
     static auto getParameters()
     {
@@ -16,17 +16,19 @@ public:
     void prepare(double sampleRate, int maxBlockSize) {}
 
     template<typename SampleType>
-    void process(std::span<const SampleType* const> inputs,
-                 std::span<SampleType* const> outputs,
+    void process(std::span<SampleType* const> outputs,
                  int numSamples,
+                 std::span<const MidiEvent> events,
                  ParamList params)
     {
         double volume = params.get (13);
 
         for (int s = 0; s < numSamples; ++s)
             for (int ch = 0; ch < (int)outputs.size(); ++ch)
-                outputs[ch][s] = static_cast<SampleType>(inputs[0][s] * volume);
+            {
+                
+            }
     }
 };
 
-static_assert(SingularityPlugin<ExamplePlugin>);
+static_assert(SingularityPlugin<ExampleInstrument>);

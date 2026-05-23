@@ -445,6 +445,10 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
             JS_FreeValue(ctx_, fn);
         mouseExitHandlers_.clear();
 
+        for (auto& [component, fn] : mouseWheelHandlers_)
+            JS_FreeValue(ctx_, fn);
+        mouseWheelHandlers_.clear();
+
         if (!JS_IsUndefined(appFn_)) {
             JS_FreeValue(ctx_, appFn_);
             appFn_ = JS_UNDEFINED;

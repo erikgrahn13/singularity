@@ -46,7 +46,7 @@ include(SingularityPlugin)
 
 option(SINGULARITY_BUILD_EXAMPLES "Build the bundled example projects" OFF)
 if(SINGULARITY_BUILD_EXAMPLES)
-    add_subdirectory(Example)
+    add_subdirectory(examples)
 endif()
 
 # TODO: this is an example of how i can compile javascript files and modules with qjsc
