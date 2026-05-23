@@ -54,30 +54,15 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
 
-      - name: Build ExampleEffect VST3
-        run: cmake --build build --config Release --target ExampleEffect_VST3 --parallel
+      - name: Build
+        run: |
+          cmake --build build --config Release
 
-      - name: Build ExampleEffect Standalone APP
-        run: cmake --build build --config Release --target ExampleEffect_APP --parallel
-
-      - name: Build ExampleInstrument VST3
-        run: cmake --build build --config Release --target ExampleInstrument_VST3 --parallel
-
-      - name: Build ExampleInstrument Standalone APP
-        run: cmake --build build --config Release --target ExampleInstrument_APP --parallel
-
-      - name: Upload ExampleEffect VST3 artifact
+      - name: Upload VST3 artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ExampleEffect-${{ runner.os }}
-          path: build/VST3/**/ExampleEffect.vst3
-          if-no-files-found: warn
-
-      - name: Upload ExampleInstrument VST3 artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ExampleInstrument-${{ runner.os }}
-          path: build/VST3/**/ExampleInstrument.vst3
+          name: Plugins-${{ runner.os }}
+          path: build/VST3/**/*.vst3
           if-no-files-found: warn
 
   release:

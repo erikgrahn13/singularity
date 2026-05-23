@@ -14,6 +14,7 @@ FetchContent_Declare(
     GIT_SUBMODULES "base" "cmake" "pluginterfaces" "public.sdk"
     GIT_SUBMODULES_RECURSE FALSE
     GIT_SUBMODULES_SHALLOW TRUE
+    EXCLUDE_FROM_ALL
 )
 
 # FetchContent_MakeAvailable calls add_subdirectory exactly once — no explicit call needed.
