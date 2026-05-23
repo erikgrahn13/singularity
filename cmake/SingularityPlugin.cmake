@@ -72,6 +72,11 @@ function(singularity_create_plugin target)
 
     target_compile_features(${target}-shared PUBLIC cxx_std_23)
 
+    if(UNIX AND NOT APPLE)
+        set_target_properties(${target}-shared PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+
+
     # Inside the function, after resolving UI paths:
     list(GET UI 0 UI_MAIN_FILE)
     if(NOT IS_ABSOLUTE "${UI_MAIN_FILE}")
