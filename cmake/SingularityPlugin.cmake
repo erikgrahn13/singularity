@@ -77,6 +77,14 @@ function(singularity_create_plugin target)
         set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
+    # On Windows the MSVC linker emits an import lib (lib/<name>.lib) for both
+    # the APP executable and the VST3 DLL.  That collides with the static lib of
+    # the same name.  Give the static lib a distinct archive filename so the
+    # import libs can use the bare <name>.lib without conflict.
+    if(WIN32)
+        set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_NAME "${target}_shared")
+    endif()
+
 
     # Inside the function, after resolving UI paths:
     list(GET UI 0 UI_MAIN_FILE)
