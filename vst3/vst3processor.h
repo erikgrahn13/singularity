@@ -67,6 +67,8 @@ public:
 		mBypassProcessorDouble.setup (*this, newSetup, getLatencySamples ());
 		mPlugin.prepare (newSetup.sampleRate, newSetup.maxSamplesPerBlock);
 
+		mMidiEvents.reserve (32);
+
 		mSmoothSteps = static_cast<int> (newSetup.sampleRate * 0.005);
 		if (mSmoothSteps < 1) 
 			mSmoothSteps = 1;
@@ -124,12 +126,14 @@ public:
 		mMidiEvents.clear ();
 		if (data.inputEvents)
 		{
-			auto numEvents = data.inputEvents->getEventCount ();
-			for (int i = 0; i < numEvents; ++i)
+			const int32 numEvents = data.inputEvents->getEventCount ();
+			for (int32 i = 0; i < numEvents; ++i)
 			{
 				Vst::Event e;
 				if (data.inputEvents->getEvent (i, e) != kResultTrue)
 					continue;
+				if (mMidiEvents.size () >= 32)
+					break;
 				switch (e.type)
 				{
 				case Vst::Event::kNoteOnEvent:
@@ -237,7 +241,8 @@ public:
 			auto outputSpan = std::span<SampleT* const>(outputBuffers, outputs->numChannels);
 			if constexpr (PluginType::isInstrument)
 			{
-				mPlugin.template process<SampleT> (outputSpan, slice.numSamples, mMidiEvents, ParamList{params});
+				auto midiSpan = std::span<const MidiEvent>(mMidiEvents);
+				mPlugin.template process<SampleT> (outputSpan, slice.numSamples, midiSpan, ParamList{params});
 			}
 			else
 			{
