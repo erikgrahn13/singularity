@@ -1,70 +1,108 @@
-import { Widget } from "./widget.js";
-import { getParameter, setParameter } from "native:parameters";
+import { Component } from "singularity";
 
-export class Button extends Widget {
-    constructor(x = 0, y = 0, width = 80, height = 30, parameterIdOrCallback, theme = {}) {
-        super(x, y, width, height);
+export function Button({ x = 0, y = 0, width = 100, height = 32, label = "Button", onClick = null, theme = {} }) {
+  const t = {
+    bgColor:          "#2a2a3a",
+    bgHoverColor:     "#3a3a4e",
+    bgPressColor:     "#141420",
+    borderColor:      "#555577",
+    borderHoverColor: "#7777aa",
+    textColor:        "#ffffff",
+    rippleColor:      "#ffffff",
+    cornerRadius:     6,
+    rippleDuration:   0.35,   // seconds
+    ...theme,
+  };
 
-        if (typeof parameterIdOrCallback === 'function') {
-            this.callback = parameterIdOrCallback;
-            this.parameterId = null;
+  let pressed   = false;
+  let hovered   = false;
+  let ripple    = null;  // { x, y, startTime }
+
+  const maxRadius = Math.sqrt(width * width + height * height) * 0.6;
+
+  return Component({
+    x,
+    y,
+    width,
+    height,
+
+    onMouseEnter: () => { hovered = true; },
+
+    onMouseExit: () => {
+      hovered = false;
+      pressed = false;
+    },
+
+    onMouseDown: (e) => {
+      pressed = true;
+      ripple = { x: e.x, y: e.y, startTime: Date.now() / 1000 };
+    },
+
+    onMouseUp: (e) => {
+      if (pressed && e.x >= 0 && e.x <= width && e.y >= 0 && e.y <= height) {
+        if (typeof onClick === "function") onClick();
+      }
+      pressed = false;
+    },
+
+    onMouseDrag: (e) => {
+      pressed = e.x >= 0 && e.x <= width && e.y >= 0 && e.y <= height;
+    },
+
+    draw: (ctx) => {
+      const r    = t.cornerRadius;
+      const now  = Date.now() / 1000;
+
+      ctx.save();
+
+      // Background
+      ctx.fillStyle = pressed ? t.bgPressColor : hovered ? t.bgHoverColor : t.bgColor;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, width, height, r);
+      ctx.fill();
+
+      // Ripple
+      if (ripple) {
+        const elapsed  = now - ripple.startTime;
+        const progress = elapsed / t.rippleDuration;
+
+        if (progress < 1.0) {
+          const eased  = 1 - Math.pow(1 - progress, 3);
+          const radius = eased * maxRadius;
+          const alpha  = Math.round((1 - progress) * 0.3 * 255).toString(16).padStart(2, "0");
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(0, 0, width, height, r);
+          ctx.clip();
+
+          ctx.fillStyle = `${t.rippleColor}${alpha}`;
+          ctx.beginPath();
+          ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          ctx.redraw();
         } else {
-            this.callback = null;
-            this.parameterId = parameterIdOrCallback;
+          ripple = null;
         }
+      }
 
-        this.pressed = false;
-        this.theme = {
-            activeColor: "#00d4ff",
-            inactiveColor: "#ff0000",
-            activeBorder: "#00a8cc",
-            inactiveBorder: "#3a3a5c",
-            labelColor: "#ffffff",
-            activeLabelColor: "#000000",
-            fontSize: 12,
-            label: "",
-            ...theme
-        };
-    }
+      // Border
+      ctx.strokeStyle = hovered ? t.borderHoverColor : t.borderColor;
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, width, height, r);
+      ctx.stroke();
 
-    onMouseDown(x, y) {
-        this.pressed = true;
-        if (this.callback) {
-            this.callback();
-            this.repaint();
-        } else {
-            const value = getParameter(this.parameterId);
-            if (isNaN(value)) return;
-            setParameter(this.parameterId, value >= 0.5 ? 0.0 : 1.0);
-            this.repaint();
-        }
-    }
+      // Label
+      ctx.fillStyle    = t.textColor;
+      ctx.font         = `${Math.floor(height * 0.45)}px sans-serif`;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, width / 2, height / 2);
 
-    onMouseUp(x, y) {
-        this.pressed = false;
-        this.repaint();
-    }
-
-    paint(ctx) {
-        const active = this.parameterId !== null
-            ? getParameter(this.parameterId) >= 0.5
-            : this.pressed;
-
-        if (this.parameterId !== null && isNaN(getParameter(this.parameterId))) return;
-
-        ctx.fillStyle = active ? this.theme.activeColor : this.theme.inactiveColor;
-        ctx.fillRect(0, 0, this.width, this.height);
-
-        ctx.strokeStyle = active ? this.theme.activeBorder : this.theme.inactiveBorder;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(0, 0, this.width, this.height);
-
-        if (this.theme.label) {
-            ctx.font = `${this.theme.fontSize}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = active ? this.theme.activeLabelColor : this.theme.labelColor;
-            ctx.fillText(this.theme.label, this.width / 2, this.height / 2 + 4);
-        }
-    }
+      ctx.restore();
+    },
+  });
 }

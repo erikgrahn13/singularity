@@ -1,7 +1,7 @@
 import { Component, getParameter } from "singularity";
-import { Knob } from "./knob.js"
-import { Button } from "./button.js";
-import { Slider } from "./slider.js"
+import { Knob }   from "singularity/knob.js";
+import { Button } from "singularity/button.js";
+import { Slider } from "singularity/slider.js";
 
 export default function App() {
   console.log("Hello From JavaScript");

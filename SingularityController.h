@@ -25,6 +25,7 @@ class SingularityController {
     std::unique_ptr<IRenderer> renderer_;
     std::unique_ptr<IJSEngine> jsEngine_;
     std::unique_ptr<IFileWatcher> fileWatcher_;
+    std::unique_ptr<IFileWatcher> widgetsWatcher_;
     std::atomic<bool> reloadPending_{false};
     IParameterProvider& parameterProvider_;
 };

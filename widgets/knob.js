@@ -1,95 +1,102 @@
-import { Widget } from "./widget.js";
-import { getParameter, setParameter } from "native:parameters";
+import { Component, getParameter, setParameter } from "singularity";
 
-export class Knob extends Widget {
-    constructor(x, y, size = 40, parameterId, theme = {}) {
-        super(x, y, size, size);
-        this.parameterId = parameterId;
-        // this.value = Math.max(0, Math.min(1, value));
-        this.dragging = false;
-        this.theme = {
-            bodyColor:  '#1e1e2e',
-            trackColor: '#3a3a5c',
-            valueColor: '#00d4ff',
-            dotColor:   '#ffffff',
-            trackWidth: size * 0.13,
-            ...theme
-        };
-    }
+export function Knob({ x, y, size = 40, parameterId, theme = {}, draw = null }) {
+  let lastY = null;
 
-    onMouseDown(x, y) {
-        this.dragging = true;
-        this.lastY = y;
-        this.repaint();
-    }
+  const t = {
+    bodyColor: "#000000",
+    trackColor: "#3a3a5c",
+    valueColor: "#8000ff",
+    dotColor: "#ffffff",
+    trackWidth: size * 0.13,
+    ...theme,
+  };
 
-    onMouseMove(x, y) {
-        if (!this.dragging) return;
-        const dy = y - (this.lastY ?? y);
-        this.lastY = y;
-        let value = getParameter(this.parameterId);
-        if (isNaN(value)) return; // Unknown parameter, do nothing
-        value = Math.max(0, Math.min(1, value - dy * 0.3 / this.height));
-        setParameter(this.parameterId, value);
-        this.repaint();
-    }
+  return Component({
+    x,
+    y,
+    width: size,
+    height: size,
 
-    onMouseUp(x, y) {
-        this.dragging = false;
-        this.lastY = undefined;
-        this.repaint();
-    }
+    onMouseDown: (e) => {
+      lastY = e.y;
+    },
 
-    paint(ctx) {
-        const size = this.width;
-        const radius = size / 2;
-        const cx = radius;
-        const cy = radius;
-        // const value = this.value;
-        const value = getParameter(this.parameterId);
-        if (isNaN(value)) return; // Unknown parameter, don't draw
+    onMouseUp: (e) => {
+      lastY = null;
+    },
 
-        // Arc goes from 135° to 405° (270° sweep)
-        const startAngle = 0.75 * Math.PI;
-        const totalSweep = 1.5 * Math.PI;
-        const valueAngle = startAngle + value * totalSweep;
-        const trackRadius = radius * 0.72;
+    onMouseDrag: (e) => {
+      if (lastY === null) {
+        lastY = e.y;
+        return;
+      }
 
-        ctx.save();
+      const dy = e.y - lastY;
+      lastY = e.y;
 
-        const { bodyColor, trackColor, valueColor, dotColor, trackWidth } = this.theme;
-        const tw = typeof trackWidth === 'number' ? trackWidth : radius * 0.13;
+      let value = getParameter(parameterId);
+      if (Number.isNaN(value)) return;
 
-        // Body
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.fillStyle = bodyColor;
-        ctx.fill();
+      value = Math.max(0, Math.min(1, value - (dy * 0.3) / size));
+      setParameter(parameterId, value);
+    },
 
-        // Track (background arc)
-        ctx.beginPath();
-        ctx.arc(cx, cy, trackRadius, startAngle, startAngle + totalSweep, false);
-        ctx.strokeStyle = trackColor;
-        ctx.lineWidth = tw;
-        ctx.lineCap = 'round';
-        ctx.stroke();
+    onMouseWheel: (e) => {
+      let value = getParameter(parameterId);
+      if (Number.isNaN(value)) return;
 
-        // Value arc
-        ctx.beginPath();
-        ctx.arc(cx, cy, trackRadius, startAngle, valueAngle, false);
-        ctx.strokeStyle = valueColor;
-        ctx.lineWidth = tw;
-        ctx.lineCap = 'round';
-        ctx.stroke();
+      value = Math.max(0, Math.min(1, value + e.deltaY / size));
+      setParameter(parameterId, value);
+    },
 
-        // Indicator dot
-        const dotX = cx + Math.cos(valueAngle) * trackRadius;
-        const dotY = cy + Math.sin(valueAngle) * trackRadius;
-        ctx.beginPath();
-        ctx.arc(dotX, dotY, radius * 0.07, 0, Math.PI * 2);
-        ctx.fillStyle = dotColor;
-        ctx.fill();
+    draw: (ctx) => {
+      const value = getParameter(parameterId);
+      if (Number.isNaN(value)) return;
 
-        ctx.restore();
-    }
+      if (draw) {
+        draw(ctx, { value, size, theme: t });
+        return;
+      }
+
+      const radius = size / 2;
+      const cx = radius;
+      const cy = radius;
+
+      const startAngle = 0.75 * Math.PI;
+      const totalSweep = 1.5 * Math.PI;
+      const valueAngle = startAngle + value * totalSweep;
+      const trackRadius = radius * 0.72;
+      const tw = t.trackWidth;
+
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = t.bodyColor;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, trackRadius, startAngle, startAngle + totalSweep, false);
+      ctx.strokeStyle = t.trackColor;
+      ctx.lineWidth = tw;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, trackRadius, startAngle, valueAngle, false);
+      ctx.strokeStyle = t.valueColor;
+      ctx.lineWidth = tw;
+      ctx.stroke();
+
+      const dotX = cx + Math.cos(valueAngle) * trackRadius;
+      const dotY = cy + Math.sin(valueAngle) * trackRadius;
+
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, radius * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = t.dotColor;
+      ctx.fill();
+
+      ctx.restore();
+    },
+  });
 }

@@ -110,14 +110,18 @@ function(singularity_create_plugin target)
         QSJC_SYMBOL=qjsc_${_ui_stem}
         QSJC_SYMBOL_SIZE=qjsc_${_ui_stem}_size
         PACKAGE_NAME="${pkg_name}"
+        SINGULARITY_WIDGETS_DIR="${SINGULARITY_ROOT_DIR}/widgets"
     )
 
-    # file(GLOB _widget_files "${SINGULARITY_ROOT_DIR}/widgets/*.js")
-
-    # set(_D_args "")
-    # foreach(_w ${_widget_files})
-    #     list(APPEND _D_args -D ${_w})
-    # endforeach()
+    # Create a "singularity/" symlink in the binary dir so qjsc can resolve
+    # "singularity/knob.js" imports relative to its working directory.
+    # The source tree stays clean; the runtime normalizer in QuickJSEngine2.cpp
+    # handles the same imports via the SINGULARITY_WIDGETS_DIR compile definition.
+    file(CREATE_LINK
+        "${SINGULARITY_ROOT_DIR}/widgets"
+        "${CMAKE_CURRENT_BINARY_DIR}/singularity"
+        SYMBOLIC
+    )
 
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.h
@@ -125,6 +129,7 @@ function(singularity_create_plugin target)
             -M singularity,js_init_module_singularity
             -o ${CMAKE_CURRENT_BINARY_DIR}/generated.h
             ${UI_MAIN_FILE}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS qjsc ${UI_MAIN_FILE}
         VERBATIM
     )

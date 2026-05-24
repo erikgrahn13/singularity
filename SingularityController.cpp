@@ -7,6 +7,7 @@ SingularityController::SingularityController(void *rootFrame, IParameterProvider
     renderer_ = IRenderer::createRenderer(rootFrame, resourcePath);
     jsEngine_ = IJSEngine::createJSEngine(parameterProvider_);
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
+    widgetsWatcher_ = IFileWatcher::createFileWatcher(SINGULARITY_WIDGETS_DIR);
 }
 
 void SingularityController::setLogger(IJSEngine::LogCallback cb)
@@ -54,6 +55,10 @@ void SingularityController::initialize()
 
     fileWatcher_->setCallback([this](const std::string& filePath) {
         std::cout << "File changed" << std::endl;
+        reloadPending_ = true;
+    });
+    widgetsWatcher_->setCallback([this](const std::string& filePath) {
+        std::cout << "Widget changed: " << filePath << std::endl;
         reloadPending_ = true;
     });
     jsEngine_->load(UI_MAIN, renderer_.get());
