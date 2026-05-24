@@ -14,8 +14,9 @@ export default function App() {
     draw(ctx) {
       ctx.fillStyle = "#ffffff";
       ctx.font = "24px sans-serif";
-      ctx.textAlign = "center"
+      ctx.textAlign = "center";
       ctx.fillText("ExampleEffect", width / 2, 40);
+      ctx.drawImage("./logo_transparent.png", 100, 0, 200, 200);
     },
     children: [
       Knob({ x: 0, y: 0, size: 80, parameterId: 13 }),

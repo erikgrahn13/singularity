@@ -9,7 +9,7 @@
 
 class VisageRenderer : public IRenderer {
 public:
-    explicit VisageRenderer(void* parentHandle);
+    explicit VisageRenderer(void* parentHandle, std::string_view resourcePath);
 
     // --- Component tree ---
     void* getRootComponent() override;
@@ -95,6 +95,12 @@ public:
     // --- HDR ---
     void setHdrMultiplier(void* canvas, float mult) override;
 
+    void drawImage(void* canvas, const std::string& name,
+               float dx, float dy, float dw, float dh) override;
+    void clearImageCache() override { imageCache_.clear(); }
+    void registerImage(const std::string& name, const uint8_t* data, int size) override
+        { embeddedImages_[name] = { data, size }; }
+
 private:
     visage::ApplicationWindow* rootFrame_{ nullptr };
 
@@ -130,6 +136,9 @@ private:
         float opacity;
     };
 
+    std::string resourcePath_;
+    std::map<std::string, std::vector<uint8_t>> imageCache_;
+    std::map<std::string, std::pair<const uint8_t*, int>> embeddedImages_;
     DrawState state_;
     std::vector<DrawState> stateStack_;
     std::vector<GradientData> gradients_;

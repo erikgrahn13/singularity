@@ -12,5 +12,8 @@ singularity_create_plugin(
     FORMATS APP VST3
     PLUGIN_CLASS ExampleEffect
     PLUGIN_CLASS_HEADER "ExampleEffect.h"
+    RESOURCES
+        resources/logo_transparent.png
+        resources/logo_transparent2.png
 )
 

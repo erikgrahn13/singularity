@@ -22,6 +22,10 @@ using PlatformAudio = ASIO<PLUGIN_CLASS>;
 
 #include <iostream>
 
+#ifdef NDEBUG
+#include "generated_images.h"
+#endif
+
 int main()
 {
   visage::ApplicationWindow app;
@@ -31,7 +35,7 @@ int main()
     audio->pushParameterChange(id, value);
   });
 
-  auto controller = std::make_unique<SingularityController>(&app, getParameterContainer());
+  auto controller = std::make_unique<SingularityController>(&app, getParameterContainer(), UI_RESOURCES_DIR);
 
 #if !defined NDEBUG
     visage::EventTimer timer;
@@ -45,6 +49,10 @@ int main()
   controller->setLogger([](const std::string& msg) {
     std::cout << msg << std::endl;
   });
+
+#ifdef NDEBUG
+  singularity_register_images(controller.get());
+#endif
 
   controller->initialize();
 

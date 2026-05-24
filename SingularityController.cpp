@@ -1,10 +1,10 @@
 #include "SingularityController.h"
 #include <iostream>
 
-SingularityController::SingularityController(void *rootFrame, IParameterProvider &parameterProvider)
+SingularityController::SingularityController(void *rootFrame, IParameterProvider &parameterProvider, std::string_view resourcePath)
 : parameterProvider_(parameterProvider)
 {
-    renderer_ = IRenderer::createRenderer(rootFrame);
+    renderer_ = IRenderer::createRenderer(rootFrame, resourcePath);
     jsEngine_ = IJSEngine::createJSEngine(parameterProvider_);
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
 }
@@ -68,5 +68,11 @@ void SingularityController::tick()
 void SingularityController::reload()
 {
     std::cout << "Reload called" << std::endl;
+    renderer_->clearImageCache();
     jsEngine_->load(UI_MAIN, renderer_.get());
+}
+
+void SingularityController::registerImage(const std::string& name, const uint8_t* data, int size)
+{
+    renderer_->registerImage(name, data, size);
 }

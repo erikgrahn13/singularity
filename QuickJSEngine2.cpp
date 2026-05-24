@@ -239,6 +239,7 @@ JS_FreeValue(ctx, postEffectProp);
             JS_SetPropertyStr(ctx, jsCtx, "resetTransform",     JS_NewCFunction(ctx, js_resetTransform,     "resetTransform",     0));
             JS_SetPropertyStr(ctx, jsCtx, "createLinearGradient", JS_NewCFunction(ctx, js_createLinearGradient, "createLinearGradient", 4));
             JS_SetPropertyStr(ctx, jsCtx, "createRadialGradient", JS_NewCFunction(ctx, js_createRadialGradient, "createRadialGradient", 6));
+            JS_SetPropertyStr(ctx, jsCtx, "drawImage", JS_NewCFunction(ctx, js_drawImage, "drawImage", 5));
 
             // Add ctx.time() for animation
             auto js_time = [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {

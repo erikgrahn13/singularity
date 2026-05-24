@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 
 static constexpr float kPi = 3.14159265358979323846f;
 
@@ -15,9 +16,9 @@ static visage::Font makeFont(float size) {
                         1.0f);
 }
 
-std::unique_ptr<IRenderer> IRenderer::createRenderer(void* parentHandle)
+std::unique_ptr<IRenderer> IRenderer::createRenderer(void* parentHandle, std::string_view resourcePath)
 {
-    return std::make_unique<VisageRenderer>(parentHandle);
+    return std::make_unique<VisageRenderer>(parentHandle, resourcePath);
 }
 
 static visage::Color parseColorString(const std::string& color)
@@ -61,7 +62,8 @@ static visage::Color withHdr(visage::Color c, float hdr) {
     return c;
 }
 
-VisageRenderer::VisageRenderer(void *parentHandle)
+VisageRenderer::VisageRenderer(void *parentHandle, std::string_view resourcePath)
+: resourcePath_(resourcePath)
 {
     rootFrame_ = static_cast<visage::ApplicationWindow*>(parentHandle);
     rootFrame_->setDpiScale(visage::defaultDpiScale());
@@ -720,4 +722,34 @@ void VisageRenderer::endLayer(void* canvas)
 void VisageRenderer::setHdrMultiplier(void* canvas, float mult)
 {
     state_.hdrMultiplier = std::max(0.0f, mult);
+}
+
+void VisageRenderer::drawImage(void* canvas, const std::string& name,
+                               float dx, float dy, float dw, float dh)
+{
+    auto embIt = embeddedImages_.find(name);
+    if (embIt != embeddedImages_.end()) {
+        auto* c = static_cast<visage::Canvas*>(canvas);
+        c->image(embIt->second.first, embIt->second.second,
+                 dx + state_.translateX, dy + state_.translateY, dw, dh);
+        return;
+    }
+
+    auto& buf = imageCache_[name];
+    if (buf.empty()) {
+        std::string filePath = resourcePath_ + "/" + name;
+        std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+        if (!file.is_open()) {
+            std::cerr << "[singularity] drawImage: could not open " << filePath << "\n";
+            imageCache_.erase(name);
+            return;
+        }
+        auto fileSize = file.tellg();
+        file.seekg(0);
+        buf.resize(static_cast<size_t>(fileSize));
+        file.read(reinterpret_cast<char*>(buf.data()), fileSize);
+    }
+    auto* c = static_cast<visage::Canvas*>(canvas);
+    c->image(buf.data(), static_cast<int>(buf.size()),
+             dx + state_.translateX, dy + state_.translateY, dw, dh);
 }

@@ -2,14 +2,24 @@
 #include "vst3controller.h"
 #include "base/source/fdebug.h"
 
+#include <dlfcn.h>
+#include <filesystem>
+
 namespace Steinberg {
 
 SingularityView::SingularityView(Vst::EditController* editController)
     : Vst::EditorView(editController)
 {
+    Dl_info info;
+    static int anchor;
+    dladdr(&anchor, &info);
+    std::filesystem::path soPath(info.dli_fname);
+    std::filesystem::path resourcePath = soPath.parent_path().parent_path() / "Resources";
+    fprintf(stderr, "resources: %s\n", resourcePath.c_str());
+
     auto& params = static_cast<IParameterProvider&>(*static_cast<VST3Controller*>(editController));
     app_        = std::make_unique<visage::ApplicationWindow>();
-    controller_ = std::make_unique<SingularityController>(app_.get(), params);
+    controller_ = std::make_unique<SingularityController>(app_.get(), params, resourcePath.string());
 
 #ifndef NDEBUG
     hotReloadtimer.startTimer(50);

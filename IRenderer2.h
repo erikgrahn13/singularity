@@ -1,11 +1,13 @@
 #pragma once
+#include <cstdint>
 #include <memory>
 #include <functional>
 #include <string>
+#include <string_view>
 
 class IRenderer {
 public:
-    static std::unique_ptr<IRenderer> createRenderer(void* parentHandle);
+    static std::unique_ptr<IRenderer> createRenderer(void* parentHandle, std::string_view resourcePath);
 
     struct PostEffectSpec {
         std::string type;
@@ -97,6 +99,11 @@ public:
     // --- Layers (Canvas 2D Level 2 spec) ---
     virtual void beginLayer(void* canvas, float opacity) {}
     virtual void endLayer(void* canvas) {}
+
+    virtual void drawImage(void* canvas, const std::string& name,
+                       float dx, float dy, float dw, float dh) {}
+    virtual void clearImageCache() {}
+    virtual void registerImage(const std::string& name, const uint8_t* data, int size) {}
 
     virtual ~IRenderer() = default;
 };

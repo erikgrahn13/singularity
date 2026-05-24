@@ -4,10 +4,11 @@
 #include "IFileWatcher.h"
 #include "IParameterProvider.h"
 #include <atomic>
+#include <string_view>
 
 class SingularityController {
     public:
-    SingularityController(void* rootFrame, IParameterProvider &parameterProvider);
+    SingularityController(void* rootFrame, IParameterProvider &parameterProvider, std::string_view resourcePath = "");
     void initialize();
     void tick(); // call from main thread each frame
     void setLogger(IJSEngine::LogCallback cb);
@@ -16,6 +17,7 @@ class SingularityController {
     {
         return renderer_->getRootComponent();
     }
+    void registerImage(const std::string& name, const uint8_t* data, int size);
 
     private:
     void reload();

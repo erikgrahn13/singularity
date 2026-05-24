@@ -480,3 +480,25 @@ static JSValue js_resetTransform(JSContext* ctx, JSValueConst this_val, int argc
     data->renderer->resetTransform(data->canvas);
     return JS_UNDEFINED;
 }
+
+static JSValue js_drawImage(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    if (argc < 5)
+        return JS_ThrowTypeError(ctx, "drawImage requires 5 arguments (name, dx, dy, dw, dh)");
+
+    const char* name = JS_ToCString(ctx, argv[0]);
+    if (!name)
+        return JS_ThrowTypeError(ctx, "drawImage: first argument must be a string");
+
+    double dx = 0, dy = 0, dw = 0, dh = 0;
+    JS_ToFloat64(ctx, &dx, argv[1]);
+    JS_ToFloat64(ctx, &dy, argv[2]);
+    JS_ToFloat64(ctx, &dw, argv[3]);
+    JS_ToFloat64(ctx, &dh, argv[4]);
+
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->drawImage(data->canvas, name, (float)dx, (float)dy, (float)dw, (float)dh);
+
+    JS_FreeCString(ctx, name);
+    return JS_UNDEFINED;
+}
