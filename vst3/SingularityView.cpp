@@ -1,21 +1,37 @@
 #include "SingularityView.h"
 #include "vst3controller.h"
 #include "base/source/fdebug.h"
-
-#include <dlfcn.h>
 #include <filesystem>
+
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <dlfcn.h>
+#endif
 
 namespace Steinberg {
 
 SingularityView::SingularityView(Vst::EditController* editController)
     : Vst::EditorView(editController)
 {
-    Dl_info info;
     static int anchor;
+
+#if defined(_WIN32)
+    HMODULE hModule = NULL;
+    GetModuleHandleExW(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        reinterpret_cast<LPCWSTR>(&anchor),
+        &hModule);
+    wchar_t modulePath[MAX_PATH];
+    GetModuleFileNameW(hModule, modulePath, MAX_PATH);
+    std::filesystem::path dllPath(modulePath);
+#else
+    Dl_info info;
     dladdr(&anchor, &info);
-    std::filesystem::path soPath(info.dli_fname);
-    std::filesystem::path resourcePath = soPath.parent_path().parent_path() / "Resources";
-    fprintf(stderr, "resources: %s\n", resourcePath.c_str());
+    std::filesystem::path dllPath(info.dli_fname);
+#endif
+
+    std::filesystem::path resourcePath = dllPath.parent_path().parent_path() / "Resources";
 
     auto& params = static_cast<IParameterProvider&>(*static_cast<VST3Controller*>(editController));
     app_        = std::make_unique<visage::ApplicationWindow>();
