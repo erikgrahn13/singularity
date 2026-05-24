@@ -1,4 +1,5 @@
 #include <memory>
+#include <filesystem>
 #include "VisageRenderer2.h"
 #include <visage_graphics/tests/lato_regular.h>
 #include <visage_graphics/post_effects.h>
@@ -727,7 +728,11 @@ void VisageRenderer::setHdrMultiplier(void* canvas, float mult)
 void VisageRenderer::drawImage(void* canvas, const std::string& name,
                                float dx, float dy, float dw, float dh)
 {
-    auto embIt = embeddedImages_.find(name);
+    // Normalise: embedded resources are keyed by filename only, so strip any
+    // leading "./" or directory prefix that the JS caller may have included.
+    const std::string key = std::filesystem::path(name).filename().string();
+
+    auto embIt = embeddedImages_.find(key);
     if (embIt != embeddedImages_.end()) {
         auto* c = static_cast<visage::Canvas*>(canvas);
         c->image(embIt->second.first, embIt->second.second,
@@ -735,13 +740,13 @@ void VisageRenderer::drawImage(void* canvas, const std::string& name,
         return;
     }
 
-    auto& buf = imageCache_[name];
+    auto& buf = imageCache_[key];
     if (buf.empty()) {
         std::string filePath = resourcePath_ + "/" + name;
         std::ifstream file(filePath, std::ios::binary | std::ios::ate);
         if (!file.is_open()) {
             std::cerr << "[singularity] drawImage: could not open " << filePath << "\n";
-            imageCache_.erase(name);
+            imageCache_.erase(key);
             return;
         }
         auto fileSize = file.tellg();
