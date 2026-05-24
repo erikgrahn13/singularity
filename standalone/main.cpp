@@ -23,7 +23,7 @@ using PlatformAudio = ASIO<PLUGIN_CLASS>;
 #include <iostream>
 
 #ifdef NDEBUG
-#include "generated_images.h"
+#include "generated_resources.h"
 #endif
 
 int main()
