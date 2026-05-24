@@ -22,9 +22,7 @@ using PlatformAudio = ASIO<PLUGIN_CLASS>;
 
 #include <iostream>
 
-#ifdef NDEBUG
 #include "generated_resources.h"
-#endif
 
 int main()
 {
@@ -50,10 +48,7 @@ int main()
     std::cout << msg << std::endl;
   });
 
-#ifdef NDEBUG
   singularity_register_images(controller.get());
-#endif
-
   controller->initialize();
 
   auto width  = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
