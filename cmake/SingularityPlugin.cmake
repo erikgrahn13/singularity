@@ -115,7 +115,7 @@ function(singularity_create_plugin target)
     foreach(type IN LISTS FORMATS)
         # Standalone plugin
         if(type STREQUAL "APP")
-            add_executable(${target}_APP 
+            add_executable(${target}_APP MACOSX_BUNDLE
                 ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
                 ${SINGULARITY_ROOT_DIR}/standalone/ISingularityAudio.cpp
             )
@@ -146,7 +146,13 @@ function(singularity_create_plugin target)
                 PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
                 PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
             )
-            set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
+            set_target_properties(${target}_APP PROPERTIES
+                OUTPUT_NAME ${target}
+                MACOSX_BUNDLE_BUNDLE_NAME ${target}
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.singularity.${target}"
+                MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
+                MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+            )
             target_link_libraries(${target}_APP PRIVATE ${target}-shared)
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name

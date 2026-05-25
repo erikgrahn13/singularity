@@ -37,6 +37,7 @@ endif()
 include(CHOC)
 include(QUICKJS)
 include(VST3)
+include(CLAP)
 
 set(SINGULARITY_SKIA_INCLUDE_DIR "${skia_SOURCE_DIR}/include" CACHE INTERNAL "")
 set(SINGULARITY_QUICKJS_DIR "${quickjs_SOURCE_DIR}" CACHE INTERNAL "")
