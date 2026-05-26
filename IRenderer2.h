@@ -69,6 +69,7 @@ public:
     virtual void setFillStyle(void* canvas, const std::string& color) = 0;
     virtual void setStrokeStyle(void* canvas, const std::string& color) = 0;
     virtual void setLineWidth(void* canvas, float width) = 0;
+    virtual void setLineCap(void* canvas, const std::string& cap) = 0;
     virtual void setFont(void* canvas, const std::string& font) = 0;
     virtual void setGlobalAlpha(void* canvas, float alpha) = 0;
     virtual void setTextAlign(void* canvas, const std::string& align) = 0;

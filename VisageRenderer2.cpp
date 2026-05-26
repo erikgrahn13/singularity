@@ -209,6 +209,11 @@ void VisageRenderer::setLineWidth(void* canvas, float width)
     state_.lineWidth = width;
 }
 
+void VisageRenderer::setLineCap(void* canvas, const std::string& cap)
+{
+    state_.lineCap = cap;
+}
+
 void VisageRenderer::setFont(void* canvas, const std::string& font)
 {
     auto pxPos = font.find("px");

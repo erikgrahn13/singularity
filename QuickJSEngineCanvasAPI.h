@@ -370,6 +370,17 @@ static JSValue js_lineWidth(JSContext* ctx, JSValueConst this_val, int argc, JSV
     return JS_UNDEFINED;
 }
 
+static JSValue js_lineCap(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    const char* cap = JS_ToCString(ctx, argv[0]);
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    if (cap) {
+        data->renderer->setLineCap(data->canvas, cap);
+        JS_FreeCString(ctx, cap);
+    }
+    return JS_UNDEFINED;
+}
+
 static JSValue js_font(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
 {
     const char* font = JS_ToCString(ctx, argv[0]);

@@ -66,6 +66,7 @@ public:
     void setFillStyle(void* canvas, const std::string& color) override;
     void setStrokeStyle(void* canvas, const std::string& color) override;
     void setLineWidth(void* canvas, float width) override;
+    void setLineCap(void* canvas, const std::string& cap) override;
     void setFont(void* canvas, const std::string& font) override;
     void setGlobalAlpha(void* canvas, float alpha) override;
     void setTextAlign(void* canvas, const std::string& align) override;
@@ -118,6 +119,7 @@ private:
         visage::Color fillColor{ 0xff000000u };
         visage::Color strokeColor{ 0xff000000u };
         float lineWidth{ 1.0f };
+        std::string lineCap{ "butt" };
         float globalAlpha{ 1.0f };
         float hdrMultiplier{ 1.0f };
         float fontSize{ 16.0f };
