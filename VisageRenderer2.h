@@ -141,6 +141,8 @@ private:
     std::string resourcePath_;
     std::map<std::string, std::vector<uint8_t>> imageCache_;
     std::map<std::string, std::pair<const uint8_t*, int>> embeddedImages_;
+    std::map<std::string, std::vector<uint8_t>> loadedFontData_;
+    std::string fontFamily_;
     DrawState state_;
     std::vector<DrawState> stateStack_;
     std::vector<GradientData> gradients_;

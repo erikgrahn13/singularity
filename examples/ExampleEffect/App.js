@@ -13,7 +13,7 @@ export default function App() {
     backgroundColor: "#000000",
     draw(ctx) {
       ctx.fillStyle = "#ffffff";
-      ctx.font = "24px sans-serif";
+      ctx.font = "48px mb-forever-raw.regular.ttf";
       ctx.textAlign = "center";
       ctx.fillText("ExampleEffect", width / 2, 40);
       ctx.drawImage("./logo_transparent.png", 100, 0, 200, 200);

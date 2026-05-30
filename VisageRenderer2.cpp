@@ -224,6 +224,20 @@ void VisageRenderer::setFont(void* canvas, const std::string& font)
             --sizeStart;
         state_.fontSize = std::stof(font.substr(sizeStart, pxPos - sizeStart));
     }
+    // Extract optional family name after the size: e.g. "24px MyFont.ttf"
+    fontFamily_.clear();
+    size_t famStart = pxPos == std::string::npos ? 0 : pxPos + 2;
+    if (famStart < font.size()) {
+        // trim spaces
+        while (famStart < font.size() && font[famStart] == ' ') ++famStart;
+        if (famStart < font.size()) {
+            std::string fam = font.substr(famStart);
+            // strip quotes if present
+            if ((fam.front() == '"' && fam.back() == '"') || (fam.front() == '\'' && fam.back() == '\''))
+                fam = fam.substr(1, fam.size() - 2);
+            fontFamily_ = fam;
+        }
+    }
 }
 
 void VisageRenderer::setGlobalAlpha(void* canvas, float alpha)
@@ -561,6 +575,45 @@ void VisageRenderer::fillText(void* canvas, const std::string& text, float x, fl
     else                                       drawY -= lineH * 0.8f; // alphabetic
 
     visage::Font vFont = makeFont(state_.fontSize);
+    // If a font family matching a filename was specified, try to load it from Resources/Fonts or Resources
+    if (!fontFamily_.empty()) {
+        auto it = loadedFontData_.find(fontFamily_);
+        if (it == loadedFontData_.end()) {
+            // attempt to load font file from several candidate locations
+            std::vector<std::filesystem::path> candidates{
+                std::filesystem::path(resourcePath_) / "Fonts" / fontFamily_,
+                std::filesystem::path(resourcePath_) / "fonts" / fontFamily_,
+                std::filesystem::path(resourcePath_) / fontFamily_
+            };
+            // If family has no extension, try common ones
+            bool hasExt = std::filesystem::path(fontFamily_).has_extension();
+            if (!hasExt) {
+                std::vector<std::string> exts = {".ttf", ".otf"};
+                for (auto &e : exts) {
+                    candidates.push_back(std::filesystem::path(resourcePath_) / "Fonts" / (fontFamily_ + e));
+                    candidates.push_back(std::filesystem::path(resourcePath_) / (fontFamily_ + e));
+                }
+            }
+
+            for (auto &p : candidates) {
+                std::ifstream f(p, std::ios::binary | std::ios::ate);
+                if (f.is_open()) {
+                    auto size = static_cast<size_t>(f.tellg());
+                    f.seekg(0);
+                    std::vector<uint8_t> data(size);
+                    f.read(reinterpret_cast<char*>(data.data()), size);
+                    loadedFontData_.emplace(fontFamily_, std::move(data));
+                    break;
+                }
+            }
+            it = loadedFontData_.find(fontFamily_);
+        }
+        if (it != loadedFontData_.end()) {
+            // create visage::Font from the loaded bytes
+            const auto &data = it->second;
+            vFont = visage::Font(state_.fontSize, data.data(), static_cast<int>(data.size()), 1.0f);
+        }
+    }
 
     // Apply gradient if present
     if (state_.fillGradientId >= 0 && state_.fillGradientId < static_cast<int>(gradients_.size())) {
@@ -747,13 +800,31 @@ void VisageRenderer::drawImage(void* canvas, const std::string& name,
 
     auto& buf = imageCache_[key];
     if (buf.empty()) {
-        std::string filePath = resourcePath_ + "/" + name;
-        std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+        // Try several candidate locations so resources can live in subfolders (Images/ Fonts/)
+        std::vector<std::filesystem::path> candidates{
+            std::filesystem::path(resourcePath_) / name,
+            std::filesystem::path(resourcePath_) / "Images" / name,
+            std::filesystem::path(resourcePath_) / "Fonts" / name,
+        };
+
+        std::ifstream file;
+        std::filesystem::path foundPath;
+        for (auto &p : candidates) {
+            std::ifstream f(p, std::ios::binary | std::ios::ate);
+            if (f.is_open()) {
+                // move the opened stream into `file`
+                file.swap(f);
+                foundPath = p;
+                break;
+            }
+        }
+
         if (!file.is_open()) {
-            std::cerr << "[singularity] drawImage: could not open " << filePath << "\n";
+            std::cerr << "[singularity] drawImage: could not open any candidate for " << name << "\n";
             imageCache_.erase(key);
             return;
         }
+
         auto fileSize = file.tellg();
         file.seekg(0);
         buf.resize(static_cast<size_t>(fileSize));

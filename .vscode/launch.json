@@ -32,8 +32,8 @@
             "name": "EditorHost Linux ExampleEffect",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost",
-            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExampleEffect.vst3"],
+            "program": "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/editorhost",
+            "args": ["${command:cmake.buildDirectory}/VST3/${command:cmake.buildType}/ExampleEffect.vst3"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/examples/ExampleEffect",
             "preLaunchTask": "CMake: build",
@@ -108,11 +108,11 @@
             "MIMode": "lldb"
         },
         {
-            "name": "ExamplePlugin APP Linux",
+            "name": "ExampleEffect APP Linux",
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "cwd": "${workspaceFolder}/Example",
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
             "environment": [],
             "args": [],
             "MIMode": "gdb"
