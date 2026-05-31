@@ -246,6 +246,7 @@ function(singularity_create_plugin target)
                 endforeach()
 
                 add_embedded_resources(${target}ResourcesAPP "generated_resources.h" "singularity::generated" ${_abs_data_resources})
+                target_compile_features(${target}ResourcesAPP PRIVATE cxx_std_17)
                 target_link_libraries(${target}
                     PUBLIC
                     ${target}ResourcesAPP
@@ -368,6 +369,7 @@ function(singularity_create_plugin target)
         endforeach()
 
         add_embedded_resources(${target}Resources "${target}_generated.h" "singularity::generated" ${_abs_data_resources})
+        target_compile_features(${target}Resources PRIVATE cxx_std_17)
         target_link_libraries(${target}
             PUBLIC
             ${target}Resources
