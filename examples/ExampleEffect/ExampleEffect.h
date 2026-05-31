@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../SingularityPlugin.h"
+#include "embedded/ExampleEffect_generated.h"
 
 class ExampleEffect {
 public:

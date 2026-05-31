@@ -233,6 +233,24 @@ function(singularity_create_plugin target)
             )
             set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
             target_link_libraries(${target}_APP PRIVATE ${target})
+
+            # Embedding the javascript files
+            if(RESOURCES)
+                set(_abs_data_resources)
+                foreach(_dres IN LISTS RESOURCES)
+                    if(NOT IS_ABSOLUTE "${_dres}")
+                        list(APPEND _abs_data_resources "${CMAKE_CURRENT_SOURCE_DIR}/${_dres}")
+                    else()
+                        list(APPEND _abs_data_resources "${_dres}")
+                    endif()
+                endforeach()
+
+                add_embedded_resources(${target}ResourcesAPP "generated_resources.h" "singularity::generated" ${_abs_data_resources})
+                target_link_libraries(${target}
+                    PUBLIC
+                    ${target}ResourcesAPP
+                )
+            endif()
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name
             set(_uid_seed "${target}")
@@ -336,5 +354,24 @@ function(singularity_create_plugin target)
                 )
             endif()
         endif()
-    endforeach()    
+    endforeach()
+    # Ensure DATA_RESOURCES entries are absolute paths so the embedder
+    # can read them from the build directory regardless of working dir.
+    if(DATA_RESOURCES)
+        set(_abs_data_resources)
+        foreach(_dres IN LISTS DATA_RESOURCES)
+            if(NOT IS_ABSOLUTE "${_dres}")
+                list(APPEND _abs_data_resources "${CMAKE_CURRENT_SOURCE_DIR}/${_dres}")
+            else()
+                list(APPEND _abs_data_resources "${_dres}")
+            endif()
+        endforeach()
+
+        add_embedded_resources(${target}Resources "${target}_generated.h" "singularity::generated" ${_abs_data_resources})
+        target_link_libraries(${target}
+            PUBLIC
+            ${target}Resources
+        )
+    endif()
+
 endfunction()
