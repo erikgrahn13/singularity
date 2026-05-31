@@ -21,13 +21,13 @@ using PlatformAudio = ASIO<PLUGIN_CLASS>;
 #endif
 
 #include <iostream>
+#if __has_include("embedded/generated_resources.h")
 #include "embedded/generated_resources.h"
+namespace singularity { namespace generated { ::visage::EmbeddedFile fileByName(const std::string& filename); } }
+#endif
+
 #include <filesystem>
 #include <algorithm>
-
-// Some generated lookup implementations use `fileByName` in the generated cpp,
-// so forward-declare it here to be safe.
-namespace singularity { namespace generated { ::visage::EmbeddedFile fileByName(const std::string& filename); } }
 
 
 int main()
@@ -55,6 +55,7 @@ int main()
   });
 
   // Explicitly register embedded resources for standalone builds.
+#if __has_include("embedded/generated_resources.h")
   {
     namespace fs = std::filesystem;
     std::string resdir = UI_RESOURCES_DIR;
@@ -75,6 +76,7 @@ int main()
       }
     }
   }
+#endif
 
   controller->initialize();
 
