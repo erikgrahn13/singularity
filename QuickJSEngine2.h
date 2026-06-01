@@ -9,6 +9,7 @@ class QuickJSEngine : public IJSEngine {
     public:
     QuickJSEngine(IParameterProvider &parameterStore);
     void load(const std::string& entryFile, IRenderer* renderer) override;
+    void draw() override;
 
     void installConsole();
     void log(const std::string& msg);
@@ -40,6 +41,7 @@ class QuickJSEngine : public IJSEngine {
 
     JSValue appFn_ = JS_UNDEFINED;
     std::vector<JSValue> drawCallbacks_;
+    std::string backgroundColor_;
 
     private:
     void dispatchEvent(const std::string& type, float x, float y);

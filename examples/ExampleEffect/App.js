@@ -10,19 +10,20 @@ export default function App() {
   return Component({
     width,
     height,
-    backgroundColor: "#000000",
+    backgroundColor: "#f70000",
     draw(ctx) {
       ctx.fillStyle = "#ffffff";
-      ctx.font = "48px mb-forever-raw.regular.ttf";
-      ctx.textAlign = "center";
-      ctx.fillText("ExampleEffect", width / 2, 40);
-      ctx.drawImage("./logo_transparent.png", 100, 0, 200, 200);
+      ctx.fillRect(20, 10, 150, 100);
+      // ctx.font = "48px mb-forever-raw.regular.ttf";
+      // ctx.textAlign = "center";
+      // ctx.fillText("ExampleEffect hej", width / 2, 40);
+      // ctx.drawImage("./logo_transparent.png", 100, 0, 200, 200);
     },
-    children: [
-      Knob({ x: 0, y: 0, size: 80, parameterId: 13 }),
-      Knob({ x: 0, y: 100, size: 80, parameterId: 13 }),
-      Slider({x: 100, y: 20, parameterId: 13}),
-      Button({x: 20, y: 200})
-    ],
+    // children: [
+    //   Knob({ x: 0, y: 0, size: 80, parameterId: 13 }),
+    //   Knob({ x: 0, y: 100, size: 80, parameterId: 13 }),
+    //   Slider({x: 100, y: 20, parameterId: 13}),
+    //   Button({x: 20, y: 200})
+    // ],
   });
 }

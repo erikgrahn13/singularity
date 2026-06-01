@@ -3,20 +3,24 @@
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
 #include "IParameterProvider.h"
+#include "platform/IWindow.h"
 #include <atomic>
 #include <string_view>
 
 class SingularityController {
     public:
-    SingularityController(void* rootFrame, IParameterProvider &parameterProvider, std::string_view resourcePath = "");
+    SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath = "");
     void initialize();
     void tick(); // call from main thread each frame
     void setLogger(IJSEngine::LogCallback cb);
-
-    void* getRootFrame()
-    {
-        return renderer_->getRootComponent();
+    int width() { return renderer_->width(); };
+    int height() { return renderer_->height(); };
+    void setOnResize(std::function<void(int, int)> cb) {
+        renderer_->setOnResize(std::move(cb));
     }
+
+
+    void attachToWindow(IWindow& window) { renderer_->attachToWindow(window); }
     void registerImage(const std::string& name, const uint8_t* data, int size);
 
     private:

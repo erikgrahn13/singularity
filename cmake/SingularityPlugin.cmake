@@ -58,18 +58,28 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
+        # ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
+        ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
+        ${SINGULARITY_ROOT_DIR}/platform/linux/SkiaRenderer_linux.cpp
+        ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp
+        ${SINGULARITY_ROOT_DIR}/platform/linux/VulkanContext.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
     )
+
+    find_package(X11 REQUIRED)
+    find_package(Vulkan REQUIRED)
 
     target_link_libraries(${target} PUBLIC 
         qjs-libc
         choc::choc
-        visage
+        X11::X11
+        Vulkan::Vulkan
+        ${skia_SOURCE_DIR}/linux-gpu/lib/Release/x64/libskia.a
     )
 
     target_include_directories(${target} PRIVATE
         ${SINGULARITY_QUICKJS_DIR}
+        ${skia_SOURCE_DIR}/include
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)
@@ -201,7 +211,7 @@ function(singularity_create_plugin target)
         # Standalone plugin
         if(type STREQUAL "APP")
             add_executable(${target}_APP 
-                ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
+                ${SINGULARITY_ROOT_DIR}/standalone/main2.cpp
                 ${SINGULARITY_ROOT_DIR}/standalone/ISingularityAudio.cpp
             )
             if(WIN32)
@@ -245,12 +255,12 @@ function(singularity_create_plugin target)
                     endif()
                 endforeach()
 
-                add_embedded_resources(${target}ResourcesAPP "generated_resources.h" "singularity::generated" ${_abs_data_resources})
-                target_compile_features(${target}ResourcesAPP PRIVATE cxx_std_17)
-                target_link_libraries(${target}
-                    PUBLIC
-                    ${target}ResourcesAPP
-                )
+                # add_embedded_resources(${target}ResourcesAPP "generated_resources.h" "singularity::generated" ${_abs_data_resources})
+                # target_compile_features(${target}ResourcesAPP PRIVATE cxx_std_17)
+                # target_link_libraries(${target}
+                #     PUBLIC
+                #     ${target}ResourcesAPP
+                # )
             endif()
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name
@@ -368,12 +378,12 @@ function(singularity_create_plugin target)
             endif()
         endforeach()
 
-        add_embedded_resources(${target}Resources "${target}_generated.h" "singularity::generated" ${_abs_data_resources})
-        target_compile_features(${target}Resources PRIVATE cxx_std_17)
-        target_link_libraries(${target}
-            PUBLIC
-            ${target}Resources
-        )
+        # add_embedded_resources(${target}Resources "${target}_generated.h" "singularity::generated" ${_abs_data_resources})
+        # target_compile_features(${target}Resources PRIVATE cxx_std_17)
+        # target_link_libraries(${target}
+        #     PUBLIC
+        #     ${target}Resources
+        # )
     endif()
 
 endfunction()

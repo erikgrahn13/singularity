@@ -13,6 +13,7 @@ class IJSEngine {
     virtual ~IJSEngine() = default;
     static std::unique_ptr<IJSEngine> createJSEngine(IParameterProvider &parameterStore);
     virtual void load(const std::string& entryFile, IRenderer* renderer) = 0;
+    virtual void draw() = 0;
     virtual void setLogger(LogCallback cb) = 0;
     
     // virtual void hotReload() = 0;
