@@ -60,9 +60,9 @@ function(singularity_create_plugin target)
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
         # ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
         ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
-        ${SINGULARITY_ROOT_DIR}/platform/linux/SkiaRenderer_linux.cpp
+        # ${SINGULARITY_ROOT_DIR}/platform/linux/SkiaRenderer_linux.cpp
         ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp
-        ${SINGULARITY_ROOT_DIR}/platform/linux/VulkanContext.cpp
+        # ${SINGULARITY_ROOT_DIR}/platform/linux/VulkanContext.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
     )
 
@@ -75,6 +75,8 @@ function(singularity_create_plugin target)
         X11::X11
         Vulkan::Vulkan
         ${skia_SOURCE_DIR}/linux-gpu/lib/Release/x64/libskia.a
+        fontconfig
+        freetype
     )
 
     target_include_directories(${target} PRIVATE
