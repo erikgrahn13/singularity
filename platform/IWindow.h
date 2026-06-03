@@ -13,8 +13,8 @@ public:
     virtual int width()  const = 0;
     virtual int height() const = 0;
     virtual void resize(int w, int h) = 0;
-    virtual void setOnMouseDown(std::function<void(int x, int y, unsigned int button)> cb) = 0;
-    virtual void setOnMouseUp(std::function<void(int x, int y, unsigned int button)> cb)   = 0;
+    virtual void setOnMouseDown(std::function<void(int x, int y)> cb) = 0;
+    virtual void setOnMouseUp(std::function<void(int x, int y)> cb)   = 0;
     virtual void setOnMouseMove(std::function<void(int x, int y)> cb) = 0;
     virtual void setOnFrame(std::function<void()> cb) = 0;
     virtual void setOnClose(std::function<void()> cb) {}

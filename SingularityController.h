@@ -20,7 +20,18 @@ class SingularityController {
     }
 
 
-    void attachToWindow(IWindow& window) { renderer_->attachToWindow(window); }
+    void attachToWindow(IWindow& window) {
+        renderer_->attachToWindow(window);
+        window.setOnMouseDown([this](int x, int y) {
+            jsEngine_->onMouseDown((float)x, (float)y);
+        });
+        window.setOnMouseUp([this](int x, int y) {
+            jsEngine_->onMouseUp((float)x, (float)y);
+        });
+        window.setOnMouseMove([this](int x, int y) {
+            jsEngine_->onMouseMove((float)x, (float)y);
+        });
+    }
     void registerImage(const std::string& name, const uint8_t* data, int size);
 
     private:

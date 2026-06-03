@@ -18,7 +18,7 @@ X11Window::X11Window(int width, int height) : width_(width), height_(height)
 
         window_ = XCreateSimpleWindow(display_, DefaultRootWindow(display_), 0, 0, width, height, 0, 0, 0);
 
-        XSelectInput(display_, window_, ButtonPressMask | ButtonReleaseMask | StructureNotifyMask);
+        XSelectInput(display_, window_, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | StructureNotifyMask);
 
         XClearWindow(display_, window_);
         XMapRaised(display_, window_);
@@ -36,8 +36,7 @@ void X11Window::run()
     XEvent event;
     while (true)
     {
-        if (onFrame_) onFrame_();
-
+        // Drain all pending X events first
         while (XPending(display_))
         {
             XNextEvent(display_, &event);
@@ -45,13 +44,21 @@ void X11Window::run()
             switch (event.type)
             {
             case ButtonPress:
-                std::cout << "Mouse clicked" << std::endl;
+                if (onMouseDown_) onMouseDown_(event.xbutton.x, event.xbutton.y);
                 break;
-
+            case ButtonRelease:
+                if (onMouseUp_) onMouseUp_(event.xbutton.x, event.xbutton.y);
+                break;
+            case MotionNotify:
+                if (onMouseMove_) onMouseMove_(event.xmotion.x, event.xmotion.y);
+                break;
             default:
                 break;
             }
         }
+
+        // Render frame — vkQueuePresentKHR with FIFO present mode acts as vsync
+        if (onFrame_) onFrame_();
     }
 }
 
