@@ -58,26 +58,35 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        # ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
-        ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
-        # ${SINGULARITY_ROOT_DIR}/platform/linux/SkiaRenderer_linux.cpp
-        ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp
-        # ${SINGULARITY_ROOT_DIR}/platform/linux/VulkanContext.cpp
+        ${SINGULARITY_ROOT_DIR}/SkiaRendererDraw.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
     )
 
-    find_package(X11 REQUIRED)
-    find_package(Vulkan REQUIRED)
+    # Platform-specific GPU backend
+    if(APPLE)
+        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/macos/SkiaMetal.mm)
+    else()
+        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/vulkan/SkiaVulkan.cpp)
+    endif()
+
+    # find_package(X11 REQUIRED)
+    if(NOT APPLE)
+        find_package(Vulkan REQUIRED)
+    endif()
 
     target_link_libraries(${target} PUBLIC 
         qjs-libc
         choc::choc
-        X11::X11
-        Vulkan::Vulkan
-        ${skia_SOURCE_DIR}/linux-gpu/lib/Release/x64/libskia.a
+        ${SKIA_LIB}
         fontconfig
         freetype
     )
+
+    if(NOT APPLE)
+        target_link_libraries(${target} PUBLIC Vulkan::Vulkan)
+    else()
+        target_link_directories(${target} PUBLIC /opt/homebrew/lib)
+    endif()
 
     target_include_directories(${target} PRIVATE
         ${SINGULARITY_QUICKJS_DIR}
@@ -86,16 +95,24 @@ function(singularity_create_plugin target)
 
     target_compile_features(${target} PUBLIC cxx_std_23)
 
-    if(UNIX AND NOT APPLE)
-        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    endif()
-
+    
     # On Windows the MSVC linker emits an import lib (lib/<name>.lib) for both
     # the APP executable and the VST3 DLL.  That collides with the static lib of
     # the same name.  Give the static lib a distinct archive filename so the
     # import libs can use the bare <name>.lib without conflict.
     if(WIN32)
         set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_NAME "${target}_shared")
+    elseif(APPLE)
+        target_sources(${target} PRIVATE
+            ${SINGULARITY_ROOT_DIR}/platform/macos/AppKitWindow.mm
+        )
+        target_link_libraries(${target} PUBLIC "-framework AppKit")
+    elseif(UNIX AND NOT APPLE)
+        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp)
+        target_link_libraries(${target} PUBLIC
+            X11::X11
+        )
     endif()
 
 
@@ -226,6 +243,7 @@ function(singularity_create_plugin target)
                     "-framework CoreAudio"
                     "-framework AudioToolbox"
                 )
+                set_target_properties(${target}_APP PROPERTIES MACOSX_BUNDLE TRUE)
             elseif(UNIX AND NOT APPLE)
                 find_package(PkgConfig REQUIRED)
                 pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)

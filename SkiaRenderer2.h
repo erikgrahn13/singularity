@@ -4,8 +4,12 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#if !defined(__APPLE__)
 #include <vulkan/vulkan.h>
 #include "include/gpu/vk/VulkanExtensions.h"
+#endif
+
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/Recorder.h"
 #include "include/core/SkColor.h"
@@ -66,7 +70,8 @@ public:
     void  resetTransform(void*) override;
 
 private:
-    // --- Vulkan ---
+#if !defined(__APPLE__)
+    // --- Vulkan (Linux + Windows) ---
     VkInstance       instance_            = VK_NULL_HANDLE;
     VkPhysicalDevice physDev_             = VK_NULL_HANDLE;
     VkDevice         device_              = VK_NULL_HANDLE;
@@ -77,20 +82,26 @@ private:
     VkFormat         swapFormat_          = VK_FORMAT_UNDEFINED;
     VkExtent2D       swapExtent_          = {};
 
-    // --- Skia Graphite ---
     skgpu::VulkanExtensions                    extensions_;
     VkPhysicalDeviceFeatures2                  features2_{};
+#endif
+
+    // --- Skia Graphite ---
     std::unique_ptr<skgpu::graphite::Context>  ctx_;
     std::unique_ptr<skgpu::graphite::Recorder> rec_;
 
     struct Frame {
+#if !defined(__APPLE__)
         VkImage          image  = VK_NULL_HANDLE;
-        VkSemaphore      sem    = VK_NULL_HANDLE; // signalled when rendering is done
+        VkSemaphore      sem    = VK_NULL_HANDLE;
+#endif
         sk_sp<SkSurface> surface;
     };
     std::vector<Frame> frames_;
     uint32_t           frameIdx_   = 0;
+#if !defined(__APPLE__)
     VkSemaphore        acquireSem_ = VK_NULL_HANDLE;
+#endif
 
     // --- Canvas 2D state ---
     struct State {
