@@ -34,24 +34,7 @@ SingularityView::SingularityView(Vst::EditController* editController)
     std::filesystem::path resourcePath = dllPath.parent_path().parent_path() / "Resources";
 
     auto& params = static_cast<IParameterProvider&>(*static_cast<VST3Controller*>(editController));
-    app_        = std::make_unique<visage::ApplicationWindow>();
-    controller_ = std::make_unique<SingularityController>(app_.get(), params, resourcePath.string());
-
-#ifndef NDEBUG
-    hotReloadtimer.startTimer(50);
-    hotReloadtimer.onTimerCallback().add([&]{
-        controller_->tick();
-        if (plugFrame) {
-            auto newWidth  = static_cast<int32>(app_->width());
-            auto newHeight = static_cast<int32>(app_->height());
-            if (newWidth != rect.right - rect.left || newHeight != rect.bottom - rect.top) {
-                ViewRect newRect{0, 0, newWidth, newHeight};
-                setRect(newRect);
-                plugFrame->resizeView(this, &newRect);
-            }
-        }
-    });
-#endif
+    controller_ = std::make_unique<SingularityController>(params, resourcePath.string());
 
     controller_->setLogger([](const std::string& msg) {
         SMTG_DBPRT1("%s\n", msg.c_str());
@@ -60,17 +43,13 @@ SingularityView::SingularityView(Vst::EditController* editController)
     });
 
     controller_->initialize();
-
-    auto* win = static_cast<visage::ApplicationWindow*>(controller_->getRootFrame());
-    setRect({0, 0, static_cast<int32>(win->width()), static_cast<int32>(win->height())});
+    setRect({0, 0, static_cast<int32>(controller_->width()), static_cast<int32>(controller_->height())});
 }
 
 SingularityView::~SingularityView()
 {
-    hotReloadtimer.stopTimer();
-    if (app_) app_->hide();
     controller_.reset();
-    app_.reset();
+    window_.reset();
 }
 
 tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
@@ -87,15 +66,19 @@ tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 
 void SingularityView::attachedToParent()
 {
-    app_->show(visage::Dimension::logicalPixels(rect.right - rect.left),
-               visage::Dimension::logicalPixels(rect.bottom - rect.top),
-               systemWindow);
+    auto width = controller_->width();
+    auto height = controller_->height();
+    window_ = IWindow::createWindow(width, height, systemWindow);
+    controller_->attachToWindow(*window_);
+
+
 
 #if defined(__linux__)
-    if (plugFrame && app_->window()) {
+    if (plugFrame && window_) {
         Linux::IRunLoop* runLoop = nullptr;
         if (plugFrame->queryInterface(Linux::IRunLoop::iid, (void**)&runLoop) == kResultOk && runLoop) {
-            runLoop->registerEventHandler(this, app_->window()->posixFd());
+            runLoop->registerEventHandler(this, window_->fd());
+            runLoop->registerTimer(this, 1000 / window_->refreshRate());
             runLoop->release();
         }
     }
@@ -107,9 +90,10 @@ void SingularityView::attachedToParent()
 void SingularityView::removedFromParent()
 {
 #if defined(__linux__)
-    if (plugFrame && app_->window()) {
+    if (plugFrame && window_) {
         Linux::IRunLoop* runLoop = nullptr;
         if (plugFrame->queryInterface(Linux::IRunLoop::iid, (void**)&runLoop) == kResultOk && runLoop) {
+            runLoop->unregisterTimer(this);
             runLoop->unregisterEventHandler(this);
             runLoop->release();
         }
@@ -122,8 +106,10 @@ void SingularityView::removedFromParent()
 tresult PLUGIN_API SingularityView::onSize(ViewRect* newSize)
 {
     tresult res = CPluginView::onSize(newSize);
-    if (res == kResultTrue && app_)
-        app_->setWindowDimensions(rect.right - rect.left, rect.bottom - rect.top);
+    if (res == kResultTrue && window_)
+    {
+        window_->resize(rect.right - rect.left, rect.bottom - rect.top);
+    }
     return res;
 }
 

@@ -6,8 +6,12 @@ SingularityController::SingularityController(IParameterProvider &parameterProvid
 {
     renderer_ = IRenderer::createRenderer(resourcePath);
     jsEngine_ = IJSEngine::createJSEngine(parameterProvider_);
+
+#ifndef NDEBUG
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
     widgetsWatcher_ = IFileWatcher::createFileWatcher(SINGULARITY_WIDGETS_DIR);
+    fprintf(stderr, "[singularity] Watching: %s\n", UI_DIR);
+#endif
 }
 
 void SingularityController::setLogger(IJSEngine::LogCallback cb)
@@ -17,6 +21,7 @@ void SingularityController::setLogger(IJSEngine::LogCallback cb)
 
 void SingularityController::initialize()
 {
+#ifndef NDEBUG
     fileWatcher_->setCallback([this](const std::string& filePath) {
         std::cout << "File changed" << std::endl;
         reloadPending_ = true;
@@ -25,13 +30,16 @@ void SingularityController::initialize()
         std::cout << "Widget changed: " << filePath << std::endl;
         reloadPending_ = true;
     });
+#endif
     jsEngine_->load(UI_MAIN, renderer_.get());
 }
 
 void SingularityController::tick()
 {
+#ifndef NDEBUG
     if (reloadPending_.exchange(false))
         reload();
+#endif
 
     renderer_->beginFrame();
     if (!renderer_->currentCanvas()) return;

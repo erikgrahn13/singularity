@@ -4,8 +4,8 @@
 #include <filesystem>
 #include "QuickJSEngineCanvasAPI.h"
 
-#if NDEBUG
-#include "generated.h"
+#ifdef NDEBUG
+#include "generated_loader.h"
 #endif
 
 std::unique_ptr<IJSEngine> IJSEngine::createJSEngine(IParameterProvider &parameterStore)
@@ -326,7 +326,7 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     size_t buf_len;
     installConsole();
 
-#if !defined NDEBUG
+#ifndef NDEBUG
     auto buf = js_load_file(ctx_, &buf_len, entryFile.c_str());
 
     if (!buf) {
@@ -339,14 +339,14 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     if (JS_IsException(module_val)) {
         js_std_dump_error(ctx_);
     } else {
-        callApp(ctx_, renderer_); // <-- same as before
+        callApp(ctx_, renderer_);
     }
 
     JS_FreeValue(ctx_, module_val);
     js_free(ctx_, buf);
 #else
-    js_std_eval_binary(ctx_, QSJC_SYMBOL, QSJC_SYMBOL_SIZE, 0);
-    callApp(ctx_, renderer_); // <-- same as before
+    qjsc_load_modules(ctx_);
+    callApp(ctx_, renderer_);
 #endif
 }
 

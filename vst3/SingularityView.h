@@ -2,15 +2,15 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "SingularityController.h"
+#include "../platform/IWindow.h"
 #include <memory>
-
-#include <visage/app.h>
 
 namespace Steinberg {
 
 class SingularityView : public Vst::EditorView
 #if defined(__linux__)
                       , public Linux::IEventHandler
+                      , public Linux::ITimerHandler
 #endif
 {
 public:
@@ -36,15 +36,19 @@ protected:
 #if defined(__linux__)
     // Linux::IEventHandler
     void PLUGIN_API onFDIsSet(Linux::FileDescriptor fd) override {
-        if (app_->window())
-            app_->window()->processPluginFdEvents();
+        window_->processEvents();
+    }
+    // Linux::ITimerHandler
+    void PLUGIN_API onTimer() override {
+        controller_->tick();
     }
 #endif
 
 private:
-    std::unique_ptr<visage::ApplicationWindow> app_;
+    // std::unique_ptr<visage::ApplicationWindow> app_;
+    std::unique_ptr<IWindow> window_;
     std::unique_ptr<SingularityController>     controller_;
-    visage::EventTimer                         hotReloadtimer;
+    // visage::EventTimer                         hotReloadtimer;
 };
 
 } // namespace Steinberg

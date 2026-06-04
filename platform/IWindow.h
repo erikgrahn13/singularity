@@ -21,7 +21,10 @@ public:
     // Returns the underlying native window handle (HWND, NSWindow*, etc.)
     // Used by createNativeWindow to parent child windows.
     virtual void* nativeHandle() const { return nullptr; }
+    virtual int fd(){ return -1; }
+    virtual void processEvents(){};
+    virtual int refreshRate() const { return 60; }
 
-    static std::unique_ptr<IWindow> createWindow(int width, int height);
+    static std::unique_ptr<IWindow> createWindow(int width, int height, void* parentWindow = nullptr);
 
 };

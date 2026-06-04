@@ -35,8 +35,6 @@ int main()
     auto width  = controller->width();
     auto height = controller->height();
 
-
-
     auto window = IWindow::createWindow(width, height);
     controller->attachToWindow(*window);
 

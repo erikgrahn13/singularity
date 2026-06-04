@@ -1,6 +1,7 @@
 #pragma once
 
 #include <X11/Xlib.h>
+#include <X11/extensions/Xrandr.h>
 #include <stdexcept>
 #include <iostream>
 
@@ -9,7 +10,7 @@
 class X11Window : public IWindow {
     public:
 
-    X11Window(int width, int height);
+    X11Window(int width, int height, void* parentWindow);
     ~X11Window();
 
     void run() override;
@@ -32,6 +33,9 @@ class X11Window : public IWindow {
 
     Display* display() { return display_; }
     Window   xwindow() { return window_; }
+    int fd() override { return ConnectionNumber(display_); };
+    void processEvents() override;
+    int refreshRate() const override;
 
     private:
     int      width_   = 0;

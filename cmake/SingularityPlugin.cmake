@@ -58,18 +58,10 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        ${SINGULARITY_ROOT_DIR}/SkiaRendererDraw.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
+        ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
     )
 
-    # Platform-specific GPU backend
-    if(APPLE)
-        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/macos/SkiaMetal.mm)
-    else()
-        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/vulkan/SkiaVulkan.cpp)
-    endif()
-
-    # find_package(X11 REQUIRED)
     if(NOT APPLE)
         find_package(Vulkan REQUIRED)
     endif()
@@ -91,6 +83,7 @@ function(singularity_create_plugin target)
     target_include_directories(${target} PRIVATE
         ${SINGULARITY_QUICKJS_DIR}
         ${skia_SOURCE_DIR}/include
+        ${skia_SOURCE_DIR}/include/third_party/externals/dawn/include
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)
@@ -108,10 +101,12 @@ function(singularity_create_plugin target)
         )
         target_link_libraries(${target} PUBLIC "-framework AppKit")
     elseif(UNIX AND NOT APPLE)
+        find_package(X11 REQUIRED)
         set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp)
         target_link_libraries(${target} PUBLIC
             X11::X11
+            X11::Xrandr
         )
     endif()
 
@@ -163,8 +158,18 @@ function(singularity_create_plugin target)
         VERBATIM
     )
 
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated_loader.h
+        COMMAND ${CMAKE_COMMAND}
+            -DGENERATED_H=${CMAKE_CURRENT_BINARY_DIR}/generated.h
+            -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/generated_loader.h
+            -P ${SINGULARITY_ROOT_DIR}/cmake/generate_loader.cmake
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/generated.h
+        VERBATIM
+    )
+
     target_sources(${target} PRIVATE
-        $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/generated.h>
+        $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/generated_loader.h>
     )
 
     target_include_directories(${target} PRIVATE

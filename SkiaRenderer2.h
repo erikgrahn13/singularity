@@ -5,11 +5,7 @@
 #include <string>
 #include <vector>
 
-#if !defined(__APPLE__)
-#include <vulkan/vulkan.h>
-#include "include/gpu/vk/VulkanExtensions.h"
-#endif
-
+#include "dawn/webgpu_cpp.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/Recorder.h"
 #include "include/core/SkColor.h"
@@ -24,7 +20,7 @@ public:
     explicit SkiaRenderer(std::string_view resourcePath);
     ~SkiaRenderer();
 
-    void  attachToWindow(IWindow& window) override;
+    void attachToWindow(IWindow& window) override;
     void* beginFrame() override;
     void* currentCanvas() const override;
     void  present() override;
@@ -70,39 +66,14 @@ public:
     void  resetTransform(void*) override;
 
 private:
-#if !defined(__APPLE__)
-    // --- Vulkan (Linux + Windows) ---
-    VkInstance       instance_            = VK_NULL_HANDLE;
-    VkPhysicalDevice physDev_             = VK_NULL_HANDLE;
-    VkDevice         device_              = VK_NULL_HANDLE;
-    VkQueue          queue_               = VK_NULL_HANDLE;
-    uint32_t         graphicsQueueFamily_ = 0;
-    VkSurfaceKHR     surface_             = VK_NULL_HANDLE;
-    VkSwapchainKHR   swapchain_           = VK_NULL_HANDLE;
-    VkFormat         swapFormat_          = VK_FORMAT_UNDEFINED;
-    VkExtent2D       swapExtent_          = {};
-
-    skgpu::VulkanExtensions                    extensions_;
-    VkPhysicalDeviceFeatures2                  features2_{};
-#endif
-
-    // --- Skia Graphite ---
+    wgpu::Instance   instance_;
+    wgpu::Adapter    adapter_;
+    wgpu::Device     device_;
+    wgpu::Surface    surface_;
+    wgpu::TextureFormat swapFormat_ = wgpu::TextureFormat::Undefined;
     std::unique_ptr<skgpu::graphite::Context>  ctx_;
     std::unique_ptr<skgpu::graphite::Recorder> rec_;
-
-    struct Frame {
-#if !defined(__APPLE__)
-        VkImage          image  = VK_NULL_HANDLE;
-        VkSemaphore      sem    = VK_NULL_HANDLE;
-#endif
-        sk_sp<SkSurface> surface;
-    };
-    std::vector<Frame> frames_;
-    uint32_t           frameIdx_   = 0;
-#if !defined(__APPLE__)
-    VkSemaphore        acquireSem_ = VK_NULL_HANDLE;
-#endif
-
+    sk_sp<SkSurface> skSurface_;
     // --- Canvas 2D state ---
     struct State {
         SkColor       fillColor  = SK_ColorWHITE;
@@ -131,7 +102,6 @@ private:
     sk_sp<SkTypeface> typeface_;
 
     SkCanvas* canvas() const;
-    void      recreateSwapchain(uint32_t w, uint32_t h);
     SkPaint   fillPaint() const;
     SkPaint   strokePaint() const;
 };
