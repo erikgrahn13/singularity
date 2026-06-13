@@ -19,10 +19,8 @@ project(Singularity LANGUAGES C CXX)
 # to avoid RuntimeLibrary and _ITERATOR_DEBUG_LEVEL mismatches on Windows.
 if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
-elseif(APPLE)
-    enable_language(OBJCXX)
-elseif(UNIX)
-    # All static libs linked into VST3 .so must be compiled with -fPIC.
+elseif(UNIX AND NOT APPLE)
+    # All static libs linked into VST3 .so must be compiled with -fPIC on Linux.
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
