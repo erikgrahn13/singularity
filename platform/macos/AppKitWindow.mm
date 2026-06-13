@@ -18,6 +18,65 @@ extern "C" void* createMetalLayerForView(void* nsView) {
     return (__bridge void*)metalLayer;
 }
 
+// Custom NSView subclass to capture mouse events
+@interface EventView : NSView
+@property (nonatomic, assign) std::function<void(int, int)>* onMouseDown;
+@property (nonatomic, assign) std::function<void(int, int)>* onMouseUp;
+@property (nonatomic, assign) std::function<void(int, int)>* onMouseMove;
+@property (nonatomic, assign) std::function<void(float, float)>* onMouseWheel;
+@end
+
+@implementation EventView
+
+- (BOOL)acceptsFirstResponder { return YES; }
+- (BOOL)acceptsFirstMouse:(NSEvent*)event { return YES; }
+
+- (NSPoint)flippedLocation:(NSEvent*)event {
+    NSPoint loc = [self convertPoint:[event locationInWindow] fromView:nil];
+    // Flip Y so origin is top-left (matching X11 behaviour)
+    loc.y = self.bounds.size.height - loc.y;
+    return loc;
+}
+
+- (void)mouseDown:(NSEvent*)event {
+    if (_onMouseDown && *_onMouseDown) {
+        NSPoint loc = [self flippedLocation:event];
+        (*_onMouseDown)((int)loc.x, (int)loc.y);
+    }
+}
+
+- (void)mouseUp:(NSEvent*)event {
+    if (_onMouseUp && *_onMouseUp) {
+        NSPoint loc = [self flippedLocation:event];
+        (*_onMouseUp)((int)loc.x, (int)loc.y);
+    }
+}
+
+- (void)mouseMoved:(NSEvent*)event {
+    if (_onMouseMove && *_onMouseMove) {
+        NSPoint loc = [self flippedLocation:event];
+        (*_onMouseMove)((int)loc.x, (int)loc.y);
+    }
+}
+
+- (void)mouseDragged:(NSEvent*)event {
+    if (_onMouseMove && *_onMouseMove) {
+        NSPoint loc = [self flippedLocation:event];
+        (*_onMouseMove)((int)loc.x, (int)loc.y);
+    }
+}
+
+- (void)scrollWheel:(NSEvent*)event {
+    if (_onMouseWheel && *_onMouseWheel) {
+        float dx = (float)[event scrollingDeltaX];
+        float dy = (float)[event scrollingDeltaY];
+        // Negate dy to match X11 convention (scroll up = positive)
+        (*_onMouseWheel)(-dx, dy);
+    }
+}
+
+@end
+
 @interface AppKitDelegate : NSObject <NSApplicationDelegate>
 @property (nonatomic, strong) NSWindow* window;
 @property (nonatomic, copy) void (^frameBlock)(void);
@@ -51,14 +110,29 @@ class AppKitWindowImpl : public IWindow {
 public:
     AppKitWindowImpl(int width, int height) : width_(width), height_(height) {
         NSRect frame = NSMakeRect(0, 0, width, height);
-        view_ = [[NSView alloc] initWithFrame:frame];
+        view_ = [[EventView alloc] initWithFrame:frame];
         window_ = [[NSWindow alloc]
             initWithContentRect:frame
             styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
             backing:NSBackingStoreBuffered
             defer:NO];
         [window_ setContentView:view_];
+        [window_ setAcceptsMouseMovedEvents:YES];
         [window_ center];
+
+        // Add a tracking area so mouseMoved fires even when the window isn't key
+        NSTrackingArea* trackingArea = [[NSTrackingArea alloc]
+            initWithRect:frame
+            options:NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect
+            owner:view_
+            userInfo:nil];
+        [view_ addTrackingArea:trackingArea];
+
+        // Wire event callbacks
+        view_.onMouseDown  = &onMouseDown_;
+        view_.onMouseUp    = &onMouseUp_;
+        view_.onMouseMove  = &onMouseMove_;
+        view_.onMouseWheel = &onMouseWheel_;
 
         delegate_ = [[AppKitDelegate alloc] init];
         delegate_.window = window_;
@@ -105,20 +179,22 @@ public:
 
     void setOnMouseDown(std::function<void(int, int)> cb) override { onMouseDown_ = std::move(cb); }
     void setOnMouseUp  (std::function<void(int, int)> cb) override { onMouseUp_   = std::move(cb); }
-    void setOnMouseMove(std::function<void(int, int)> cb)               override { onMouseMove_ = std::move(cb); }
-    void setOnFrame    (std::function<void()> cb)                       override { onFrame_     = std::move(cb); }
-    void setOnClose    (std::function<void()> cb)                       override { onClose_     = std::move(cb); }
+    void setOnMouseMove(std::function<void(int, int)> cb) override { onMouseMove_ = std::move(cb); }
+    void setOnMouseWheel(std::function<void(float, float)> cb) override { onMouseWheel_ = std::move(cb); }
+    void setOnFrame    (std::function<void()> cb)          override { onFrame_     = std::move(cb); }
+    void setOnClose    (std::function<void()> cb)          override { onClose_     = std::move(cb); }
 
 private:
-    NSWindow*     window_   = nil;
-    NSView*       view_     = nil;
+    NSWindow*       window_   = nil;
+    EventView*      view_     = nil;
     AppKitDelegate* delegate_ = nil;
     int width_, height_;
-    std::function<void(int, int)> onMouseDown_;
-    std::function<void(int, int)> onMouseUp_;
-    std::function<void(int, int)>               onMouseMove_;
-    std::function<void()>                       onFrame_;
-    std::function<void()>                       onClose_;
+    std::function<void(int, int)>     onMouseDown_;
+    std::function<void(int, int)>     onMouseUp_;
+    std::function<void(int, int)>     onMouseMove_;
+    std::function<void(float, float)> onMouseWheel_;
+    std::function<void()>             onFrame_;
+    std::function<void()>             onClose_;
 };
 
 std::unique_ptr<IWindow> IWindow::createWindow(int w, int h, void* parentWindow) {
