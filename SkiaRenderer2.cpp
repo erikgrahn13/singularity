@@ -35,6 +35,7 @@
     #undef False
 #elif __APPLE__
 #include "include/ports/SkFontMgr_mac_ct.h"
+#include "platform/macos/AppKitWindow.h"
 #endif
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -146,6 +147,10 @@ void SkiaRenderer::attachToWindow(IWindow& window) {
     libDesc.display = nativeWindow.display();
     libDesc.window  = static_cast<uint64_t>(nativeWindow.xwindow());
     surfDesc.nextInChain = &libDesc;
+#elif __APPLE__
+    wgpu::SurfaceSourceMetalLayer metalDesc{};
+    metalDesc.layer = createMetalLayerForView(window.nativeHandle());
+    surfDesc.nextInChain = &metalDesc;
 #endif
 
     surface_ = instance_.CreateSurface(&surfDesc);

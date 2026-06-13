@@ -1,18 +1,61 @@
 // AppKit window implementation using Objective-C++
 #include "../IWindow.h"
+#include "AppKitWindow.h"
 #import <AppKit/AppKit.h>
+#import <QuartzCore/CVDisplayLink.h>
+#import <QuartzCore/CAMetalLayer.h>
 #include <memory>
+
+extern "C" void* createMetalLayerForView(void* nsView) {
+    NSView* view = (__bridge NSView*)nsView;
+    [view setWantsLayer:YES];
+
+    CAMetalLayer* metalLayer = [CAMetalLayer layer];
+    metalLayer.frame = view.bounds;
+    metalLayer.contentsScale = view.window.backingScaleFactor;
+    [view setLayer:metalLayer];
+
+    return (__bridge void*)metalLayer;
+}
 
 @interface AppKitDelegate : NSObject <NSApplicationDelegate>
 @property (nonatomic, strong) NSWindow* window;
+@property (nonatomic, copy) void (^frameBlock)(void);
 @end
 
-@implementation AppKitDelegate
+static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink,
+                                     const CVTimeStamp* now,
+                                     const CVTimeStamp* outputTime,
+                                     CVOptionFlags flagsIn,
+                                     CVOptionFlags* flagsOut,
+                                     void* context) {
+    void (^block)(void) = (__bridge void (^)(void))context;
+    dispatch_async(dispatch_get_main_queue(), block);
+    return kCVReturnSuccess;
+}
+
+@implementation AppKitDelegate {
+    CVDisplayLinkRef _displayLink;
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
     [_window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+
+    if (_frameBlock) {
+        CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
+        CVDisplayLinkSetOutputCallback(_displayLink, &displayLinkCallback,
+                                       (__bridge void*)_frameBlock);
+        CVDisplayLinkStart(_displayLink);
+    }
 }
+
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)sender {
+    if (_displayLink) {
+        CVDisplayLinkStop(_displayLink);
+        CVDisplayLinkRelease(_displayLink);
+        _displayLink = NULL;
+    }
     return YES;
 }
 @end
@@ -37,6 +80,13 @@ public:
     void run() override {
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         [NSApp setDelegate:delegate_];
+
+        // Wire the onFrame callback into the delegate so the timer can call it
+        if (onFrame_) {
+            auto frameCb = onFrame_;
+            delegate_.frameBlock = ^{ frameCb(); };
+        }
+
         [NSApp run];
     }
 

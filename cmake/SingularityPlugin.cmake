@@ -65,7 +65,7 @@ function(singularity_create_plugin target)
     target_link_libraries(${target} PUBLIC 
         qjs-libc
         choc::choc
-        ${SKIA_LIB}
+        ${SINGULARITY_SKIA_LIB}
     )
 
     if(UNIX AND NOT APPLE)
@@ -74,8 +74,8 @@ function(singularity_create_plugin target)
 
     target_include_directories(${target} PRIVATE
         ${SINGULARITY_QUICKJS_DIR}
-        ${skia_SOURCE_DIR}/include
-        ${skia_SOURCE_DIR}/include/third_party/externals/dawn/include
+        ${SINGULARITY_SKIA_INCLUDE_DIR}                                    # was: ${skia_SOURCE_DIR}/include
+        ${SINGULARITY_SKIA_INCLUDE_DIR}/third_party/externals/dawn/include # was: ${skia_SOURCE_DIR}/include/...
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)
