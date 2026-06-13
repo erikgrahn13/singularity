@@ -1,13 +1,17 @@
 #include "SingularityController.h"
 #include <iostream>
 
-SingularityController::SingularityController(void *rootFrame, IParameterProvider &parameterProvider, std::string_view resourcePath)
+SingularityController::SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath)
 : parameterProvider_(parameterProvider)
 {
-    renderer_ = IRenderer::createRenderer(rootFrame, resourcePath);
+    renderer_ = IRenderer::createRenderer(resourcePath);
     jsEngine_ = IJSEngine::createJSEngine(parameterProvider_);
+
+#ifndef NDEBUG
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
     widgetsWatcher_ = IFileWatcher::createFileWatcher(SINGULARITY_WIDGETS_DIR);
+    fprintf(stderr, "[singularity] Watching: %s\n", UI_DIR);
+#endif
 }
 
 void SingularityController::setLogger(IJSEngine::LogCallback cb)
@@ -17,42 +21,7 @@ void SingularityController::setLogger(IJSEngine::LogCallback cb)
 
 void SingularityController::initialize()
 {
-    renderer_->setComponentMouseDownCallback(
-        [this](void* component, float x, float y) {
-            jsEngine_->onMouseDown(component, x, y);
-        }
-    );
-
-    renderer_->setComponentMouseUpCallback(
-        [this](void* component, float x, float y) {
-            jsEngine_->onMouseUp(component, x, y);
-        }
-    );
-
-    renderer_->setComponentMouseDragCallback(
-        [this](void* component, float x, float y) {
-            jsEngine_->onMouseDrag(component, x, y);
-        }
-    );
-
-    renderer_->setComponentMouseEnterCallback(
-        [this](void* component) {
-            jsEngine_->onMouseEnter(component);
-        }
-    );
-
-    renderer_->setComponentMouseExitCallback(
-        [this](void* component) {
-            jsEngine_->onMouseExit(component);
-        }
-    );
-
-    renderer_->setComponentMouseWheelCallback(
-        [this](void* component, float deltaX, float deltaY) {
-            jsEngine_->onMouseWheel(component, deltaX, deltaY);
-        }
-    );
-
+#ifndef NDEBUG
     fileWatcher_->setCallback([this](const std::string& filePath) {
         std::cout << "File changed" << std::endl;
         reloadPending_ = true;
@@ -61,13 +30,21 @@ void SingularityController::initialize()
         std::cout << "Widget changed: " << filePath << std::endl;
         reloadPending_ = true;
     });
+#endif
     jsEngine_->load(UI_MAIN, renderer_.get());
 }
 
 void SingularityController::tick()
 {
+#ifndef NDEBUG
     if (reloadPending_.exchange(false))
         reload();
+#endif
+
+    renderer_->beginFrame();
+    if (!renderer_->currentCanvas()) return;
+    jsEngine_->draw();
+    renderer_->present();
 }
 
 void SingularityController::reload()

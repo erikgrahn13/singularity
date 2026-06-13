@@ -58,32 +58,57 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        ${SINGULARITY_ROOT_DIR}/VisageRenderer2.cpp
         ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
+        ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
     )
 
     target_link_libraries(${target} PUBLIC 
         qjs-libc
         choc::choc
-        visage
+        ${SKIA_LIB}
     )
+
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(${target} PUBLIC fontconfig freetype)
+    endif()
 
     target_include_directories(${target} PRIVATE
         ${SINGULARITY_QUICKJS_DIR}
+        ${skia_SOURCE_DIR}/include
+        ${skia_SOURCE_DIR}/include/third_party/externals/dawn/include
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)
 
-    if(UNIX AND NOT APPLE)
-        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    endif()
-
+    
     # On Windows the MSVC linker emits an import lib (lib/<name>.lib) for both
     # the APP executable and the VST3 DLL.  That collides with the static lib of
     # the same name.  Give the static lib a distinct archive filename so the
     # import libs can use the bare <name>.lib without conflict.
     if(WIN32)
         set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_NAME "${target}_shared")
+        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/windows/Win32Window.cpp)
+        target_link_libraries(${target} PUBLIC dxguid.lib)
+    elseif(APPLE)
+        target_sources(${target} PRIVATE
+            ${SINGULARITY_ROOT_DIR}/platform/macos/AppKitWindow.mm
+        )
+        target_link_libraries(${target} PUBLIC
+            "-framework AppKit"
+            "-framework Metal"
+            "-framework IOKit"
+            "-framework IOSurface"
+            "-framework QuartzCore"
+            "-framework CoreGraphics"
+        )
+    elseif(UNIX AND NOT APPLE)
+        find_package(X11 REQUIRED)
+        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp)
+        target_link_libraries(${target} PUBLIC
+            X11::X11
+            X11::Xrandr
+        )
     endif()
 
 
@@ -134,8 +159,18 @@ function(singularity_create_plugin target)
         VERBATIM
     )
 
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated_loader.h
+        COMMAND ${CMAKE_COMMAND}
+            -DGENERATED_H=${CMAKE_CURRENT_BINARY_DIR}/generated.h
+            -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/generated_loader.h
+            -P ${SINGULARITY_ROOT_DIR}/cmake/generate_loader.cmake
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/generated.h
+        VERBATIM
+    )
+
     target_sources(${target} PRIVATE
-        $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/generated.h>
+        $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/generated_loader.h>
     )
 
     target_include_directories(${target} PRIVATE
@@ -201,7 +236,7 @@ function(singularity_create_plugin target)
         # Standalone plugin
         if(type STREQUAL "APP")
             add_executable(${target}_APP 
-                ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
+                ${SINGULARITY_ROOT_DIR}/standalone/main2.cpp
                 ${SINGULARITY_ROOT_DIR}/standalone/ISingularityAudio.cpp
             )
             if(WIN32)
@@ -214,6 +249,7 @@ function(singularity_create_plugin target)
                     "-framework CoreAudio"
                     "-framework AudioToolbox"
                 )
+                set_target_properties(${target}_APP PROPERTIES MACOSX_BUNDLE TRUE)
             elseif(UNIX AND NOT APPLE)
                 find_package(PkgConfig REQUIRED)
                 pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
@@ -245,12 +281,12 @@ function(singularity_create_plugin target)
                     endif()
                 endforeach()
 
-                add_embedded_resources(${target}ResourcesAPP "generated_resources.h" "singularity::generated" ${_abs_data_resources})
-                target_compile_features(${target}ResourcesAPP PRIVATE cxx_std_17)
-                target_link_libraries(${target}
-                    PUBLIC
-                    ${target}ResourcesAPP
-                )
+                # add_embedded_resources(${target}ResourcesAPP "generated_resources.h" "singularity::generated" ${_abs_data_resources})
+                # target_compile_features(${target}ResourcesAPP PRIVATE cxx_std_17)
+                # target_link_libraries(${target}
+                #     PUBLIC
+                #     ${target}ResourcesAPP
+                # )
             endif()
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name
@@ -368,12 +404,12 @@ function(singularity_create_plugin target)
             endif()
         endforeach()
 
-        add_embedded_resources(${target}Resources "${target}_generated.h" "singularity::generated" ${_abs_data_resources})
-        target_compile_features(${target}Resources PRIVATE cxx_std_17)
-        target_link_libraries(${target}
-            PUBLIC
-            ${target}Resources
-        )
+        # add_embedded_resources(${target}Resources "${target}_generated.h" "singularity::generated" ${_abs_data_resources})
+        # target_compile_features(${target}Resources PRIVATE cxx_std_17)
+        # target_link_libraries(${target}
+        #     PUBLIC
+        #     ${target}Resources
+        # )
     endif()
 
 endfunction()

@@ -3,19 +3,37 @@
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
 #include "IParameterProvider.h"
+#include "platform/IWindow.h"
 #include <atomic>
 #include <string_view>
 
 class SingularityController {
     public:
-    SingularityController(void* rootFrame, IParameterProvider &parameterProvider, std::string_view resourcePath = "");
+    SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath = "");
     void initialize();
     void tick(); // call from main thread each frame
     void setLogger(IJSEngine::LogCallback cb);
+    int width() { return renderer_->width(); };
+    int height() { return renderer_->height(); };
+    void setOnResize(std::function<void(int, int)> cb) {
+        renderer_->setOnResize(std::move(cb));
+    }
 
-    void* getRootFrame()
-    {
-        return renderer_->getRootComponent();
+
+    void attachToWindow(IWindow& window) {
+        renderer_->attachToWindow(window);
+        window.setOnMouseDown([this](int x, int y) {
+            jsEngine_->onMouseDown((float)x, (float)y);
+        });
+        window.setOnMouseUp([this](int x, int y) {
+            jsEngine_->onMouseUp((float)x, (float)y);
+        });
+        window.setOnMouseMove([this](int x, int y) {
+            jsEngine_->onMouseMove((float)x, (float)y);
+        });
+        window.setOnMouseWheel([this](float dx, float dy) {
+            jsEngine_->onMouseWheel(dx, dy);
+        });
     }
     void registerImage(const std::string& name, const uint8_t* data, int size);
 

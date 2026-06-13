@@ -81,14 +81,32 @@ public:
     int width()  const override { return m_width; }
     int height() const override { return m_height; }
 
-    void setOnMouseDown(std::function<void(int, int, unsigned int)> cb) override { m_onMouseDown = std::move(cb); }
-    void setOnMouseUp(std::function<void(int, int, unsigned int)> cb)   override { m_onMouseUp   = std::move(cb); }
+    void resize(int w, int h) override {
+        m_width = w; m_height = h;
+        if (m_hwnd) SetWindowPos(m_hwnd, nullptr, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
+    }
+
+    void setOnMouseDown(std::function<void(int, int)> cb) override { m_onMouseDown = std::move(cb); }
+    void setOnMouseUp(std::function<void(int, int)> cb)   override { m_onMouseUp   = std::move(cb); }
     void setOnMouseMove(std::function<void(int, int)> cb)               override { m_onMouseMove = std::move(cb); }
-    void setOnFrame(std::function<DrawingContent()> cb) override { m_onFrame = std::move(cb); startTimer(); }
+    void setOnFrame(std::function<void()> cb) override { m_onFrame = std::move(cb); startTimer(); }
     void setOnClose(std::function<void()> cb)                           override { m_onClose     = std::move(cb); }
 
     HWND hwnd() const { return m_hwnd; }
     void* nativeHandle() const override { return m_hwnd; }
+
+    void setResizable(bool resizable) override {
+        if (!m_hwnd) return;
+        LONG style = GetWindowLongW(m_hwnd, GWL_STYLE);
+        if (resizable) {
+            style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+        } else {
+            style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+        }
+        SetWindowLongW(m_hwnd, GWL_STYLE, style);
+        SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
 
 private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
@@ -102,38 +120,19 @@ private:
 
         if (win) {
             switch (msg) {
-                case WM_LBUTTONDOWN: if (win->m_onMouseDown) win->m_onMouseDown(GET_X_LPARAM(lp), GET_Y_LPARAM(lp), 1); return 0;
-                case WM_LBUTTONUP:   if (win->m_onMouseUp)   win->m_onMouseUp  (GET_X_LPARAM(lp), GET_Y_LPARAM(lp), 1); return 0;
-                case WM_RBUTTONDOWN: if (win->m_onMouseDown) win->m_onMouseDown(GET_X_LPARAM(lp), GET_Y_LPARAM(lp), 3); return 0;
-                case WM_RBUTTONUP:   if (win->m_onMouseUp)   win->m_onMouseUp  (GET_X_LPARAM(lp), GET_Y_LPARAM(lp), 3); return 0;
+                case WM_LBUTTONDOWN: if (win->m_onMouseDown) win->m_onMouseDown(GET_X_LPARAM(lp), GET_Y_LPARAM(lp)); return 0;
+                case WM_LBUTTONUP:   if (win->m_onMouseUp)   win->m_onMouseUp  (GET_X_LPARAM(lp), GET_Y_LPARAM(lp)); return 0;
+                case WM_RBUTTONDOWN: if (win->m_onMouseDown) win->m_onMouseDown(GET_X_LPARAM(lp), GET_Y_LPARAM(lp)); return 0;
+                case WM_RBUTTONUP:   if (win->m_onMouseUp)   win->m_onMouseUp  (GET_X_LPARAM(lp), GET_Y_LPARAM(lp)); return 0;
                 case WM_TIMER:
                     if (win->m_onFrame) {
-                        DrawingContent dc = win->m_onFrame();
-                        // Null contentAddres means "nothing changed, skip repaint"
-                        if (dc.contentAddres) {
-                            win->m_frameData = dc;
-                            InvalidateRect(hwnd, nullptr, FALSE);
-                        }
+                        win->m_onFrame();
                     }
                     return 0;
                 case WM_MOUSEMOVE:   if (win->m_onMouseMove) win->m_onMouseMove(GET_X_LPARAM(lp), GET_Y_LPARAM(lp)); return 0;
                 case WM_PAINT: {
                     PAINTSTRUCT ps;
-                    HDC hdc = BeginPaint(hwnd, &ps);
-                    const auto& fd = win->m_frameData;
-                    if (fd.contentAddres && fd.width > 0 && fd.height > 0) {
-                        BITMAPINFO bmi{};
-                        bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-                        bmi.bmiHeader.biWidth       = fd.width;
-                        bmi.bmiHeader.biHeight      = -fd.height; // top-down
-                        bmi.bmiHeader.biPlanes      = 1;
-                        bmi.bmiHeader.biBitCount    = 32;
-                        bmi.bmiHeader.biCompression = BI_RGB;
-                        SetDIBitsToDevice(hdc,
-                            0, 0, fd.width, fd.height,
-                            0, 0, 0, fd.height,
-                            fd.contentAddres, &bmi, DIB_RGB_COLORS);
-                    }
+                    BeginPaint(hwnd, &ps);
                     EndPaint(hwnd, &ps);
                     return 0;
                 }
@@ -151,10 +150,9 @@ private:
     HWND m_hwnd  = nullptr;
     int  m_width = 0;
     int  m_height = 0;
-    DrawingContent m_frameData{};
-    std::function<void(int, int, unsigned int)> m_onMouseDown;
-    std::function<void(int, int, unsigned int)> m_onMouseUp;
+    std::function<void(int, int)> m_onMouseDown;
+    std::function<void(int, int)> m_onMouseUp;
     std::function<void(int, int)>               m_onMouseMove;
-    std::function<DrawingContent()>             m_onFrame;
+    std::function<void()>                       m_onFrame;
     std::function<void()>                       m_onClose;
 };

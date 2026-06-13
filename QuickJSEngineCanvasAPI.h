@@ -21,7 +21,7 @@ static JSValue js_fillRect(JSContext* ctx, JSValueConst this_val, int argc, JSVa
     JS_ToFloat64(ctx, &width, argv[2]);
     JS_ToFloat64(ctx, &height, argv[3]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->fillRect(data->canvas, (float)x, (float)y, (float)width, (float)height);
+    data->renderer->fillRect((float)x, (float)y, (float)width, (float)height);
     return JS_UNDEFINED;
 }
 
@@ -33,7 +33,7 @@ static JSValue js_strokeRect(JSContext* ctx, JSValueConst this_val, int argc, JS
     JS_ToFloat64(ctx, &width, argv[2]);
     JS_ToFloat64(ctx, &height, argv[3]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->strokeRect(data->canvas, (float)x, (float)y, (float)width, (float)height);
+    data->renderer->strokeRect((float)x, (float)y, (float)width, (float)height);
     return JS_UNDEFINED;
 }
 
@@ -45,7 +45,7 @@ static JSValue js_clearRect(JSContext* ctx, JSValueConst this_val, int argc, JSV
     JS_ToFloat64(ctx, &width, argv[2]);
     JS_ToFloat64(ctx, &height, argv[3]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->clearRect(data->canvas, (float)x, (float)y, (float)width, (float)height);
+    data->renderer->clearRect((float)x, (float)y, (float)width, (float)height);
     return JS_UNDEFINED;
 }
 
@@ -66,7 +66,7 @@ static JSValue js_moveTo(JSContext* ctx, JSValueConst this_val, int argc, JSValu
     JS_ToFloat64(ctx, &x, argv[0]);
     JS_ToFloat64(ctx, &y, argv[1]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->moveTo(data->canvas, (float)x, (float)y);
+    data->renderer->moveTo((float)x, (float)y);
     return JS_UNDEFINED;
 }
 
@@ -76,7 +76,7 @@ static JSValue js_lineTo(JSContext* ctx, JSValueConst this_val, int argc, JSValu
     JS_ToFloat64(ctx, &x, argv[0]);
     JS_ToFloat64(ctx, &y, argv[1]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->lineTo(data->canvas, (float)x, (float)y);
+    data->renderer->lineTo((float)x, (float)y);
     return JS_UNDEFINED;
 }
 
@@ -97,7 +97,7 @@ static JSValue js_arc(JSContext* ctx, JSValueConst this_val, int argc, JSValueCo
     JS_ToFloat64(ctx, &end, argv[4]);
     bool ccw = (argc >= 6 && JS_ToBool(ctx, argv[5]));
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->arc(data->canvas, (float)cx, (float)cy, (float)r, (float)start, (float)end, ccw);
+    data->renderer->arc((float)cx, (float)cy, (float)r, (float)start, (float)end, ccw);
     return JS_UNDEFINED;
 }
 
@@ -110,7 +110,7 @@ static JSValue js_arcTo(JSContext* ctx, JSValueConst this_val, int argc, JSValue
     JS_ToFloat64(ctx, &y2, argv[3]);
     JS_ToFloat64(ctx, &radius, argv[4]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->arcTo(data->canvas, (float)x1, (float)y1, (float)x2, (float)y2, (float)radius);
+    data->renderer->arcTo((float)x1, (float)y1, (float)x2, (float)y2, (float)radius);
     return JS_UNDEFINED;
 }
 
@@ -122,7 +122,7 @@ static JSValue js_quadraticCurveTo(JSContext* ctx, JSValueConst this_val, int ar
     JS_ToFloat64(ctx, &x, argv[2]);
     JS_ToFloat64(ctx, &y, argv[3]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->quadraticCurveTo(data->canvas, (float)cpx, (float)cpy, (float)x, (float)y);
+    data->renderer->quadraticCurveTo((float)cpx, (float)cpy, (float)x, (float)y);
     return JS_UNDEFINED;
 }
 
@@ -136,7 +136,7 @@ static JSValue js_bezierCurveTo(JSContext* ctx, JSValueConst this_val, int argc,
     JS_ToFloat64(ctx, &x, argv[4]);
     JS_ToFloat64(ctx, &y, argv[5]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->bezierCurveTo(data->canvas, (float)cp1x, (float)cp1y,
+    data->renderer->bezierCurveTo((float)cp1x, (float)cp1y,
                                    (float)cp2x, (float)cp2y, (float)x, (float)y);
     return JS_UNDEFINED;
 }
@@ -153,7 +153,7 @@ static JSValue js_ellipse(JSContext* ctx, JSValueConst this_val, int argc, JSVal
     JS_ToFloat64(ctx, &end, argv[6]);
     bool ccw = (argc >= 8 && JS_ToBool(ctx, argv[7]));
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->ellipse(data->canvas, (float)cx, (float)cy, (float)rx, (float)ry,
+    data->renderer->ellipse((float)cx, (float)cy, (float)rx, (float)ry,
                              (float)rot, (float)start, (float)end, ccw);
     return JS_UNDEFINED;
 }
@@ -166,7 +166,7 @@ static JSValue js_rect(JSContext* ctx, JSValueConst this_val, int argc, JSValueC
     JS_ToFloat64(ctx, &w, argv[2]);
     JS_ToFloat64(ctx, &h, argv[3]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->rect(data->canvas, (float)x, (float)y, (float)w, (float)h);
+    data->renderer->rect((float)x, (float)y, (float)w, (float)h);
     return JS_UNDEFINED;
 }
 
@@ -179,7 +179,7 @@ static JSValue js_roundRect(JSContext* ctx, JSValueConst this_val, int argc, JSV
     JS_ToFloat64(ctx, &h, argv[3]);
     if (argc >= 5) JS_ToFloat64(ctx, &r, argv[4]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->roundRect(data->canvas, (float)x, (float)y, (float)w, (float)h, (float)r);
+    data->renderer->roundRect((float)x, (float)y, (float)w, (float)h, (float)r);
     return JS_UNDEFINED;
 }
 
@@ -213,7 +213,7 @@ static JSValue js_fillText(JSContext* ctx, JSValueConst this_val, int argc, JSVa
     JS_ToFloat64(ctx, &y, argv[2]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     if (str) {
-        data->renderer->fillText(data->canvas, str, (float)x, (float)y);
+        data->renderer->fillText(str, (float)x, (float)y);
         JS_FreeCString(ctx, str);
     }
     return JS_UNDEFINED;
@@ -227,7 +227,7 @@ static JSValue js_strokeText(JSContext* ctx, JSValueConst this_val, int argc, JS
     JS_ToFloat64(ctx, &y, argv[2]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     if (str) {
-        data->renderer->strokeText(data->canvas, str, (float)x, (float)y);
+        data->renderer->strokeText(str, (float)x, (float)y);
         JS_FreeCString(ctx, str);
     }
     return JS_UNDEFINED;
@@ -239,7 +239,7 @@ static JSValue js_measureText(JSContext* ctx, JSValueConst this_val, int argc, J
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     float w = 0.0f;
     if (str) {
-        w = data->renderer->measureText(data->canvas, str);
+        w = data->renderer->measureText(str);
         JS_FreeCString(ctx, str);
     }
     JSValue obj = JS_NewObject(ctx);
@@ -268,7 +268,7 @@ static JSValue js_addColorStop(JSContext* ctx, JSValueConst this_val, int argc, 
         JS_ToFloat64(ctx, &hdr, argv[2]);
     }
     if (color) {
-        data->renderer->addColorStop(data->canvas, id, (float)offset, color, (float)hdr);
+        data->renderer->addColorStop(id, (float)offset, color, (float)hdr);
         JS_FreeCString(ctx, color);
     }
     return JS_UNDEFINED;
@@ -283,7 +283,7 @@ static JSValue js_createLinearGradient(JSContext* ctx, JSValueConst this_val, in
     JS_ToFloat64(ctx, &y1, argv[3]);
 
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    int id = data->renderer->createLinearGradient(data->canvas, (float)x0, (float)y0, (float)x1, (float)y1);
+    int id = data->renderer->createLinearGradient((float)x0, (float)y0, (float)x1, (float)y1);
 
     JSValue obj = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, obj, "_id", JS_NewInt32(ctx, id));
@@ -302,7 +302,7 @@ static JSValue js_createRadialGradient(JSContext* ctx, JSValueConst this_val, in
     JS_ToFloat64(ctx, &r1, argv[5]);
 
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    int id = data->renderer->createRadialGradient(data->canvas, (float)x0, (float)y0, (float)r0, (float)x1, (float)y1, (float)r1);
+    int id = data->renderer->createRadialGradient((float)x0, (float)y0, (float)r0, (float)x1, (float)y1, (float)r1);
 
     JSValue obj = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, obj, "_id", JS_NewInt32(ctx, id));
@@ -323,7 +323,7 @@ static JSValue js_fillStyle(JSContext* ctx, JSValueConst this_val, int argc, JSV
         if (!JS_IsUndefined(idVal) && JS_IsNumber(idVal)) {
             int id = 0; JS_ToInt32(ctx, &id, idVal);
             JS_FreeValue(ctx, idVal);
-            data->renderer->setFillStyleGradient(data->canvas, id);
+            data->renderer->setFillStyleGradient(id);
             return JS_UNDEFINED;
         }
         JS_FreeValue(ctx, idVal);
@@ -332,7 +332,7 @@ static JSValue js_fillStyle(JSContext* ctx, JSValueConst this_val, int argc, JSV
     const char* color = JS_ToCString(ctx, argv[0]);
     if (color) {
         data->fillColor = color;
-        data->renderer->setFillStyle(data->canvas, color);
+        data->renderer->setFillStyle(color);
         JS_FreeCString(ctx, color);
     }
     return JS_UNDEFINED;
@@ -347,7 +347,7 @@ static JSValue js_strokeStyle(JSContext* ctx, JSValueConst this_val, int argc, J
         if (!JS_IsUndefined(idVal) && JS_IsNumber(idVal)) {
             int id = 0; JS_ToInt32(ctx, &id, idVal);
             JS_FreeValue(ctx, idVal);
-            data->renderer->setStrokeStyleGradient(data->canvas, id);
+            data->renderer->setStrokeStyleGradient(id);
             return JS_UNDEFINED;
         }
         JS_FreeValue(ctx, idVal);
@@ -355,7 +355,7 @@ static JSValue js_strokeStyle(JSContext* ctx, JSValueConst this_val, int argc, J
 
     const char* color = JS_ToCString(ctx, argv[0]);
     if (color) {
-        data->renderer->setStrokeStyle(data->canvas, color);
+        data->renderer->setStrokeStyle(color);
         JS_FreeCString(ctx, color);
     }
     return JS_UNDEFINED;
@@ -366,7 +366,7 @@ static JSValue js_lineWidth(JSContext* ctx, JSValueConst this_val, int argc, JSV
     double w = 1.0;
     JS_ToFloat64(ctx, &w, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->setLineWidth(data->canvas, (float)w);
+    data->renderer->setLineWidth((float)w);
     return JS_UNDEFINED;
 }
 
@@ -375,7 +375,7 @@ static JSValue js_lineCap(JSContext* ctx, JSValueConst this_val, int argc, JSVal
     const char* cap = JS_ToCString(ctx, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     if (cap) {
-        data->renderer->setLineCap(data->canvas, cap);
+        data->renderer->setLineCap(cap);
         JS_FreeCString(ctx, cap);
     }
     return JS_UNDEFINED;
@@ -386,7 +386,7 @@ static JSValue js_font(JSContext* ctx, JSValueConst this_val, int argc, JSValueC
     const char* font = JS_ToCString(ctx, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     if (font) {
-        data->renderer->setFont(data->canvas, font);
+        data->renderer->setFont(font);
         JS_FreeCString(ctx, font);
     }
     return JS_UNDEFINED;
@@ -397,7 +397,7 @@ static JSValue js_globalAlpha(JSContext* ctx, JSValueConst this_val, int argc, J
     double a = 1.0;
     JS_ToFloat64(ctx, &a, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->setGlobalAlpha(data->canvas, (float)a);
+    data->renderer->setGlobalAlpha((float)a);
     return JS_UNDEFINED;
 }
 
@@ -406,7 +406,7 @@ static JSValue js_textAlign(JSContext* ctx, JSValueConst this_val, int argc, JSV
     const char* align = JS_ToCString(ctx, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     if (align) {
-        data->renderer->setTextAlign(data->canvas, align);
+        data->renderer->setTextAlign(align);
         JS_FreeCString(ctx, align);
     }
     return JS_UNDEFINED;
@@ -417,7 +417,7 @@ static JSValue js_textBaseline(JSContext* ctx, JSValueConst this_val, int argc, 
     const char* baseline = JS_ToCString(ctx, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
     if (baseline) {
-        data->renderer->setTextBaseline(data->canvas, baseline);
+        data->renderer->setTextBaseline(baseline);
         JS_FreeCString(ctx, baseline);
     }
     return JS_UNDEFINED;
@@ -430,7 +430,7 @@ static JSValue js_hdrMultiplier(JSContext* ctx, JSValueConst this_val, int argc,
     double mult = 1.0;
     JS_ToFloat64(ctx, &mult, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->setHdrMultiplier(data->canvas, static_cast<float>(mult));
+    data->renderer->setHdrMultiplier(static_cast<float>(mult));
     return JS_UNDEFINED;
 }
 
@@ -462,7 +462,7 @@ static JSValue js_translate(JSContext* ctx, JSValueConst this_val, int argc, JSV
     JS_ToFloat64(ctx, &x, argv[0]);
     JS_ToFloat64(ctx, &y, argv[1]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->translate(data->canvas, (float)x, (float)y);
+    data->renderer->translate((float)x, (float)y);
     return JS_UNDEFINED;
 }
 
@@ -471,7 +471,7 @@ static JSValue js_rotate(JSContext* ctx, JSValueConst this_val, int argc, JSValu
     double angle = 0;
     JS_ToFloat64(ctx, &angle, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->rotate(data->canvas, (float)angle);
+    data->renderer->rotate((float)angle);
     return JS_UNDEFINED;
 }
 
@@ -481,7 +481,7 @@ static JSValue js_scale(JSContext* ctx, JSValueConst this_val, int argc, JSValue
     JS_ToFloat64(ctx, &x, argv[0]);
     JS_ToFloat64(ctx, &y, argv[1]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->scale(data->canvas, (float)x, (float)y);
+    data->renderer->scale((float)x, (float)y);
     return JS_UNDEFINED;
 }
 
@@ -508,7 +508,7 @@ static JSValue js_drawImage(JSContext* ctx, JSValueConst this_val, int argc, JSV
     JS_ToFloat64(ctx, &dh, argv[4]);
 
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->drawImage(data->canvas, name, (float)dx, (float)dy, (float)dw, (float)dh);
+    data->renderer->drawImage(name, (float)dx, (float)dy, (float)dw, (float)dh);
 
     JS_FreeCString(ctx, name);
     return JS_UNDEFINED;
