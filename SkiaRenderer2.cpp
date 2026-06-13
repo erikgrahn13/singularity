@@ -33,6 +33,8 @@
     #undef Bool
     #undef True
     #undef False
+#elif __APPLE__
+#include "include/ports/SkFontMgr_mac_ct.h"
 #endif
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -135,17 +137,17 @@ std::unique_ptr<IRenderer> IRenderer::createRenderer(std::string_view r) {
 
 void SkiaRenderer::attachToWindow(IWindow& window) {
 
+    wgpu::SurfaceDescriptor surfDesc{};
+
 #ifdef __linux__
     auto& nativeWindow = static_cast<X11Window&>(window);
 
     wgpu::SurfaceSourceXlibWindow libDesc{};
     libDesc.display = nativeWindow.display();
     libDesc.window  = static_cast<uint64_t>(nativeWindow.xwindow());
-
+    surfDesc.nextInChain = &libDesc;
 #endif
 
-    wgpu::SurfaceDescriptor surfDesc{};
-    surfDesc.nextInChain = &libDesc;
     surface_ = instance_.CreateSurface(&surfDesc);
 
     wgpu::SurfaceConfiguration config{};

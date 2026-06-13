@@ -62,10 +62,6 @@ function(singularity_create_plugin target)
         ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
     )
 
-    if(NOT APPLE)
-        find_package(Vulkan REQUIRED)
-    endif()
-
     target_link_libraries(${target} PUBLIC 
         qjs-libc
         choc::choc
@@ -74,9 +70,7 @@ function(singularity_create_plugin target)
         freetype
     )
 
-    if(NOT APPLE)
-        target_link_libraries(${target} PUBLIC Vulkan::Vulkan)
-    else()
+    if(APPLE)
         target_link_directories(${target} PUBLIC /opt/homebrew/lib)
     endif()
 
