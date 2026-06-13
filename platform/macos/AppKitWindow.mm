@@ -2,7 +2,7 @@
 #include "../IWindow.h"
 #include "AppKitWindow.h"
 #import <AppKit/AppKit.h>
-#import <QuartzCore/CVDisplayLink.h>
+#import <QuartzCore/CADisplayLink.h>
 #import <QuartzCore/CAMetalLayer.h>
 #include <memory>
 
@@ -21,41 +21,28 @@ extern "C" void* createMetalLayerForView(void* nsView) {
 @interface AppKitDelegate : NSObject <NSApplicationDelegate>
 @property (nonatomic, strong) NSWindow* window;
 @property (nonatomic, copy) void (^frameBlock)(void);
+@property (nonatomic, strong) CADisplayLink* displayLink;
 @end
 
-static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink,
-                                     const CVTimeStamp* now,
-                                     const CVTimeStamp* outputTime,
-                                     CVOptionFlags flagsIn,
-                                     CVOptionFlags* flagsOut,
-                                     void* context) {
-    void (^block)(void) = (__bridge void (^)(void))context;
-    dispatch_async(dispatch_get_main_queue(), block);
-    return kCVReturnSuccess;
-}
-
-@implementation AppKitDelegate {
-    CVDisplayLinkRef _displayLink;
-}
+@implementation AppKitDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
     [_window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
 
     if (_frameBlock) {
-        CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
-        CVDisplayLinkSetOutputCallback(_displayLink, &displayLinkCallback,
-                                       (__bridge void*)_frameBlock);
-        CVDisplayLinkStart(_displayLink);
+        _displayLink = [_window.contentView displayLinkWithTarget:self selector:@selector(render:)];
+        [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
 }
 
+- (void)render:(CADisplayLink*)sender {
+    if (_frameBlock) _frameBlock();
+}
+
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)sender {
-    if (_displayLink) {
-        CVDisplayLinkStop(_displayLink);
-        CVDisplayLinkRelease(_displayLink);
-        _displayLink = NULL;
-    }
+    [_displayLink invalidate];
+    _displayLink = nil;
     return YES;
 }
 @end
