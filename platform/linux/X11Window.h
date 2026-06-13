@@ -22,6 +22,7 @@ class X11Window : public IWindow {
     int height() const override { return height_; }
 
     void resize(int w, int h) override;
+    void setResizable(bool resizable) override;
     void setOnMouseDown(std::function<void(int x, int y)> cb) override
     { onMouseDown_ = std::move(cb); }
     void setOnMouseUp(std::function<void(int x, int y)> cb) override

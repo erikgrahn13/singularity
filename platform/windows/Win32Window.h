@@ -90,6 +90,19 @@ public:
     HWND hwnd() const { return m_hwnd; }
     void* nativeHandle() const override { return m_hwnd; }
 
+    void setResizable(bool resizable) override {
+        if (!m_hwnd) return;
+        LONG style = GetWindowLongW(m_hwnd, GWL_STYLE);
+        if (resizable) {
+            style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+        } else {
+            style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+        }
+        SetWindowLongW(m_hwnd, GWL_STYLE, style);
+        SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
+
 private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         Win32Window* win = nullptr;

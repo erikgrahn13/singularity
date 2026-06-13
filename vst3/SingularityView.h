@@ -3,6 +3,7 @@
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "SingularityController.h"
 #include "../platform/IWindow.h"
+#include PLUGIN_CLASS_HEADER
 #include <memory>
 
 namespace Steinberg {
@@ -20,7 +21,7 @@ public:
     // EditorView / CPluginView overrides
     tresult PLUGIN_API isPlatformTypeSupported(FIDString type) override;
     tresult PLUGIN_API onSize(ViewRect* newSize) override;
-    tresult PLUGIN_API canResize() override { return kResultTrue; }
+    tresult PLUGIN_API canResize() override { return PLUGIN_CLASS::isResizable ? kResultTrue : kResultFalse; }
     tresult PLUGIN_API checkSizeConstraint(ViewRect*) override { return kResultTrue; }
 
     OBJ_METHODS(SingularityView, Vst::EditorView)

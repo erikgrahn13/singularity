@@ -77,6 +77,24 @@ void X11Window::resize(int w, int h) {
     XFlush(display_);
 }
 
+void X11Window::setResizable(bool resizable) {
+    XSizeHints* hints = XAllocSizeHints();
+    if (resizable) {
+        hints->flags = PMinSize;
+        hints->min_width = 1;
+        hints->min_height = 1;
+    } else {
+        hints->flags = PMinSize | PMaxSize;
+        hints->min_width = width_;
+        hints->min_height = height_;
+        hints->max_width = width_;
+        hints->max_height = height_;
+    }
+    XSetWMNormalHints(display_, window_, hints);
+    XFree(hints);
+    XFlush(display_);
+}
+
 void X11Window::processEvents()
 {
     XEvent event;

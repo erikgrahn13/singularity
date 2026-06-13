@@ -53,6 +53,15 @@ public:
         [window_ setContentSize:NSMakeSize(w, h)];
     }
 
+    void setResizable(bool resizable) override {
+        NSWindowStyleMask mask = [window_ styleMask];
+        if (resizable)
+            mask |= NSWindowStyleMaskResizable;
+        else
+            mask &= ~NSWindowStyleMaskResizable;
+        [window_ setStyleMask:mask];
+    }
+
     void* nativeHandle() const override {
         return (__bridge void*)view_;
     }

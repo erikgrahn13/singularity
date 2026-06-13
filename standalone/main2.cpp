@@ -36,6 +36,7 @@ int main()
     auto height = controller->height();
 
     auto window = IWindow::createWindow(width, height);
+    window->setResizable(PLUGIN_CLASS::isResizable);
     controller->attachToWindow(*window);
 
     controller->setOnResize([&](int w, int h) {

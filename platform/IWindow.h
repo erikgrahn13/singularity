@@ -18,6 +18,7 @@ public:
     virtual void setOnMouseMove(std::function<void(int x, int y)> cb) = 0;
     virtual void setOnFrame(std::function<void()> cb) = 0;
     virtual void setOnClose(std::function<void()> cb) {}
+    virtual void setResizable(bool resizable) {}
     // Returns the underlying native window handle (HWND, NSWindow*, etc.)
     // Used by createNativeWindow to parent child windows.
     virtual void* nativeHandle() const { return nullptr; }

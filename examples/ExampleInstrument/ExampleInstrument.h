@@ -5,6 +5,7 @@
 class ExampleInstrument {
 public:
     static constexpr bool isInstrument = true;
+    static constexpr bool isResizable = false;
 
     static auto getParameters()
     {
