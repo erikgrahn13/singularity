@@ -146,17 +146,17 @@ static float getFloatProp(JSContext* ctx, JSValueConst props, const char* name, 
     return static_cast<float>(out);
 }
 
-static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* renderer, float offsetX = 0.f, float offsetY = 0.f) {
+static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* renderer, float offsetX = 0.f, float offsetY = 0.f, bool isRoot = false) {
     JSValue props = JS_GetPropertyStr(ctx, node, "props");
 
     // Resize renderer if root component declares width/height
     int w_int = getIntProp(ctx, props, "width", -1);
     int h_int = getIntProp(ctx, props, "height", -1);
-    if (w_int != -1 && h_int != -1 && offsetX == 0.f && offsetY == 0.f)
+    if (w_int != -1 && h_int != -1 && isRoot)
         renderer->resize(w_int, h_int);
 
     // backgroundColor — only read at root level
-    if (offsetX == 0.f && offsetY == 0.f) {
+    if (isRoot) {
         JSValue bgVal = JS_GetPropertyStr(ctx, props, "backgroundColor");
         if (JS_IsString(bgVal)) {
             const char* s = JS_ToCString(ctx, bgVal);
@@ -241,7 +241,7 @@ static void callApp(JSContext* ctx, IRenderer* renderer) {
         return;
     }
 
-    buildComponentTree(ctx, result, renderer);
+    buildComponentTree(ctx, result, renderer, 0.f, 0.f, true);
     JS_FreeValue(ctx, result);
 }
 
