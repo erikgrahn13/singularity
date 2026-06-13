@@ -29,6 +29,8 @@ class X11Window : public IWindow {
     { onMouseUp_ = std::move(cb); }
     void setOnMouseMove(std::function<void(int x, int y)> cb) override
     { onMouseMove_ = std::move(cb); }
+    void setOnMouseWheel(std::function<void(float dx, float dy)> cb) override
+    { onMouseWheel_ = std::move(cb); }
     void setOnFrame(std::function<void()> cb) override
     { onFrame_ = std::move(cb); }
 
@@ -47,5 +49,6 @@ class X11Window : public IWindow {
     std::function<void(int, int)> onMouseDown_;
     std::function<void(int, int)> onMouseUp_;
     std::function<void(int, int)> onMouseMove_;
+    std::function<void(float, float)> onMouseWheel_;
 };
 

@@ -53,9 +53,19 @@ void X11Window::run()
             switch (event.type)
             {
             case ButtonPress:
-                if (onMouseDown_) onMouseDown_(event.xbutton.x, event.xbutton.y);
+                if (event.xbutton.button >= 4 && event.xbutton.button <= 7) {
+                    if (onMouseWheel_) {
+                        float dx = (event.xbutton.button == 6) ? -1.0f : (event.xbutton.button == 7) ? 1.0f : 0.0f;
+                        float dy = (event.xbutton.button == 4) ? 1.0f : (event.xbutton.button == 5) ? -1.0f : 0.0f;
+                        onMouseWheel_(dx, dy);
+                    }
+                } else {
+                    if (onMouseDown_) onMouseDown_(event.xbutton.x, event.xbutton.y);
+                }
                 break;
             case ButtonRelease:
+                if (event.xbutton.button >= 4 && event.xbutton.button <= 7)
+                    break; // ignore wheel release events
                 if (onMouseUp_) onMouseUp_(event.xbutton.x, event.xbutton.y);
                 break;
             case MotionNotify:
@@ -102,9 +112,19 @@ void X11Window::processEvents()
         XNextEvent(display_, &event);
         switch (event.type) {
         case ButtonPress:
-            if (onMouseDown_) onMouseDown_(event.xbutton.x, event.xbutton.y);
+            if (event.xbutton.button >= 4 && event.xbutton.button <= 7) {
+                if (onMouseWheel_) {
+                    float dx = (event.xbutton.button == 6) ? -1.0f : (event.xbutton.button == 7) ? 1.0f : 0.0f;
+                    float dy = (event.xbutton.button == 4) ? 1.0f : (event.xbutton.button == 5) ? -1.0f : 0.0f;
+                    onMouseWheel_(dx, dy);
+                }
+            } else {
+                if (onMouseDown_) onMouseDown_(event.xbutton.x, event.xbutton.y);
+            }
             break;
         case ButtonRelease:
+            if (event.xbutton.button >= 4 && event.xbutton.button <= 7)
+                break;
             if (onMouseUp_) onMouseUp_(event.xbutton.x, event.xbutton.y);
             break;
         case MotionNotify:

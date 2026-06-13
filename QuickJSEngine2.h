@@ -63,6 +63,7 @@ class QuickJSEngine : public IJSEngine {
     JSValue activeMouseUpFn_ = JS_UNDEFINED;
     bool    dragging_        = false;
     float   lastMouseX_      = 0, lastMouseY_ = 0;
+    float   dragOffsetX_     = 0, dragOffsetY_ = 0; // hitbox origin at drag start
 
     IParameterProvider& parameterStore_;
 };

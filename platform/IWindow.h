@@ -16,6 +16,7 @@ public:
     virtual void setOnMouseDown(std::function<void(int x, int y)> cb) = 0;
     virtual void setOnMouseUp(std::function<void(int x, int y)> cb)   = 0;
     virtual void setOnMouseMove(std::function<void(int x, int y)> cb) = 0;
+    virtual void setOnMouseWheel(std::function<void(float dx, float dy)> cb) {}
     virtual void setOnFrame(std::function<void()> cb) = 0;
     virtual void setOnClose(std::function<void()> cb) {}
     virtual void setResizable(bool resizable) {}

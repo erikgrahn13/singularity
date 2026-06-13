@@ -475,6 +475,8 @@ void QuickJSEngine::onMouseDown(float x, float y) {
     if (!JS_IsUndefined(activeMouseUpFn_)) JS_FreeValue(ctx_, activeMouseUpFn_);
     activeDragFn_    = JS_IsUndefined(hb->onMouseDrag) ? JS_UNDEFINED : JS_DupValue(ctx_, hb->onMouseDrag);
     activeMouseUpFn_ = JS_IsUndefined(hb->onMouseUp)   ? JS_UNDEFINED : JS_DupValue(ctx_, hb->onMouseUp);
+    dragOffsetX_ = hb->x;
+    dragOffsetY_ = hb->y;
     dragging_ = true;
     callJSMouseHandler(hb->onMouseDown, x - hb->x, y - hb->y);
 }
@@ -482,7 +484,7 @@ void QuickJSEngine::onMouseDown(float x, float y) {
 void QuickJSEngine::onMouseUp(float x, float y) {
     if (!ctx_) return;
     lastMouseX_ = x; lastMouseY_ = y;
-    callJSMouseHandler(activeMouseUpFn_, x, y);
+    callJSMouseHandler(activeMouseUpFn_, x - dragOffsetX_, y - dragOffsetY_);
     JS_FreeValue(ctx_, activeDragFn_);    activeDragFn_    = JS_UNDEFINED;
     JS_FreeValue(ctx_, activeMouseUpFn_); activeMouseUpFn_ = JS_UNDEFINED;
     dragging_ = false;
@@ -492,7 +494,7 @@ void QuickJSEngine::onMouseMove(float x, float y) {
     if (!ctx_) return;
     lastMouseX_ = x; lastMouseY_ = y;
     if (dragging_)
-        callJSMouseHandler(activeDragFn_, x, y);
+        callJSMouseHandler(activeDragFn_, x - dragOffsetX_, y - dragOffsetY_);
 }
 
 void QuickJSEngine::onMouseWheel(float dx, float dy) {

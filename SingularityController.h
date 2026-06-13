@@ -31,6 +31,9 @@ class SingularityController {
         window.setOnMouseMove([this](int x, int y) {
             jsEngine_->onMouseMove((float)x, (float)y);
         });
+        window.setOnMouseWheel([this](float dx, float dy) {
+            jsEngine_->onMouseWheel(dx, dy);
+        });
     }
     void registerImage(const std::string& name, const uint8_t* data, int size);
 
