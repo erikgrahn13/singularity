@@ -87,12 +87,20 @@ function(singularity_create_plugin target)
     # import libs can use the bare <name>.lib without conflict.
     if(WIN32)
         set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_NAME "${target}_shared")
+        target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/windows/Win32Window.cpp)
         target_link_libraries(${target} PUBLIC dxguid.lib)
     elseif(APPLE)
         target_sources(${target} PRIVATE
             ${SINGULARITY_ROOT_DIR}/platform/macos/AppKitWindow.mm
         )
-        target_link_libraries(${target} PUBLIC "-framework AppKit")
+        target_link_libraries(${target} PUBLIC
+            "-framework AppKit"
+            "-framework Metal"
+            "-framework IOKit"
+            "-framework IOSurface"
+            "-framework QuartzCore"
+            "-framework CoreGraphics"
+        )
     elseif(UNIX AND NOT APPLE)
         find_package(X11 REQUIRED)
         set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
