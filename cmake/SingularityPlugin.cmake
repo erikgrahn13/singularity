@@ -68,7 +68,7 @@ function(singularity_create_plugin target)
         ${SKIA_LIB}
     )
 
-    if(UNIX)
+    if(UNIX AND NOT APPLE)
         target_link_libraries(${target} PUBLIC fontconfig freetype)
     endif()
 
@@ -87,6 +87,7 @@ function(singularity_create_plugin target)
     # import libs can use the bare <name>.lib without conflict.
     if(WIN32)
         set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_NAME "${target}_shared")
+        target_link_libraries(${target} PUBLIC dxguid.lib)
     elseif(APPLE)
         target_sources(${target} PRIVATE
             ${SINGULARITY_ROOT_DIR}/platform/macos/AppKitWindow.mm
