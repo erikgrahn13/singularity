@@ -66,12 +66,10 @@ function(singularity_create_plugin target)
         qjs-libc
         choc::choc
         ${SKIA_LIB}
-        fontconfig
-        freetype
     )
 
-    if(APPLE)
-        target_link_directories(${target} PUBLIC /opt/homebrew/lib)
+    if(UNIX)
+        target_link_libraries(${target} PUBLIC fontconfig freetype)
     endif()
 
     target_include_directories(${target} PRIVATE

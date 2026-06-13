@@ -66,8 +66,8 @@ public:
         return (__bridge void*)view_;
     }
 
-    void setOnMouseDown(std::function<void(int, int, unsigned int)> cb) override { onMouseDown_ = std::move(cb); }
-    void setOnMouseUp  (std::function<void(int, int, unsigned int)> cb) override { onMouseUp_   = std::move(cb); }
+    void setOnMouseDown(std::function<void(int, int)> cb) override { onMouseDown_ = std::move(cb); }
+    void setOnMouseUp  (std::function<void(int, int)> cb) override { onMouseUp_   = std::move(cb); }
     void setOnMouseMove(std::function<void(int, int)> cb)               override { onMouseMove_ = std::move(cb); }
     void setOnFrame    (std::function<void()> cb)                       override { onFrame_     = std::move(cb); }
     void setOnClose    (std::function<void()> cb)                       override { onClose_     = std::move(cb); }
@@ -77,13 +77,13 @@ private:
     NSView*       view_     = nil;
     AppKitDelegate* delegate_ = nil;
     int width_, height_;
-    std::function<void(int, int, unsigned int)> onMouseDown_;
-    std::function<void(int, int, unsigned int)> onMouseUp_;
+    std::function<void(int, int)> onMouseDown_;
+    std::function<void(int, int)> onMouseUp_;
     std::function<void(int, int)>               onMouseMove_;
     std::function<void()>                       onFrame_;
     std::function<void()>                       onClose_;
 };
 
-std::unique_ptr<IWindow> IWindow::createWindow(int w, int h) {
+std::unique_ptr<IWindow> IWindow::createWindow(int w, int h, void* parentWindow) {
     return std::make_unique<AppKitWindowImpl>(w, h);
 }
