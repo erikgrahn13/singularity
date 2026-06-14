@@ -102,13 +102,14 @@ function(singularity_create_plugin target)
             "-framework CoreGraphics"
         )
     elseif(UNIX AND NOT APPLE)
-        find_package(X11 REQUIRED)
-        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        # set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp)
         target_link_libraries(${target} PUBLIC
             X11::X11
             X11::Xrandr
+            ${LIBPORTAL_LIBRARIES}
         )
+        target_include_directories(${target} PRIVATE ${LIBPORTAL_INCLUDE_DIRS})
     endif()
 
 

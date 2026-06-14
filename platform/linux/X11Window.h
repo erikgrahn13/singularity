@@ -39,6 +39,8 @@ class X11Window : public IWindow {
     int fd() override { return ConnectionNumber(display_); };
     void processEvents() override;
     int refreshRate() const override;
+    void openFileDialog(const std::string& title,
+                        std::function<void(const std::string&)> callback) override;
 
     private:
     int      width_   = 0;

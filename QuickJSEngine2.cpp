@@ -1,5 +1,6 @@
 #include "QuickJSEngine2.h"
 #include "IJSEngine.h"
+#include "platform/IWindow.h"
 #include <iostream>
 #include <filesystem>
 #include "QuickJSEngineCanvasAPI.h"
@@ -88,11 +89,47 @@ static JSValue js_setParameter(JSContext* ctx, JSValueConst this_val,
     return engine->setParameter(ctx, this_val, argc, argv);
 }
 
+static JSValue js_openFileDialog(JSContext* ctx, JSValueConst this_val,
+                                  int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+
+    if (!engine->window())
+        return JS_ThrowInternalError(ctx, "No window attached");
+
+    std::string title = "Open File";
+    if (argc > 0) {
+        const char* t = JS_ToCString(ctx, argv[0]);
+        if (t) { title = t; JS_FreeCString(ctx, t); }
+    }
+
+    JSValue callback = JS_UNDEFINED;
+    if (argc > 1 && JS_IsFunction(ctx, argv[1])) {
+        callback = JS_DupValue(ctx, argv[1]);
+    }
+
+    engine->window()->openFileDialog(title, [engine, ctx, callback](const std::string& path) mutable {
+        if (!JS_IsUndefined(callback)) {
+            JSValue arg = JS_NewString(ctx, path.c_str());
+            JSValue ret = JS_Call(ctx, callback, JS_UNDEFINED, 1, &arg);
+            JS_FreeValue(ctx, ret);
+            JS_FreeValue(ctx, arg);
+            JS_FreeValue(ctx, callback);
+            callback = JS_UNDEFINED;
+        }
+    });
+
+    return JS_UNDEFINED;
+}
+
 static const JSCFunctionListEntry singularity_funcs[] = {
     JS_CFUNC_DEF("Component", 1, js_Component),
     JS_CFUNC_DEF("mount", 1, js_mount),
     JS_CFUNC_DEF("getParameter", 1, js_getParameter),
     JS_CFUNC_DEF("setParameter", 2, js_setParameter),
+    JS_CFUNC_DEF("openFileDialog", 2, js_openFileDialog),
     // JS_CFUNC_DEF("on", 2, js_on),
 };
 

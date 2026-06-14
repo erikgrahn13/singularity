@@ -7,6 +7,8 @@
 #include <vector>
 #include <string>
 
+class IWindow;
+
 class IJSEngine {
     public:
     using LogCallback = std::function<void(const std::string&)>;
@@ -21,6 +23,7 @@ class IJSEngine {
     virtual void onMouseUp(float x, float y) = 0;
     virtual void onMouseMove(float x, float y) = 0;
     virtual void onMouseWheel(float deltaX, float deltaY) = 0;
+    virtual void setWindow(IWindow* window) = 0;
     protected:
     LogCallback logger_;
 

@@ -1,5 +1,7 @@
 #include "X11Window.h"
 #include <cmath>
+#include <libportal/portal.h>
+#include <glib.h>
 
 std::unique_ptr<IWindow> IWindow::createWindow(int width, int height, void* parentWindow)
 {
@@ -78,6 +80,9 @@ void X11Window::run()
 
         // Render frame — vkQueuePresentKHR with FIFO present mode acts as vsync
         if (onFrame_) onFrame_();
+
+        // Pump GLib for async portal callbacks
+        while (g_main_context_iteration(nullptr, FALSE)) {}
     }
 }
 
@@ -107,6 +112,9 @@ void X11Window::setResizable(bool resizable) {
 
 void X11Window::processEvents()
 {
+    // Pump GLib main context for async portal callbacks
+    while (g_main_context_iteration(nullptr, FALSE)) {}
+
     XEvent event;
     while (XPending(display_)) {
         XNextEvent(display_, &event);
@@ -159,4 +167,60 @@ int X11Window::refreshRate() const {
     }
     XRRFreeScreenResources(res);
     return rate;
+}
+
+void X11Window::openFileDialog(const std::string& title,
+                                std::function<void(const std::string&)> callback)
+{
+    XdpPortal* portal = xdp_portal_new();
+    auto* cb = new std::function<void(const std::string&)>(std::move(callback));
+
+    // Build filter: "WAV Files" matching *.wav
+    GVariantBuilder patternBuilder;
+    g_variant_builder_init(&patternBuilder, G_VARIANT_TYPE("a(us)"));
+    g_variant_builder_add(&patternBuilder, "(us)", 0, "*.wav");
+
+    GVariantBuilder filterBuilder;
+    g_variant_builder_init(&filterBuilder, G_VARIANT_TYPE("a(sa(us))"));
+    g_variant_builder_add(&filterBuilder, "(sa(us))", "WAV Files", &patternBuilder);
+
+    GVariant* filters = g_variant_builder_end(&filterBuilder);
+
+    xdp_portal_open_file(
+        portal,
+        nullptr,                      // parent window
+        title.c_str(),                // title
+        filters,                      // filters
+        nullptr,                      // current_filter
+        nullptr,                      // current_folder
+        XDP_OPEN_FILE_FLAG_NONE,      // flags
+        nullptr,                      // GCancellable
+        [](GObject* obj, GAsyncResult* res, gpointer data) {
+            auto* userCb = static_cast<std::function<void(const std::string&)>*>(data);
+            GError* error = nullptr;
+            GVariant* result = xdp_portal_open_file_finish(XDP_PORTAL(obj), res, &error);
+
+            std::string selectedPath;
+            if (result) {
+                const char** uris = nullptr;
+                g_variant_lookup(result, "uris", "^a&s", &uris);
+                if (uris && uris[0]) {
+                    GFile* file = g_file_new_for_uri(uris[0]);
+                    char* path = g_file_get_path(file);
+                    if (path) {
+                        selectedPath = path;
+                        g_free(path);
+                    }
+                    g_object_unref(file);
+                }
+                g_variant_unref(result);
+            }
+            if (error) g_error_free(error);
+
+            if (*userCb) (*userCb)(selectedPath);
+            delete userCb;
+            g_object_unref(obj);
+        },
+        cb
+    );
 }

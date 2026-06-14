@@ -22,6 +22,11 @@ if(WIN32)
 elseif(UNIX AND NOT APPLE)
     # All static libs linked into VST3 .so must be compiled with -fPIC on Linux.
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    find_package(X11 REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBPORTAL REQUIRED libportal)
+    set_target_properties(X11::X11 PROPERTIES IMPORTED_GLOBAL TRUE)
+    set_target_properties(X11::Xrandr PROPERTIES IMPORTED_GLOBAL TRUE)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")

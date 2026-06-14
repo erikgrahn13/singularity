@@ -22,6 +22,7 @@ class SingularityController {
 
     void attachToWindow(IWindow& window) {
         renderer_->attachToWindow(window);
+        jsEngine_->setWindow(&window);
         window.setOnMouseDown([this](int x, int y) {
             jsEngine_->onMouseDown((float)x, (float)y);
         });

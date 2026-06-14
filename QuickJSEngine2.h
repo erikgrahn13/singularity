@@ -28,6 +28,9 @@ class QuickJSEngine : public IJSEngine {
     JSValue getParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
     JSValue setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
 
+    void setWindow(IWindow* window) { window_ = window; }
+    IWindow* window() const { return window_; }
+
     JSValue appFn_ = JS_UNDEFINED;
 
     // Draw entry: absolute position + draw function, collected during buildComponentTree
@@ -66,4 +69,5 @@ class QuickJSEngine : public IJSEngine {
     float   dragOffsetX_     = 0, dragOffsetY_ = 0; // hitbox origin at drag start
 
     IParameterProvider& parameterStore_;
+    IWindow* window_{nullptr};
 };
