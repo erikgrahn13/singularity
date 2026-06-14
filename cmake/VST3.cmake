@@ -22,6 +22,12 @@ FetchContent_MakeAvailable(vst3sdk)
 
 smtg_enable_vst3_sdk()
 
+# Workaround: VST3 SDK threadchecker_mac.mm uses std::terminate() without
+# #include <exception>. Newer Xcode/macOS SDKs no longer transitively provide it.
+if(APPLE AND TARGET sdk_common)
+    target_compile_options(sdk_common PRIVATE "-include" "exception")
+endif()
+
 # Export resolved VST3 SDK paths for consumers (e.g. SingularityPlugin.cmake)
 set(SINGULARITY_VST3SDK_SOURCE_DIR "${vst3sdk_SOURCE_DIR}" CACHE INTERNAL "" FORCE)
 set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
