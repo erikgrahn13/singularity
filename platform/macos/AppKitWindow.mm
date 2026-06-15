@@ -108,17 +108,32 @@ extern "C" void* createMetalLayerForView(void* nsView) {
 
 class AppKitWindowImpl : public IWindow {
 public:
-    AppKitWindowImpl(int width, int height) : width_(width), height_(height) {
+    AppKitWindowImpl(int width, int height, void* parentWindow) : width_(width), height_(height) {
         NSRect frame = NSMakeRect(0, 0, width, height);
         view_ = [[EventView alloc] initWithFrame:frame];
-        window_ = [[NSWindow alloc]
-            initWithContentRect:frame
-            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
-            backing:NSBackingStoreBuffered
-            defer:NO];
-        [window_ setContentView:view_];
-        [window_ setAcceptsMouseMovedEvents:YES];
-        [window_ center];
+
+        if (parentWindow) {
+            // Plugin mode: embed our view into the host-provided parent NSView
+            NSView* parent = (__bridge NSView*)parentWindow;
+            [view_ setFrame:parent.bounds];
+            [view_ setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+            [parent addSubview:view_];
+            embedded_ = true;
+        } else {
+            // Standalone mode: create our own window
+            window_ = [[NSWindow alloc]
+                initWithContentRect:frame
+                styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
+                backing:NSBackingStoreBuffered
+                defer:NO];
+            [window_ setContentView:view_];
+            [window_ setAcceptsMouseMovedEvents:YES];
+            [window_ center];
+
+            delegate_ = [[AppKitDelegate alloc] init];
+            delegate_.window = window_;
+            embedded_ = false;
+        }
 
         // Add a tracking area so mouseMoved fires even when the window isn't key
         NSTrackingArea* trackingArea = [[NSTrackingArea alloc]
@@ -133,16 +148,12 @@ public:
         view_.onMouseUp    = &onMouseUp_;
         view_.onMouseMove  = &onMouseMove_;
         view_.onMouseWheel = &onMouseWheel_;
-
-        delegate_ = [[AppKitDelegate alloc] init];
-        delegate_.window = window_;
     }
 
     void run() override {
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         [NSApp setDelegate:delegate_];
 
-        // Wire the onFrame callback into the delegate so the timer can call it
         if (onFrame_) {
             auto frameCb = onFrame_;
             delegate_.frameBlock = ^{ frameCb(); };
@@ -152,7 +163,16 @@ public:
     }
 
     void close() override {
-        [window_ close];
+        if (displayLink_) {
+            [displayLink_ invalidate];
+            displayLink_ = nil;
+        }
+        if (embedded_) {
+            [view_ removeFromSuperview];
+        } else {
+            [window_ close];
+        }
+        if (onClose_) onClose_();
     }
 
     int width()  const override { return width_; }
@@ -181,13 +201,26 @@ public:
     void setOnMouseUp  (std::function<void(int, int)> cb) override { onMouseUp_   = std::move(cb); }
     void setOnMouseMove(std::function<void(int, int)> cb) override { onMouseMove_ = std::move(cb); }
     void setOnMouseWheel(std::function<void(float, float)> cb) override { onMouseWheel_ = std::move(cb); }
-    void setOnFrame    (std::function<void()> cb)          override { onFrame_     = std::move(cb); }
+    void setOnFrame(std::function<void()> cb) override {
+        onFrame_ = std::move(cb);
+        // In embedded/plugin mode, start a CADisplayLink to drive frame rendering.
+        // The host owns the run loop — we just attach our display link to it.
+        if (embedded_ && onFrame_) {
+            delegate_ = [[AppKitDelegate alloc] init];
+            auto frameCb = onFrame_;
+            delegate_.frameBlock = ^{ frameCb(); };
+            displayLink_ = [view_ displayLinkWithTarget:delegate_ selector:@selector(render:)];
+            [displayLink_ addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+        }
+    }
     void setOnClose    (std::function<void()> cb)          override { onClose_     = std::move(cb); }
 
 private:
-    NSWindow*       window_   = nil;
-    EventView*      view_     = nil;
-    AppKitDelegate* delegate_ = nil;
+    NSWindow*       window_       = nil;
+    EventView*      view_         = nil;
+    AppKitDelegate* delegate_     = nil;
+    CADisplayLink*  displayLink_  = nil;
+    bool            embedded_     = false;
     int width_, height_;
     std::function<void(int, int)>     onMouseDown_;
     std::function<void(int, int)>     onMouseUp_;
@@ -198,5 +231,5 @@ private:
 };
 
 std::unique_ptr<IWindow> IWindow::createWindow(int w, int h, void* parentWindow) {
-    return std::make_unique<AppKitWindowImpl>(w, h);
+    return std::make_unique<AppKitWindowImpl>(w, h, parentWindow);
 }

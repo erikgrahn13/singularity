@@ -71,7 +71,10 @@ void SingularityView::attachedToParent()
     window_ = IWindow::createWindow(width, height, systemWindow);
     controller_->attachToWindow(*window_);
 
-
+    // Set up the frame callback. On macOS in embedded mode, setting onFrame
+    // automatically starts a CADisplayLink. On Linux, the host's IRunLoop
+    // timer drives tick() via onTimer().
+    window_->setOnFrame([this]() { controller_->tick(); });
 
 #if defined(__linux__)
     if (plugFrame && window_) {
