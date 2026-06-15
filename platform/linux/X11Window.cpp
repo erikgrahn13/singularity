@@ -1,5 +1,6 @@
 #include "X11Window.h"
 #include <cmath>
+#include <poll.h>
 #include <libportal/portal.h>
 #include <glib.h>
 
@@ -45,9 +46,16 @@ X11Window::~X11Window()
 void X11Window::run()
 {
     XEvent event;
+    int x11_fd = ConnectionNumber(display_);
+    int frame_interval_ms = 1000 / refreshRate();
+
     while (true)
     {
-        // Drain all pending X events first
+        // Sleep until next frame or X11 event
+        struct pollfd pfd = { x11_fd, POLLIN, 0 };
+        poll(&pfd, 1, frame_interval_ms);
+
+        // Drain all pending X events
         while (XPending(display_))
         {
             XNextEvent(display_, &event);
@@ -67,10 +75,16 @@ void X11Window::run()
                 break;
             case ButtonRelease:
                 if (event.xbutton.button >= 4 && event.xbutton.button <= 7)
-                    break; // ignore wheel release events
+                    break;
                 if (onMouseUp_) onMouseUp_(event.xbutton.x, event.xbutton.y);
                 break;
             case MotionNotify:
+                while (XPending(display_)) {
+                    XEvent next;
+                    XPeekEvent(display_, &next);
+                    if (next.type != MotionNotify) break;
+                    XNextEvent(display_, &event);
+                }
                 if (onMouseMove_) onMouseMove_(event.xmotion.x, event.xmotion.y);
                 break;
             default:
@@ -78,10 +92,8 @@ void X11Window::run()
             }
         }
 
-        // Render frame — vkQueuePresentKHR with FIFO present mode acts as vsync
         if (onFrame_) onFrame_();
 
-        // Pump GLib for async portal callbacks
         while (g_main_context_iteration(nullptr, FALSE)) {}
     }
 }
