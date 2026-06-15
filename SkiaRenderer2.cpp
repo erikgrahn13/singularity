@@ -425,12 +425,13 @@ void SkiaRenderer::drawImage(const std::string& name, float dx, float dy, float 
     SkRect dst = SkRect::MakeXYWH(dx, dy, dw, dh);
 
     // Ensure the image is GPU-backed for Skia Graphite.
-    // DeferredFromEncodedData creates a raster image; Graphite needs a texture.
-    auto gpuImage = SkImages::TextureFromImage(rec_.get(), it->second);
-    if (gpuImage) {
-        c->drawImageRect(gpuImage, dst, SkSamplingOptions(SkFilterMode::kLinear));
-    } else {
-        // Fallback: try raster directly (may silently fail on Graphite)
-        c->drawImageRect(it->second, dst, SkSamplingOptions(SkFilterMode::kLinear));
+    // If the cached image is still raster (e.g. from registerImage()), upload it
+    // once and store the GPU texture back so subsequent frames are free.
+    if (!it->second->isTextureBacked()) {
+        auto gpuImage = SkImages::TextureFromImage(rec_.get(), it->second);
+        if (gpuImage)
+            it->second = gpuImage;
     }
+
+    c->drawImageRect(it->second, dst, SkSamplingOptions(SkFilterMode::kLinear));
 }

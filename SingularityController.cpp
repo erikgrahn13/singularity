@@ -37,9 +37,20 @@ void SingularityController::initialize()
 void SingularityController::tick()
 {
 #ifndef NDEBUG
-    if (reloadPending_.exchange(false))
+    if (reloadPending_.exchange(false)) {
         reload();
+        dirty_ = true;
+    }
 #endif
+
+    // Periodic redraw to pick up host-automated parameter changes.
+    // Every ~20 frames (~3Hz at 60fps) we force a redraw.
+    if (++frameCounter_ >= 20) {
+        frameCounter_ = 0;
+        dirty_ = true;
+    }
+
+    if (!dirty_.exchange(false)) return;
 
     renderer_->beginFrame();
     if (!renderer_->currentCanvas()) return;

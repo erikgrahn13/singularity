@@ -25,15 +25,19 @@ class SingularityController {
         jsEngine_->setWindow(&window);
         window.setOnMouseDown([this](int x, int y) {
             jsEngine_->onMouseDown((float)x, (float)y);
+            dirty_ = true;
         });
         window.setOnMouseUp([this](int x, int y) {
             jsEngine_->onMouseUp((float)x, (float)y);
+            dirty_ = true;
         });
         window.setOnMouseMove([this](int x, int y) {
             jsEngine_->onMouseMove((float)x, (float)y);
+            dirty_ = true;
         });
         window.setOnMouseWheel([this](float dx, float dy) {
             jsEngine_->onMouseWheel(dx, dy);
+            dirty_ = true;
         });
     }
     void registerImage(const std::string& name, const uint8_t* data, int size);
@@ -46,5 +50,7 @@ class SingularityController {
     std::unique_ptr<IFileWatcher> fileWatcher_;
     std::unique_ptr<IFileWatcher> widgetsWatcher_;
     std::atomic<bool> reloadPending_{false};
+    std::atomic<bool> dirty_{true};
+    int frameCounter_ = 0;
     IParameterProvider& parameterProvider_;
 };

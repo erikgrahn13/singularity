@@ -55,11 +55,13 @@ class QuickJSEngine : public IJSEngine {
     // Helpers
     void callJSMouseHandler(JSValue fn, float x, float y);
     void callJSMouseWheelHandler(JSValue fn, float dx, float dy);
+    void createCanvasContext();
     Hitbox* hitTest(float x, float y);
 
     JSRuntime* rt_{nullptr};
     JSContext* ctx_{nullptr};
     IRenderer* renderer_{nullptr};
+    JSValue jsCanvasCtx_ = JS_UNDEFINED; // persistent canvas context object, reused every frame
 
     // Drag state — which hitbox's handlers are active for the current press
     JSValue activeDragFn_    = JS_UNDEFINED;

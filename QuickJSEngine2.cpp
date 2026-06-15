@@ -316,6 +316,11 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
             appFn_ = JS_UNDEFINED;
         }
 
+        if (!JS_IsUndefined(jsCanvasCtx_)) {
+            JS_FreeValue(ctx_, jsCanvasCtx_);
+            jsCanvasCtx_ = JS_UNDEFINED;
+        }
+
         JS_FreeContext(ctx_);
         ctx_ = nullptr;
     }
@@ -385,15 +390,61 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     qjsc_load_modules(ctx_);
     callApp(ctx_, renderer_);
 #endif
+
+    // Create the persistent canvas context object once — reused every frame
+    createCanvasContext();
+}
+
+void QuickJSEngine::createCanvasContext()
+{
+    if (!ctx_) return;
+
+    jsCanvasCtx_ = JS_NewObject(ctx_);
+
+    // Methods
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "fillRect",           JS_NewCFunction(ctx_, js_fillRect,           "fillRect",           4));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "strokeRect",         JS_NewCFunction(ctx_, js_strokeRect,         "strokeRect",         4));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "clearRect",          JS_NewCFunction(ctx_, js_clearRect,          "clearRect",          4));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "beginPath",          JS_NewCFunction(ctx_, js_beginPath,          "beginPath",          0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "closePath",          JS_NewCFunction(ctx_, js_closePath,          "closePath",          0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "moveTo",             JS_NewCFunction(ctx_, js_moveTo,             "moveTo",             2));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "lineTo",             JS_NewCFunction(ctx_, js_lineTo,             "lineTo",             2));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "arc",                JS_NewCFunction(ctx_, js_arc,                "arc",                5));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "arcTo",              JS_NewCFunction(ctx_, js_arcTo,              "arcTo",              5));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "quadraticCurveTo",   JS_NewCFunction(ctx_, js_quadraticCurveTo,   "quadraticCurveTo",   4));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "bezierCurveTo",      JS_NewCFunction(ctx_, js_bezierCurveTo,      "bezierCurveTo",      6));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "ellipse",            JS_NewCFunction(ctx_, js_ellipse,            "ellipse",            7));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "rect",               JS_NewCFunction(ctx_, js_rect,               "rect",               4));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "roundRect",          JS_NewCFunction(ctx_, js_roundRect,          "roundRect",          5));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "fill",               JS_NewCFunction(ctx_, js_fill,               "fill",               0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "stroke",             JS_NewCFunction(ctx_, js_stroke,             "stroke",             0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "fillText",           JS_NewCFunction(ctx_, js_fillText,           "fillText",           3));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "strokeText",         JS_NewCFunction(ctx_, js_strokeText,         "strokeText",         3));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "measureText",        JS_NewCFunction(ctx_, js_measureText,        "measureText",        1));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "save",               JS_NewCFunction(ctx_, js_save,               "save",               0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "restore",            JS_NewCFunction(ctx_, js_restore,            "restore",            0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "translate",          JS_NewCFunction(ctx_, js_translate,          "translate",          2));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "rotate",             JS_NewCFunction(ctx_, js_rotate,             "rotate",             1));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "scale",              JS_NewCFunction(ctx_, js_scale,              "scale",              2));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "resetTransform",     JS_NewCFunction(ctx_, js_resetTransform,     "resetTransform",     0));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "createLinearGradient", JS_NewCFunction(ctx_, js_createLinearGradient, "createLinearGradient", 4));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "createRadialGradient", JS_NewCFunction(ctx_, js_createRadialGradient, "createRadialGradient", 6));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "drawImage",          JS_NewCFunction(ctx_, js_drawImage,          "drawImage",          5));
+
+    // Properties (write-only setters)
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "fillStyle"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_fillStyle,    "fillStyle",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "strokeStyle"),  JS_UNDEFINED, JS_NewCFunction(ctx_, js_strokeStyle,  "strokeStyle",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "lineWidth"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_lineWidth,    "lineWidth",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "lineCap"),      JS_UNDEFINED, JS_NewCFunction(ctx_, js_lineCap,      "lineCap",      1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "font"),         JS_UNDEFINED, JS_NewCFunction(ctx_, js_font,         "font",         1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "globalAlpha"),  JS_UNDEFINED, JS_NewCFunction(ctx_, js_globalAlpha,  "globalAlpha",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "textAlign"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_textAlign,    "textAlign",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "textBaseline"), JS_UNDEFINED, JS_NewCFunction(ctx_, js_textBaseline, "textBaseline", 1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
 }
 
 void QuickJSEngine::draw()
 {
-    if (!ctx_ || !renderer_) return;
-
-    // NOTE: drawEntries_ and hitboxes_ are built once in load() / reload().
-    // They are NOT rebuilt here — draw callbacks are closures that read live
-    // state (getParameter etc.) so they don't need to be recreated each frame.
+    if (!ctx_ || !renderer_ || JS_IsUndefined(jsCanvasCtx_)) return;
 
     DrawContextData drawData;
     drawData.renderer  = renderer_;
@@ -409,52 +460,11 @@ void QuickJSEngine::draw()
         renderer_->fillRect(0, 0, (float)renderer_->width(), (float)renderer_->height());
     }
 
-    JSValue jsCtx = JS_NewObject(ctx_);
-
-    JS_SetPropertyStr(ctx_, jsCtx, "fillRect",           JS_NewCFunction(ctx_, js_fillRect,           "fillRect",           4));
-    JS_SetPropertyStr(ctx_, jsCtx, "strokeRect",         JS_NewCFunction(ctx_, js_strokeRect,         "strokeRect",         4));
-    JS_SetPropertyStr(ctx_, jsCtx, "clearRect",          JS_NewCFunction(ctx_, js_clearRect,          "clearRect",          4));
-    JS_SetPropertyStr(ctx_, jsCtx, "beginPath",          JS_NewCFunction(ctx_, js_beginPath,          "beginPath",          0));
-    JS_SetPropertyStr(ctx_, jsCtx, "closePath",          JS_NewCFunction(ctx_, js_closePath,          "closePath",          0));
-    JS_SetPropertyStr(ctx_, jsCtx, "moveTo",             JS_NewCFunction(ctx_, js_moveTo,             "moveTo",             2));
-    JS_SetPropertyStr(ctx_, jsCtx, "lineTo",             JS_NewCFunction(ctx_, js_lineTo,             "lineTo",             2));
-    JS_SetPropertyStr(ctx_, jsCtx, "arc",                JS_NewCFunction(ctx_, js_arc,                "arc",                5));
-    JS_SetPropertyStr(ctx_, jsCtx, "arcTo",              JS_NewCFunction(ctx_, js_arcTo,              "arcTo",              5));
-    JS_SetPropertyStr(ctx_, jsCtx, "quadraticCurveTo",   JS_NewCFunction(ctx_, js_quadraticCurveTo,   "quadraticCurveTo",   4));
-    JS_SetPropertyStr(ctx_, jsCtx, "bezierCurveTo",      JS_NewCFunction(ctx_, js_bezierCurveTo,      "bezierCurveTo",      6));
-    JS_SetPropertyStr(ctx_, jsCtx, "ellipse",            JS_NewCFunction(ctx_, js_ellipse,            "ellipse",            7));
-    JS_SetPropertyStr(ctx_, jsCtx, "rect",               JS_NewCFunction(ctx_, js_rect,               "rect",               4));
-    JS_SetPropertyStr(ctx_, jsCtx, "roundRect",          JS_NewCFunction(ctx_, js_roundRect,          "roundRect",          5));
-    JS_SetPropertyStr(ctx_, jsCtx, "fill",               JS_NewCFunction(ctx_, js_fill,               "fill",               0));
-    JS_SetPropertyStr(ctx_, jsCtx, "stroke",             JS_NewCFunction(ctx_, js_stroke,             "stroke",             0));
-    JS_SetPropertyStr(ctx_, jsCtx, "fillText",           JS_NewCFunction(ctx_, js_fillText,           "fillText",           3));
-    JS_SetPropertyStr(ctx_, jsCtx, "strokeText",         JS_NewCFunction(ctx_, js_strokeText,         "strokeText",         3));
-    JS_SetPropertyStr(ctx_, jsCtx, "measureText",        JS_NewCFunction(ctx_, js_measureText,        "measureText",        1));
-    JS_SetPropertyStr(ctx_, jsCtx, "save",               JS_NewCFunction(ctx_, js_save,               "save",               0));
-    JS_SetPropertyStr(ctx_, jsCtx, "restore",            JS_NewCFunction(ctx_, js_restore,            "restore",            0));
-    JS_SetPropertyStr(ctx_, jsCtx, "translate",          JS_NewCFunction(ctx_, js_translate,          "translate",          2));
-    JS_SetPropertyStr(ctx_, jsCtx, "rotate",             JS_NewCFunction(ctx_, js_rotate,             "rotate",             1));
-    JS_SetPropertyStr(ctx_, jsCtx, "scale",              JS_NewCFunction(ctx_, js_scale,              "scale",              2));
-    JS_SetPropertyStr(ctx_, jsCtx, "resetTransform",     JS_NewCFunction(ctx_, js_resetTransform,     "resetTransform",     0));
-    JS_SetPropertyStr(ctx_, jsCtx, "createLinearGradient", JS_NewCFunction(ctx_, js_createLinearGradient, "createLinearGradient", 4));
-    JS_SetPropertyStr(ctx_, jsCtx, "createRadialGradient", JS_NewCFunction(ctx_, js_createRadialGradient, "createRadialGradient", 6));
-    JS_SetPropertyStr(ctx_, jsCtx, "drawImage",          JS_NewCFunction(ctx_, js_drawImage,          "drawImage",          5));
-
-    // Canvas API properties (write-only setters)
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "fillStyle"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_fillStyle,    "fillStyle",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "strokeStyle"),  JS_UNDEFINED, JS_NewCFunction(ctx_, js_strokeStyle,  "strokeStyle",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "lineWidth"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_lineWidth,    "lineWidth",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "lineCap"),      JS_UNDEFINED, JS_NewCFunction(ctx_, js_lineCap,      "lineCap",      1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "font"),         JS_UNDEFINED, JS_NewCFunction(ctx_, js_font,         "font",         1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "globalAlpha"),  JS_UNDEFINED, JS_NewCFunction(ctx_, js_globalAlpha,  "globalAlpha",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "textAlign"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_textAlign,    "textAlign",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-    JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "textBaseline"), JS_UNDEFINED, JS_NewCFunction(ctx_, js_textBaseline, "textBaseline", 1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
-
     // Draw each component translated to its absolute position
     for (auto& entry : drawEntries_) {
         renderer_->save(nullptr);
         renderer_->translate(entry.absX, entry.absY);
-        JSValue argv[1] = { jsCtx };
+        JSValue argv[1] = { jsCanvasCtx_ };
         JSValue result = JS_Call(ctx_, entry.fn, JS_UNDEFINED, 1, argv);
         if (JS_IsException(result))
             js_std_dump_error(ctx_);
@@ -462,7 +472,6 @@ void QuickJSEngine::draw()
         renderer_->restore(nullptr);
     }
 
-    JS_FreeValue(ctx_, jsCtx);
     JS_SetContextOpaque(ctx_, previousOpaque);
 }
 
