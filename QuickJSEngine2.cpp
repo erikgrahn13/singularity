@@ -438,6 +438,7 @@ void QuickJSEngine::draw()
     JS_SetPropertyStr(ctx_, jsCtx, "resetTransform",     JS_NewCFunction(ctx_, js_resetTransform,     "resetTransform",     0));
     JS_SetPropertyStr(ctx_, jsCtx, "createLinearGradient", JS_NewCFunction(ctx_, js_createLinearGradient, "createLinearGradient", 4));
     JS_SetPropertyStr(ctx_, jsCtx, "createRadialGradient", JS_NewCFunction(ctx_, js_createRadialGradient, "createRadialGradient", 6));
+    JS_SetPropertyStr(ctx_, jsCtx, "drawImage",          JS_NewCFunction(ctx_, js_drawImage,          "drawImage",          5));
 
     // Canvas API properties (write-only setters)
     JS_DefinePropertyGetSet(ctx_, jsCtx, JS_NewAtom(ctx_, "fillStyle"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_fillStyle,    "fillStyle",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IRenderer2.h"
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -65,6 +66,9 @@ public:
     void  scale(float x, float y) override;
     void  resetTransform(void*) override;
 
+    void  registerImage(const std::string& name, const uint8_t* data, int size) override;
+    void  drawImage(const std::string& name, float dx, float dy, float dw, float dh) override;
+
 private:
     wgpu::Instance   instance_;
     wgpu::Adapter    adapter_;
@@ -100,6 +104,9 @@ private:
 
     sk_sp<SkFontMgr>  fontMgr_;
     sk_sp<SkTypeface> typeface_;
+
+    std::map<std::string, sk_sp<SkImage>> images_;
+    std::string resourcePath_;
 
     SkCanvas* canvas() const;
     SkPaint   fillPaint() const;

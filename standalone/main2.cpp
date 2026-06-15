@@ -6,6 +6,10 @@
 
 #include PLUGIN_CLASS_HEADER
 
+#ifdef SINGULARITY_HAS_EMBEDDED_RESOURCES
+#include "generated_resources.h"
+#endif
+
 #if defined(__linux__)
 #include "PipeWire.h"
 using PlatformAudio = PipeWire<PLUGIN_CLASS>;
@@ -31,6 +35,10 @@ int main()
         std::cout << msg << std::endl;
     });
     controller->initialize();
+
+#ifdef SINGULARITY_HAS_EMBEDDED_RESOURCES
+    singularity_register_images(controller.get());
+#endif
 
     auto width  = controller->width();
     auto height = controller->height();

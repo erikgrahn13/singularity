@@ -17,9 +17,12 @@
 #include "include/utils/SkTextUtils.h"
 #include "include/effects/SkGradientShader.h"
 #include "include/gpu/graphite/Surface.h"
-
+#include "include/core/SkData.h"
+#include "include/core/SkImage.h"
+#include "include/gpu/graphite/Image.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <stdexcept>
 
 #ifdef __linux__
@@ -92,7 +95,9 @@ SkPaint SkiaRenderer::strokePaint() const {
 
 // ── Construction ─────────────────────────────────────────────────────────────
 
-SkiaRenderer::SkiaRenderer(std::string_view resourcePath) {
+SkiaRenderer::SkiaRenderer(std::string_view resourcePath)
+    : resourcePath_(resourcePath)
+{
     dawnProcSetProcs(&dawn::native::GetProcs());
 
     wgpu::InstanceDescriptor instanceDesc{};
@@ -361,3 +366,71 @@ void SkiaRenderer::translate(float x, float y)  { if (auto* c = canvas()) c->tra
 void SkiaRenderer::rotate(float a)               { if (auto* c = canvas()) c->rotate(a * (180.f / SK_FloatPI)); }
 void SkiaRenderer::scale(float x, float y)       { if (auto* c = canvas()) c->scale(x, y); }
 void SkiaRenderer::resetTransform(void*)         { if (auto* c = canvas()) c->resetMatrix(); }
+
+// ── Images ────────────────────────────────────────────────────────────────────
+
+void SkiaRenderer::registerImage(const std::string& name, const uint8_t* data, int size) {
+    auto skData = SkData::MakeWithCopy(data, size);
+    auto img = SkImages::DeferredFromEncodedData(skData);
+    if (img) {
+        images_[name] = img;
+        fprintf(stderr, "[drawImage] registered: %s (%dx%d)\n", name.c_str(), img->width(), img->height());
+    } else {
+        fprintf(stderr, "[drawImage] failed to decode registered image: %s\n", name.c_str());
+    }
+}
+
+void SkiaRenderer::drawImage(const std::string& name, float dx, float dy, float dw, float dh) {
+    auto* c = canvas();
+    if (!c) { fprintf(stderr, "[drawImage] no canvas\n"); return; }
+
+    // Normalise path: strip leading "./" or directory components
+    std::string key = std::filesystem::path(name).filename().string();
+
+    auto it = images_.find(key);
+    if (it == images_.end()) {
+        // Try loading from the bundle's Resources directory (works in both Debug and Release)
+        std::vector<std::string> candidates = {
+            resourcePath_ + "/" + key,
+            resourcePath_ + "/Images/" + key,
+            resourcePath_ + "/Fonts/" + key,
+        };
+#ifndef NDEBUG
+        // In Debug builds, also try the source directory
+        candidates.push_back(std::string(UI_DIR) + "/" + key);
+        candidates.push_back(name);
+#endif
+        for (auto& path : candidates) {
+            auto skData = SkData::MakeFromFileName(path.c_str());
+            if (skData) {
+                fprintf(stderr, "[drawImage] loaded from: %s (%zu bytes)\n", path.c_str(), skData->size());
+                auto img = SkImages::DeferredFromEncodedData(skData);
+                if (img) {
+                    auto gpuImg = SkImages::TextureFromImage(rec_.get(), img);
+                    if (gpuImg)
+                        images_[key] = gpuImg;
+                    else
+                        images_[key] = img;
+                    it = images_.find(key);
+                    break;
+                }
+            }
+        }
+        if (it == images_.end()) {
+            fprintf(stderr, "[drawImage] failed to load: %s\n", name.c_str());
+            return;
+        }
+    }
+
+    SkRect dst = SkRect::MakeXYWH(dx, dy, dw, dh);
+
+    // Ensure the image is GPU-backed for Skia Graphite.
+    // DeferredFromEncodedData creates a raster image; Graphite needs a texture.
+    auto gpuImage = SkImages::TextureFromImage(rec_.get(), it->second);
+    if (gpuImage) {
+        c->drawImageRect(gpuImage, dst, SkSamplingOptions(SkFilterMode::kLinear));
+    } else {
+        // Fallback: try raster directly (may silently fail on Graphite)
+        c->drawImageRect(it->second, dst, SkSamplingOptions(SkFilterMode::kLinear));
+    }
+}
