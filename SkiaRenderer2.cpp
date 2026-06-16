@@ -367,6 +367,12 @@ void SkiaRenderer::rotate(float a)               { if (auto* c = canvas()) c->ro
 void SkiaRenderer::scale(float x, float y)       { if (auto* c = canvas()) c->scale(x, y); }
 void SkiaRenderer::resetTransform(void*)         { if (auto* c = canvas()) c->resetMatrix(); }
 
+// ── Clipping ──────────────────────────────────────────────────────────────────
+
+void SkiaRenderer::clipRect(float x, float y, float w, float h) {
+    if (auto* c = canvas()) c->clipRect(SkRect::MakeXYWH(x, y, w, h));
+}
+
 // ── Images ────────────────────────────────────────────────────────────────────
 
 void SkiaRenderer::registerImage(const std::string& name, const uint8_t* data, int size) {

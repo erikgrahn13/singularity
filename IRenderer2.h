@@ -98,6 +98,9 @@ public:
     virtual void scale(float x, float y) = 0;
     virtual void resetTransform(void* canvas) = 0;
 
+    // --- Clipping ---
+    virtual void clipRect(float x, float y, float w, float h) = 0;
+
     // --- HDR ---
     // hdrMultiplier > 1.0 makes colors brighter than white, driving bloom/glow effects.
     // Reset to 1.0 by save()/restore() as part of draw state.

@@ -1,6 +1,6 @@
 import { Component, getParameter, setParameter } from "singularity";
 
-export function Knob({ x, y, size = 40, parameterId, theme = {}, draw = null }) {
+export function Knob({ x, y, size = 40, parameterId, theme = {}, draw = null, backgroundColor }) {
   let lastY = null;
 
   const t = {
@@ -17,6 +17,7 @@ export function Knob({ x, y, size = 40, parameterId, theme = {}, draw = null }) 
     y,
     width: size,
     height: size,
+    backgroundColor,
 
     onMouseDown: (e) => {
       lastY = e.y;

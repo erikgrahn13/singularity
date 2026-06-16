@@ -183,7 +183,7 @@ static float getFloatProp(JSContext* ctx, JSValueConst props, const char* name, 
     return static_cast<float>(out);
 }
 
-static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* renderer, float offsetX = 0.f, float offsetY = 0.f, bool isRoot = false) {
+static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* renderer, float offsetX = 0.f, float offsetY = 0.f, bool isRoot = false, bool ignoreOwnPosition = false) {
     JSValue props = JS_GetPropertyStr(ctx, node, "props");
 
     // Resize renderer if root component declares width/height
@@ -192,26 +192,45 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
     if (w_int != -1 && h_int != -1 && isRoot)
         renderer->resize(w_int, h_int);
 
-    // backgroundColor — only read at root level
-    if (isRoot) {
+    float localX = ignoreOwnPosition ? 0.f : getFloatProp(ctx, props, "x", 0.f);
+    float localY = ignoreOwnPosition ? 0.f : getFloatProp(ctx, props, "y", 0.f);
+    float absX   = offsetX + localX;
+    float absY   = offsetY + localY;
+    float w      = getFloatProp(ctx, props, "width",  0.f);
+    float h      = getFloatProp(ctx, props, "height", 0.f);
+
+    // backgroundColor
+    std::string bgColor;
+    {
         JSValue bgVal = JS_GetPropertyStr(ctx, props, "backgroundColor");
         if (JS_IsString(bgVal)) {
             const char* s = JS_ToCString(ctx, bgVal);
             if (s) {
-                auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
-                engine->backgroundColor_ = s;
+                bgColor = s;
+                if (isRoot) {
+                    auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+                    engine->backgroundColor_ = s;
+                }
                 JS_FreeCString(ctx, s);
             }
         }
         JS_FreeValue(ctx, bgVal);
     }
 
-    float localX = getFloatProp(ctx, props, "x", 0.f);
-    float localY = getFloatProp(ctx, props, "y", 0.f);
-    float absX   = offsetX + localX;
-    float absY   = offsetY + localY;
-    float w      = getFloatProp(ctx, props, "width",  0.f);
-    float h      = getFloatProp(ctx, props, "height", 0.f);
+    // Clip + background: if this component has bounds, push a ClipBegin entry
+    // so children are clipped to this component's rect
+    bool hasClip = (w > 0.f && h > 0.f);
+    if (hasClip) {
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        QuickJSEngine::DrawEntry clipBegin;
+        clipBegin.type   = QuickJSEngine::DrawEntryType::ClipBegin;
+        clipBegin.absX   = absX;
+        clipBegin.absY   = absY;
+        clipBegin.width  = w;
+        clipBegin.height = h;
+        clipBegin.bgColor = bgColor;
+        engine->drawEntries_.push_back(std::move(clipBegin));
+    }
 
     // Collect hitbox for mouse routing (only if the component has bounds)
     if (w > 0.f && h > 0.f) {
@@ -240,11 +259,27 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
         auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
         JSValue drawFn = JS_GetPropertyStr(ctx, props, "draw");
         if (JS_IsFunction(ctx, drawFn)) {
-            engine->drawEntries_.push_back({ absX, absY, drawFn });
+            QuickJSEngine::DrawEntry entry;
+            entry.absX = absX;
+            entry.absY = absY;
+            entry.fn   = drawFn;
+            engine->drawEntries_.push_back(std::move(entry));
         } else {
             JS_FreeValue(ctx, drawFn);
         }
     }
+
+    // Read layout properties
+    JSValue flexDirVal = JS_GetPropertyStr(ctx, props, "flexDirection");
+    std::string flexDir;
+    if (JS_IsString(flexDirVal)) {
+        const char* s = JS_ToCString(ctx, flexDirVal);
+        if (s) { flexDir = s; JS_FreeCString(ctx, s); }
+    }
+    JS_FreeValue(ctx, flexDirVal);
+
+    float gap     = getFloatProp(ctx, props, "gap", 0.f);
+    float padding = getFloatProp(ctx, props, "padding", 0.f);
 
     JSValue children = JS_GetPropertyStr(ctx, props, "children");
     if (JS_IsArray(children)) {
@@ -253,14 +288,49 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
         JS_ToUint32(ctx, &length, lengthVal);
         JS_FreeValue(ctx, lengthVal);
 
-        for (uint32_t i = 0; i < length; ++i) {
-            JSValue child = JS_GetPropertyUint32(ctx, children, i);
-            buildComponentTree(ctx, child, renderer, absX, absY);
-            JS_FreeValue(ctx, child);
+        if (!flexDir.empty()) {
+            // Flex layout: position children along main axis
+            bool isRow = (flexDir == "row");
+            float cursor = padding;
+
+            for (uint32_t i = 0; i < length; ++i) {
+                JSValue child = JS_GetPropertyUint32(ctx, children, i);
+                JSValue childProps = JS_GetPropertyStr(ctx, child, "props");
+
+                float childW = getFloatProp(ctx, childProps, "width", 0.f);
+                float childH = getFloatProp(ctx, childProps, "height", 0.f);
+
+                float childOffsetX = isRow ? cursor : padding;
+                float childOffsetY = isRow ? padding : cursor;
+
+                buildComponentTree(ctx, child, renderer, absX + childOffsetX, absY + childOffsetY, false, true);
+
+                cursor += (isRow ? childW : childH);
+                if (i + 1 < length) cursor += gap;
+
+                JS_FreeValue(ctx, childProps);
+                JS_FreeValue(ctx, child);
+            }
+        } else {
+            // Absolute positioning (default behavior)
+            for (uint32_t i = 0; i < length; ++i) {
+                JSValue child = JS_GetPropertyUint32(ctx, children, i);
+                buildComponentTree(ctx, child, renderer, absX, absY);
+                JS_FreeValue(ctx, child);
+            }
         }
     }
 
     JS_FreeValue(ctx, children);
+
+    // Close the clip region if we opened one
+    if (hasClip) {
+        auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
+        QuickJSEngine::DrawEntry clipEnd;
+        clipEnd.type = QuickJSEngine::DrawEntryType::ClipEnd;
+        engine->drawEntries_.push_back(std::move(clipEnd));
+    }
+
     JS_FreeValue(ctx, props);
 }
 
@@ -294,8 +364,10 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
         if (renderer_)
             // renderer_->clear();
 
-        for (auto& e : drawEntries_)
-            JS_FreeValue(ctx_, e.fn);
+        for (auto& e : drawEntries_) {
+            if (!JS_IsUndefined(e.fn))
+                JS_FreeValue(ctx_, e.fn);
+        }
         drawEntries_.clear();
         backgroundColor_.clear();
 
@@ -460,16 +532,38 @@ void QuickJSEngine::draw()
         renderer_->fillRect(0, 0, (float)renderer_->width(), (float)renderer_->height());
     }
 
-    // Draw each component translated to its absolute position
+    // Draw each component — handle clip regions and draw calls
     for (auto& entry : drawEntries_) {
-        renderer_->save(nullptr);
-        renderer_->translate(entry.absX, entry.absY);
-        JSValue argv[1] = { jsCanvasCtx_ };
-        JSValue result = JS_Call(ctx_, entry.fn, JS_UNDEFINED, 1, argv);
-        if (JS_IsException(result))
-            js_std_dump_error(ctx_);
-        JS_FreeValue(ctx_, result);
-        renderer_->restore(nullptr);
+        switch (entry.type) {
+        case DrawEntryType::ClipBegin:
+            // Save state, set clip rect, optionally paint background
+            renderer_->save(nullptr);
+            renderer_->clipRect(entry.absX, entry.absY, entry.width, entry.height);
+            if (!entry.bgColor.empty()) {
+                renderer_->setFillStyle(entry.bgColor);
+                renderer_->fillRect(entry.absX, entry.absY, entry.width, entry.height);
+            }
+            break;
+
+        case DrawEntryType::ClipEnd:
+            // Restore state (pops the clip)
+            renderer_->restore(nullptr);
+            break;
+
+        case DrawEntryType::Draw:
+            // Translate to component position, call JS draw, restore
+            renderer_->save(nullptr);
+            renderer_->translate(entry.absX, entry.absY);
+            if (JS_IsFunction(ctx_, entry.fn)) {
+                JSValue argv[1] = { jsCanvasCtx_ };
+                JSValue result = JS_Call(ctx_, entry.fn, JS_UNDEFINED, 1, argv);
+                if (JS_IsException(result))
+                    js_std_dump_error(ctx_);
+                JS_FreeValue(ctx_, result);
+            }
+            renderer_->restore(nullptr);
+            break;
+        }
     }
 
     JS_SetContextOpaque(ctx_, previousOpaque);

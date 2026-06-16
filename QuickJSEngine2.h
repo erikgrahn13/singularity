@@ -34,8 +34,12 @@ class QuickJSEngine : public IJSEngine {
     JSValue appFn_ = JS_UNDEFINED;
 
     // Draw entry: absolute position + draw function, collected during buildComponentTree
+    enum class DrawEntryType { Draw, ClipBegin, ClipEnd };
     struct DrawEntry {
+        DrawEntryType type = DrawEntryType::Draw;
         float absX = 0, absY = 0;
+        float width = 0, height = 0;
+        std::string bgColor;   // if non-empty, fill this rect before calling fn
         JSValue fn = JS_UNDEFINED;
     };
     std::vector<DrawEntry> drawEntries_;
