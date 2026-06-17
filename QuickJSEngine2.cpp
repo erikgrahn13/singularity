@@ -3,6 +3,7 @@
 #include "platform/IWindow.h"
 #include <iostream>
 #include <filesystem>
+#include <vector>
 #include "QuickJSEngineCanvasAPI.h"
 
 #ifdef NDEBUG
@@ -291,24 +292,79 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
         if (!flexDir.empty()) {
             // Flex layout: position children along main axis
             bool isRow = (flexDir == "row");
-            float cursor = padding;
+            float containerSize = isRow ? w : h;
 
+            // Read justifyContent
+            JSValue jcVal = JS_GetPropertyStr(ctx, props, "justifyContent");
+            std::string justifyContent = "flex-start";
+            if (JS_IsString(jcVal)) {
+                const char* s = JS_ToCString(ctx, jcVal);
+                if (s) { justifyContent = s; JS_FreeCString(ctx, s); }
+            }
+            JS_FreeValue(ctx, jcVal);
+
+            // First pass: collect child sizes
+            std::vector<float> childSizes(length);
+            float totalChildSize = 0.f;
             for (uint32_t i = 0; i < length; ++i) {
                 JSValue child = JS_GetPropertyUint32(ctx, children, i);
                 JSValue childProps = JS_GetPropertyStr(ctx, child, "props");
+                float sz = isRow ? getFloatProp(ctx, childProps, "width",  0.f)
+                                 : getFloatProp(ctx, childProps, "height", 0.f);
+                childSizes[i] = sz;
+                totalChildSize += sz;
+                JS_FreeValue(ctx, childProps);
+                JS_FreeValue(ctx, child);
+            }
 
-                float childW = getFloatProp(ctx, childProps, "width", 0.f);
-                float childH = getFloatProp(ctx, childProps, "height", 0.f);
+            // Distributing modes ignore gap — spacing is computed entirely from available space.
+            // gap only applies for flex-start / center / flex-end.
+            bool isDistributing = (justifyContent == "space-between" ||
+                                   justifyContent == "space-around"  ||
+                                   justifyContent == "space-evenly");
+
+            float totalContentSize = totalChildSize;
+            if (!isDistributing && length > 1) totalContentSize += gap * (length - 1);
+
+            float availableSpace = containerSize - 2.f * padding;
+            float remainingSpace = availableSpace - totalContentSize;
+
+            // Compute starting cursor and per-item spacing based on justifyContent
+            float cursor = padding;
+            float itemSpacing = gap;
+
+            if (justifyContent == "center") {
+                cursor = padding + remainingSpace / 2.f;
+            } else if (justifyContent == "flex-end") {
+                cursor = padding + remainingSpace;
+            } else if (justifyContent == "space-between") {
+                float freeSpace = availableSpace - totalChildSize;
+                cursor = padding;
+                itemSpacing = length > 1 ? freeSpace / (float)(length - 1) : 0.f;
+            } else if (justifyContent == "space-around") {
+                float freeSpace = availableSpace - totalChildSize;
+                float space = length > 0 ? freeSpace / (float)length : 0.f;
+                cursor = padding + space / 2.f;
+                itemSpacing = space;
+            } else if (justifyContent == "space-evenly") {
+                float freeSpace = availableSpace - totalChildSize;
+                float space = length > 0 ? freeSpace / (float)(length + 1) : 0.f;
+                cursor = padding + space;
+                itemSpacing = space;
+            }
+            // else "flex-start": cursor = padding, itemSpacing = gap
+
+            // Second pass: place children
+            for (uint32_t i = 0; i < length; ++i) {
+                JSValue child = JS_GetPropertyUint32(ctx, children, i);
 
                 float childOffsetX = isRow ? cursor : padding;
                 float childOffsetY = isRow ? padding : cursor;
 
                 buildComponentTree(ctx, child, renderer, absX + childOffsetX, absY + childOffsetY, false, true);
 
-                cursor += (isRow ? childW : childH);
-                if (i + 1 < length) cursor += gap;
+                cursor += childSizes[i] + itemSpacing;
 
-                JS_FreeValue(ctx, childProps);
                 JS_FreeValue(ctx, child);
             }
         } else {
