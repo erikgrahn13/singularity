@@ -303,15 +303,31 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
             }
             JS_FreeValue(ctx, jcVal);
 
-            // First pass: collect child sizes
+            // Read alignItems
+            JSValue aiVal = JS_GetPropertyStr(ctx, props, "alignItems");
+            std::string alignItems = "flex-start";
+            if (JS_IsString(aiVal)) {
+                const char* s = JS_ToCString(ctx, aiVal);
+                if (s) { alignItems = s; JS_FreeCString(ctx, s); }
+            }
+            JS_FreeValue(ctx, aiVal);
+
+            float crossContainerSize = isRow ? h : w;
+            float crossAvailable = crossContainerSize - 2.f * padding;
+
+            // First pass: collect child main-axis and cross-axis sizes
             std::vector<float> childSizes(length);
+            std::vector<float> childCrossSizes(length);
             float totalChildSize = 0.f;
             for (uint32_t i = 0; i < length; ++i) {
                 JSValue child = JS_GetPropertyUint32(ctx, children, i);
                 JSValue childProps = JS_GetPropertyStr(ctx, child, "props");
                 float sz = isRow ? getFloatProp(ctx, childProps, "width",  0.f)
                                  : getFloatProp(ctx, childProps, "height", 0.f);
+                float crossSz = isRow ? getFloatProp(ctx, childProps, "height", 0.f)
+                                      : getFloatProp(ctx, childProps, "width",  0.f);
                 childSizes[i] = sz;
+                childCrossSizes[i] = crossSz;
                 totalChildSize += sz;
                 JS_FreeValue(ctx, childProps);
                 JS_FreeValue(ctx, child);
@@ -358,8 +374,16 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
             for (uint32_t i = 0; i < length; ++i) {
                 JSValue child = JS_GetPropertyUint32(ctx, children, i);
 
-                float childOffsetX = isRow ? cursor : padding;
-                float childOffsetY = isRow ? padding : cursor;
+                // Compute cross-axis offset based on alignItems
+                float crossOffset = padding; // flex-start default
+                if (alignItems == "center") {
+                    crossOffset = padding + (crossAvailable - childCrossSizes[i]) / 2.f;
+                } else if (alignItems == "flex-end") {
+                    crossOffset = padding + crossAvailable - childCrossSizes[i];
+                }
+
+                float childOffsetX = isRow ? cursor : crossOffset;
+                float childOffsetY = isRow ? crossOffset : cursor;
 
                 buildComponentTree(ctx, child, renderer, absX + childOffsetX, absY + childOffsetY, false, true);
 

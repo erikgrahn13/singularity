@@ -4,7 +4,7 @@
 
 - [x] `flexDirection` — `"row"` | `"column"` — controls main axis for children
 - [x] `gap` — spacing between children (uniform)
-- [ ] `alignItems` — `"start"` | `"center"` | `"end"` | `"stretch"` — cross-axis alignment
+- [x] `alignItems` — `"flex-start"` | `"center"` | `"flex-end"` — cross-axis alignment
 - [x] `justifyContent` — `"flex-start"` | `"center"` | `"flex-end"` | `"space-between"` | `"space-around"` | `"space-evenly"` — main-axis distribution
 - [x] `padding` — inner spacing (uniform number for now)
 - [ ] `wrap` — boolean, allow children to wrap to next row/column
