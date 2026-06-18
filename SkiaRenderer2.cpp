@@ -20,6 +20,8 @@
 #include "include/core/SkData.h"
 #include "include/core/SkImage.h"
 #include "include/gpu/graphite/Image.h"
+#include "include/effects/SkImageFilters.h"
+#include "include/core/SkColorFilter.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -42,18 +44,47 @@
 #endif
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-static SkColor parseColor(const std::string& s, float alpha = 1.0f) {
-    auto tinted = [&](SkColor c) {
-        return SkColorSetA(c, (uint8_t)(SkColorGetA(c) * alpha));
-    };
+// Parses a CSS color string to SkColor4f (linear values for color(srgb-linear),
+// normalized 0-1 for #hex / rgba() / rgb()). Values may exceed 1.0 for HDR.
+static SkColor4f parseColor4f(const std::string& s, float alpha = 1.0f) {
     if (s.size() > 1 && s[0] == '#') {
         unsigned long v = std::strtoul(s.c_str() + 1, nullptr, 16);
         size_t n = s.size() - 1;
-        if (n == 6) return tinted(SkColorSetARGB(255, (v>>16)&0xFF, (v>>8)&0xFF, v&0xFF));
-        if (n == 8) return tinted(SkColorSetARGB((v>>24)&0xFF,(v>>16)&0xFF,(v>>8)&0xFF,v&0xFF));
-        if (n == 3) return tinted(SkColorSetARGB(255,((v>>8)&0xF)*17,((v>>4)&0xF)*17,(v&0xF)*17));
+        if (n == 6) return { ((v>>16)&0xFF)/255.f, ((v>>8)&0xFF)/255.f, (v&0xFF)/255.f, alpha };
+        if (n == 8) return { ((v>>16)&0xFF)/255.f, ((v>>8)&0xFF)/255.f, (v&0xFF)/255.f, ((v>>24)&0xFF)/255.f * alpha };
+        if (n == 3) return { ((v>>8)&0xF)/15.f,    ((v>>4)&0xF)/15.f,   (v&0xF)/15.f,  alpha };
     }
-    return tinted(SK_ColorWHITE);
+    if (s.size() > 5 && s[0]=='r' && s[1]=='g' && s[2]=='b' && s[3]=='a' && s[4]=='(') {
+        float r=0, g=0, b=0, a=1;
+        sscanf(s.c_str(), "rgba(%f,%f,%f,%f)", &r, &g, &b, &a);
+        return { r/255.f, g/255.f, b/255.f, a * alpha };
+    }
+    if (s.size() > 4 && s[0]=='r' && s[1]=='g' && s[2]=='b' && s[3]=='(') {
+        float r=0, g=0, b=0;
+        sscanf(s.c_str(), "rgb(%f,%f,%f)", &r, &g, &b);
+        return { r/255.f, g/255.f, b/255.f, alpha };
+    }
+    // color(srgb-linear r g b [a]) — HDR linear values, can exceed 1.0
+    if (s.size() > 18 && s.rfind("color(srgb-linear", 0) == 0) {
+        float r=0, g=0, b=0, a=1;
+        sscanf(s.c_str(), "color(srgb-linear %f %f %f %f)", &r, &g, &b, &a);
+        return { r, g, b, a * alpha };
+    }
+    return {1.f, 1.f, 1.f, alpha};
+}
+
+void SkiaRenderer::applyShadow(SkPaint& p) const {
+    if (state_.shadowBlur <= 0.0f && state_.shadowOffsetX == 0.0f && state_.shadowOffsetY == 0.0f)
+        return;
+    if (state_.shadowColor.fA <= 0.0f)
+        return;
+    // Convert to SkColor (clamped 8-bit) for the image filter
+    SkColor shadowC = state_.shadowColor.toSkColor();
+    p.setImageFilter(
+        SkImageFilters::DropShadow(
+            state_.shadowOffsetX, state_.shadowOffsetY,
+            state_.shadowBlur * 0.5f, state_.shadowBlur * 0.5f,
+            shadowC, nullptr));
 }
 
 SkPaint SkiaRenderer::fillPaint() const {
@@ -62,22 +93,29 @@ SkPaint SkiaRenderer::fillPaint() const {
     p.setAntiAlias(true);
     if (state_.fillGrad >= 0 && state_.fillGrad < (int)grads_.size()) {
         auto& g = grads_[state_.fillGrad];
-        std::vector<SkColor>  colors;
-        std::vector<SkScalar> pos;
-        for (auto& [t, c] : g.stops) { pos.push_back(t); colors.push_back(c); }
+        std::vector<SkColor4f> colors;
+        std::vector<SkScalar>  pos;
+        for (auto& [t, c] : g.stops) {
+            pos.push_back(t);
+            SkColor4f ca = c; ca.fA *= state_.alpha;
+            colors.push_back(ca);
+        }
         int n = (int)colors.size();
+        auto cs = SkColorSpace::MakeSRGB();
         if (g.type == Gradient::Type::Linear) {
             SkPoint pts[2] = { {g.x0, g.y0}, {g.x1, g.y1} };
-            p.setShader(SkGradientShader::MakeLinear(pts, colors.data(), pos.data(), n, SkTileMode::kClamp));
+            p.setShader(SkGradientShader::MakeLinear(pts, colors.data(), cs, pos.data(), n, SkTileMode::kClamp));
         } else {
             p.setShader(SkGradientShader::MakeTwoPointConical(
                 {g.x0, g.y0}, g.r0, {g.x1, g.y1}, g.r1,
-                colors.data(), pos.data(), n, SkTileMode::kClamp));
+                colors.data(), cs, pos.data(), n, SkTileMode::kClamp));
         }
     } else {
-        p.setColor(SkColorSetA(state_.fillColor,
-                               (uint8_t)(SkColorGetA(state_.fillColor) * state_.alpha)));
+        SkColor4f c = state_.fillColor;
+        c.fA *= state_.alpha;
+        p.setColor4f(c, nullptr);
     }
+    applyShadow(p);
     return p;
 }
 
@@ -85,11 +123,13 @@ SkPaint SkiaRenderer::strokePaint() const {
     SkPaint p;
     p.setStyle(SkPaint::kStroke_Style);
     p.setAntiAlias(true);
-    p.setColor(SkColorSetA(state_.strokeColor,
-                           (uint8_t)(SkColorGetA(state_.strokeColor) * state_.alpha)));
+    SkColor4f c = state_.strokeColor;
+    c.fA *= state_.alpha;
+    p.setColor4f(c, nullptr);
     p.setStrokeWidth(state_.lineWidth);
     p.setStrokeCap(state_.lineCap);
     p.setStrokeJoin(state_.lineJoin);
+    applyShadow(p);
     return p;
 }
 
@@ -205,21 +245,87 @@ void* SkiaRenderer::beginFrame() {
         return nullptr;
 
     auto backendTex = skgpu::graphite::BackendTextures::MakeDawn(surfTex.texture.Get());
-
     skSurface_ = SkSurfaces::WrapBackendTexture(rec_.get(),
                                                  backendTex,
                                                  kBGRA_8888_SkColorType,
                                                  nullptr, nullptr);
-    return skSurface_->getCanvas();
+
+    bloomStrength_ = 0.0f; // reset each frame — components must re-enable each draw
+
+    // FP16 offscreen surface for HDR rendering (values > 1.0 preserved)
+    auto info = SkImageInfo::Make(width_, height_,
+                                  kRGBA_F16_SkColorType, kPremul_SkAlphaType,
+                                  SkColorSpace::MakeSRGB());
+    sceneSurface_ = SkSurfaces::RenderTarget(rec_.get(), info);
+    if (!sceneSurface_) sceneSurface_ = skSurface_; // fallback to swapchain
+
+    return sceneSurface_->getCanvas();
 }
 
 SkCanvas* SkiaRenderer::canvas() const {
+    if (sceneSurface_ && sceneSurface_ != skSurface_)
+        return sceneSurface_->getCanvas();
     return skSurface_ ? skSurface_->getCanvas() : nullptr;
 }
 
 void* SkiaRenderer::currentCanvas() const { return canvas(); }
 
 void SkiaRenderer::present() {
+    // Composite FP16 scene onto the swapchain, with optional bloom
+    if (sceneSurface_ && sceneSurface_ != skSurface_) {
+        auto sceneImg = sceneSurface_->makeImageSnapshot();
+        if (sceneImg) {
+            auto* dst = skSurface_->getCanvas();
+
+            // 1. Tonemap + draw scene (> 1.0 values clamp to white on BGRA8 swapchain)
+            dst->drawImage(sceneImg.get(), 0, 0, SkSamplingOptions());
+
+            // 2. Multi-scale bloom: 3 passes at different radii, all composited additively.
+            // Narrow pass = tight bright core, medium = glow body, wide = diffuse halo.
+            // This matches the industry-standard approach for neon/laser effects.
+            if (bloomStrength_ > 0.0f) {
+                // Threshold: output=0 at input=1.0, only HDR (>1.0) survives
+                const float k = 4.0f;
+                float threshMat[20] = {
+                    k, 0, 0, 0, -k,
+                    0, k, 0, 0, -k,
+                    0, 0, k, 0, -k,
+                    0, 0, 0, 1,  0
+                };
+                auto threshFilter = SkImageFilters::ColorFilter(
+                    SkColorFilters::Matrix(threshMat), nullptr);
+
+                // Three passes: narrow (tight core), medium (glow body), wide (diffuse halo)
+                // bloomStrength_ scales relative weights: narrow stays sharp, wide spreads more
+                struct BloomPass { float sigma; float weight; };
+                BloomPass passes[3] = {
+                    { 4.0f,  bloomStrength_ * 2.0f },   // tight core
+                    { 12.0f, bloomStrength_ * 3.0f },   // glow body
+                    { 32.0f, bloomStrength_ * 2.0f },   // wide diffuse halo
+                };
+
+                for (auto& p : passes) {
+                    float wMat[20] = {
+                        p.weight, 0,        0,        0, 0,
+                        0,        p.weight, 0,        0, 0,
+                        0,        0,        p.weight, 0, 0,
+                        0,        0,        0,        1, 0
+                    };
+                    auto weightFilter = SkImageFilters::ColorFilter(
+                        SkColorFilters::Matrix(wMat), threshFilter);
+                    auto blurFilter = SkImageFilters::Blur(
+                        p.sigma, p.sigma, SkTileMode::kDecal, weightFilter);
+
+                    SkPaint bloomPaint;
+                    bloomPaint.setImageFilter(blurFilter);
+                    bloomPaint.setBlendMode(SkBlendMode::kPlus);
+                    dst->drawImage(sceneImg.get(), 0, 0, SkSamplingOptions(), &bloomPaint);
+                }
+            }
+        }
+        sceneSurface_.reset();
+    }
+
     auto recording = rec_->snap();
     if (!recording) return;
 
@@ -315,8 +421,8 @@ float SkiaRenderer::measureText(const std::string& text) {
 
 // ── Style setters ─────────────────────────────────────────────────────────────
 
-void SkiaRenderer::setFillStyle(const std::string& c)   { state_.fillColor = parseColor(c); state_.fillGrad = -1; }
-void SkiaRenderer::setStrokeStyle(const std::string& c) { state_.strokeColor = parseColor(c); }
+void SkiaRenderer::setFillStyle(const std::string& c)   { state_.fillColor = parseColor4f(c); state_.fillGrad = -1; }
+void SkiaRenderer::setStrokeStyle(const std::string& c) { state_.strokeColor = parseColor4f(c); }
 void SkiaRenderer::setLineWidth(float w)                { state_.lineWidth = w; }
 void SkiaRenderer::setLineCap(const std::string& cap) {
     if      (cap == "round")  state_.lineCap = SkPaint::kRound_Cap;
@@ -331,6 +437,11 @@ void SkiaRenderer::setFont(const std::string& font) {
 void SkiaRenderer::setGlobalAlpha(float a)               { state_.alpha = a; }
 void SkiaRenderer::setTextAlign(const std::string& a)    { state_.textAlign = a; }
 void SkiaRenderer::setTextBaseline(const std::string& b) { state_.textBase = b; }
+void SkiaRenderer::setShadowColor(const std::string& c)  { state_.shadowColor = parseColor4f(c); }
+void SkiaRenderer::setShadowBlur(float blur)             { state_.shadowBlur = blur; }
+void SkiaRenderer::setShadowOffsetX(float x)             { state_.shadowOffsetX = x; }
+void SkiaRenderer::setShadowOffsetY(float y)             { state_.shadowOffsetY = y; }
+void SkiaRenderer::setBloom(float strength)              { bloomStrength_ = strength; }
 
 // ── Gradients ────────────────────────────────────────────────────────────────
 
@@ -344,7 +455,7 @@ int SkiaRenderer::createRadialGradient(float x0, float y0, float r0, float x1, f
 }
 void SkiaRenderer::addColorStop(int id, float offset, const std::string& color, float) {
     if (id >= 0 && id < (int)grads_.size())
-        grads_[id].stops.push_back({ offset, parseColor(color) });
+        grads_[id].stops.push_back({ offset, parseColor4f(color) });
 }
 void SkiaRenderer::setFillStyleGradient(int id)   { state_.fillGrad = id; }
 void SkiaRenderer::setStrokeStyleGradient(int)    {}

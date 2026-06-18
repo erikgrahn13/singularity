@@ -101,10 +101,15 @@ public:
     // --- Clipping ---
     virtual void clipRect(float x, float y, float w, float h) = 0;
 
-    // --- HDR ---
-    // hdrMultiplier > 1.0 makes colors brighter than white, driving bloom/glow effects.
-    // Reset to 1.0 by save()/restore() as part of draw state.
-    virtual void setHdrMultiplier(float mult) {}
+    // --- Shadow / Glow ---
+    virtual void setShadowColor(const std::string& color) = 0;
+    virtual void setShadowBlur(float blur) = 0;
+    virtual void setShadowOffsetX(float x) = 0;
+    virtual void setShadowOffsetY(float y) = 0;
+
+    // --- Bloom post-process ---
+    // strength 0.0 = off, 1.0 = full bloom. Uses color(srgb-linear) values > 1.0 as sources.
+    virtual void setBloom(float strength) {}
 
     // --- Layers (Canvas 2D Level 2 spec) ---
     virtual void beginLayer(float opacity) {}

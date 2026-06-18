@@ -592,6 +592,11 @@ void QuickJSEngine::createCanvasContext()
     JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "globalAlpha"),  JS_UNDEFINED, JS_NewCFunction(ctx_, js_globalAlpha,  "globalAlpha",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
     JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "textAlign"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_textAlign,    "textAlign",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
     JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "textBaseline"), JS_UNDEFINED, JS_NewCFunction(ctx_, js_textBaseline, "textBaseline", 1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "shadowColor"),  JS_UNDEFINED, JS_NewCFunction(ctx_, js_shadowColor,  "shadowColor",  1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "shadowBlur"),   JS_UNDEFINED, JS_NewCFunction(ctx_, js_shadowBlur,   "shadowBlur",   1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "shadowOffsetX"),JS_UNDEFINED, JS_NewCFunction(ctx_, js_shadowOffsetX,"shadowOffsetX",1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "shadowOffsetY"),JS_UNDEFINED, JS_NewCFunction(ctx_, js_shadowOffsetY,"shadowOffsetY",1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "bloom"),         JS_UNDEFINED, JS_NewCFunction(ctx_, js_bloom,         "bloom",         1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
 }
 
 void QuickJSEngine::draw()
@@ -605,6 +610,9 @@ void QuickJSEngine::draw()
 
     void* previousOpaque = JS_GetContextOpaque(ctx_);
     JS_SetContextOpaque(ctx_, &drawData);
+
+    // Reset per-frame renderer state
+    renderer_->setBloom(0.0f);
 
     // Paint background color
     if (!backgroundColor_.empty()) {

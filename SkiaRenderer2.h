@@ -54,6 +54,11 @@ public:
     void  setGlobalAlpha(float a) override;
     void  setTextAlign(const std::string& align) override;
     void  setTextBaseline(const std::string& b) override;
+    void  setShadowColor(const std::string& color) override;
+    void  setShadowBlur(float blur) override;
+    void  setShadowOffsetX(float x) override;
+    void  setShadowOffsetY(float y) override;
+    void  setBloom(float strength) override;
     int   createLinearGradient(float x0, float y0, float x1, float y1) override;
     int   createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1) override;
     void  addColorStop(int id, float offset, const std::string& color, float hdr = 1.0f) override;
@@ -81,16 +86,21 @@ private:
     sk_sp<SkSurface> skSurface_;
     // --- Canvas 2D state ---
     struct State {
-        SkColor       fillColor  = SK_ColorWHITE;
-        SkColor       strokeColor= SK_ColorBLACK;
-        float         lineWidth  = 1.0f;
-        float         alpha      = 1.0f;
-        SkPaint::Cap  lineCap    = SkPaint::kButt_Cap;
-        SkPaint::Join lineJoin   = SkPaint::kMiter_Join;
-        float         fontSize   = 16.0f;
-        std::string   textAlign  = "left";
-        std::string   textBase   = "alphabetic";
-        int           fillGrad   = -1;
+        SkColor4f     fillColor    = {1,1,1,1};
+        SkColor4f     strokeColor  = {0,0,0,1};
+        float         lineWidth    = 1.0f;
+        float         alpha        = 1.0f;
+        SkPaint::Cap  lineCap      = SkPaint::kButt_Cap;
+        SkPaint::Join lineJoin     = SkPaint::kMiter_Join;
+        float         fontSize     = 16.0f;
+        std::string   textAlign    = "left";
+        std::string   textBase     = "alphabetic";
+        int           fillGrad     = -1;
+        // Shadow / glow
+        SkColor4f     shadowColor   = {0,0,0,0};
+        float         shadowBlur    = 0.0f;
+        float         shadowOffsetX = 0.0f;
+        float         shadowOffsetY = 0.0f;
     };
     State              state_;
     std::vector<State> stack_;
@@ -99,12 +109,14 @@ private:
     struct Gradient {
         enum class Type { Linear, Radial } type;
         float x0, y0, x1, y1, r0, r1;
-        std::vector<std::pair<float, SkColor>> stops;
+        std::vector<std::pair<float, SkColor4f>> stops;
     };
     std::vector<Gradient> grads_;
 
     sk_sp<SkFontMgr>  fontMgr_;
     sk_sp<SkTypeface> typeface_;
+    sk_sp<SkSurface>  sceneSurface_; // FP16 offscreen for HDR rendering
+    float             bloomStrength_ = 0.0f; // off by default, set via ctx.bloom
 
     std::map<std::string, sk_sp<SkImage>> images_;
     std::string resourcePath_;
@@ -112,4 +124,5 @@ private:
     SkCanvas* canvas() const;
     SkPaint   fillPaint() const;
     SkPaint   strokePaint() const;
+    void      applyShadow(SkPaint& p) const;
 };

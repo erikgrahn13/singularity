@@ -423,14 +423,49 @@ static JSValue js_textBaseline(JSContext* ctx, JSValueConst this_val, int argc, 
     return JS_UNDEFINED;
 }
 
-// ctx.hdrMultiplier = 2.0  — brightness factor >1 makes colors over-bright, driving bloom/glow.
-// Reset to 1.0 with ctx.restore() or by assigning ctx.hdrMultiplier = 1.
-static JSValue js_hdrMultiplier(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+static JSValue js_shadowColor(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
 {
-    double mult = 1.0;
-    JS_ToFloat64(ctx, &mult, argv[0]);
+    const char* color = JS_ToCString(ctx, argv[0]);
     auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
-    data->renderer->setHdrMultiplier(static_cast<float>(mult));
+    if (color) { data->renderer->setShadowColor(color); JS_FreeCString(ctx, color); }
+    return JS_UNDEFINED;
+}
+
+static JSValue js_shadowBlur(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double blur = 0.0;
+    JS_ToFloat64(ctx, &blur, argv[0]);
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->setShadowBlur(static_cast<float>(blur));
+    return JS_UNDEFINED;
+}
+
+static JSValue js_shadowOffsetX(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double v = 0.0;
+    JS_ToFloat64(ctx, &v, argv[0]);
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->setShadowOffsetX(static_cast<float>(v));
+    return JS_UNDEFINED;
+}
+
+static JSValue js_shadowOffsetY(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double v = 0.0;
+    JS_ToFloat64(ctx, &v, argv[0]);
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->setShadowOffsetY(static_cast<float>(v));
+    return JS_UNDEFINED;
+}
+
+// ctx.bloom = 0.5 — bloom post-process strength (0 = off, 1 = full).
+// Uses color(srgb-linear r g b) values > 1.0 as overbright sources.
+static JSValue js_bloom(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    double strength = 0.0;
+    JS_ToFloat64(ctx, &strength, argv[0]);
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->setBloom(static_cast<float>(strength));
     return JS_UNDEFINED;
 }
 
