@@ -442,6 +442,9 @@ void SkiaRenderer::setShadowBlur(float blur)             { state_.shadowBlur = b
 void SkiaRenderer::setShadowOffsetX(float x)             { state_.shadowOffsetX = x; }
 void SkiaRenderer::setShadowOffsetY(float y)             { state_.shadowOffsetY = y; }
 void SkiaRenderer::setBloom(float strength)              { bloomStrength_ = strength; }
+double SkiaRenderer::getTime() const {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime_).count();
+}
 
 // ── Gradients ────────────────────────────────────────────────────────────────
 

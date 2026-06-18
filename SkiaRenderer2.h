@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IRenderer2.h"
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -59,6 +60,7 @@ public:
     void  setShadowOffsetX(float x) override;
     void  setShadowOffsetY(float y) override;
     void  setBloom(float strength) override;
+    double getTime() const override;
     int   createLinearGradient(float x0, float y0, float x1, float y1) override;
     int   createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1) override;
     void  addColorStop(int id, float offset, const std::string& color, float hdr = 1.0f) override;
@@ -117,6 +119,7 @@ private:
     sk_sp<SkTypeface> typeface_;
     sk_sp<SkSurface>  sceneSurface_; // FP16 offscreen for HDR rendering
     float             bloomStrength_ = 0.0f; // off by default, set via ctx.bloom
+    std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now();
 
     std::map<std::string, sk_sp<SkImage>> images_;
     std::string resourcePath_;

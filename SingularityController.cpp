@@ -50,7 +50,8 @@ void SingularityController::tick()
         dirty_ = true;
     }
 
-    if (!dirty_.exchange(false)) return;
+    bool shouldDraw = dirty_.exchange(false) || jsEngine_->wantsAnimatedRedraw();
+    if (!shouldDraw) return;
 
     renderer_->beginFrame();
     if (!renderer_->currentCanvas()) return;

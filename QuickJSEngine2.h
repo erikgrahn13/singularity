@@ -11,6 +11,7 @@ class QuickJSEngine : public IJSEngine {
     QuickJSEngine(IParameterProvider &parameterStore);
     void load(const std::string& entryFile, IRenderer* renderer) override;
     void draw() override;
+    bool wantsAnimatedRedraw() const override { return hasAnimations_; }
 
     void installConsole();
     void log(const std::string& msg);
@@ -54,6 +55,7 @@ class QuickJSEngine : public IJSEngine {
         JSValue onMouseWheel = JS_UNDEFINED;
     };
     std::vector<Hitbox> hitboxes_; // rebuilt each frame, not ref-counted (borrowed from live JS tree)
+    bool hasAnimations_ = false;   // true if any component declares animate:true
 
     private:
     // Helpers

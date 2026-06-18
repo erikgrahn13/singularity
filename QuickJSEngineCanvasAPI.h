@@ -469,6 +469,13 @@ static JSValue js_bloom(JSContext* ctx, JSValueConst this_val, int argc, JSValue
     return JS_UNDEFINED;
 }
 
+// ctx.time() — seconds since renderer creation; use in draw callbacks for animation.
+static JSValue js_time(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    return JS_NewFloat64(ctx, data->renderer->getTime());
+}
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------

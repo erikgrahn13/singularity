@@ -270,6 +270,14 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
         }
     }
 
+    // Animate opt-in: any component with animate:true drives continuous per-frame redraws
+    {
+        JSValue animVal = JS_GetPropertyStr(ctx, props, "animate");
+        if (JS_ToBool(ctx, animVal))
+            static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)))->hasAnimations_ = true;
+        JS_FreeValue(ctx, animVal);
+    }
+
     // Read layout properties
     JSValue flexDirVal = JS_GetPropertyStr(ctx, props, "flexDirection");
     std::string flexDir;
@@ -450,6 +458,7 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
         }
         drawEntries_.clear();
         backgroundColor_.clear();
+        hasAnimations_ = false;
 
         for (auto& hb : hitboxes_) {
             JS_FreeValue(ctx_, hb.onMouseDown);
@@ -582,6 +591,7 @@ void QuickJSEngine::createCanvasContext()
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "createLinearGradient", JS_NewCFunction(ctx_, js_createLinearGradient, "createLinearGradient", 4));
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "createRadialGradient", JS_NewCFunction(ctx_, js_createRadialGradient, "createRadialGradient", 6));
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "drawImage",          JS_NewCFunction(ctx_, js_drawImage,          "drawImage",          5));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "time",               JS_NewCFunction(ctx_, js_time,               "time",               0));
 
     // Properties (write-only setters)
     JS_DefinePropertyGetSet(ctx_, jsCanvasCtx_, JS_NewAtom(ctx_, "fillStyle"),    JS_UNDEFINED, JS_NewCFunction(ctx_, js_fillStyle,    "fillStyle",    1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);

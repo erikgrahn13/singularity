@@ -111,6 +111,10 @@ public:
     // strength 0.0 = off, 1.0 = full bloom. Uses color(srgb-linear) values > 1.0 as sources.
     virtual void setBloom(float strength) {}
 
+    // --- Time ---
+    // Seconds elapsed since renderer creation; drives ctx.time() for animations.
+    virtual double getTime() const { return 0.0; }
+
     // --- Layers (Canvas 2D Level 2 spec) ---
     virtual void beginLayer(float opacity) {}
     virtual void endLayer(void* canvas) {}

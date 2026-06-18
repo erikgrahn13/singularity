@@ -24,6 +24,9 @@ class IJSEngine {
     virtual void onMouseMove(float x, float y) = 0;
     virtual void onMouseWheel(float deltaX, float deltaY) = 0;
     virtual void setWindow(IWindow* window) = 0;
+    // Returns true when any component has opted in to animation (animate:true),
+    // signalling the host to redraw every tick instead of on dirty events only.
+    virtual bool wantsAnimatedRedraw() const { return false; }
     protected:
     LogCallback logger_;
 
