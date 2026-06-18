@@ -200,6 +200,14 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
     float w      = getFloatProp(ctx, props, "width",  0.f);
     float h      = getFloatProp(ctx, props, "height", 0.f);
 
+    // margin: uniform space outside the component — shifts position inward, shrinks rendered size.
+    // Works whether positioned absolutely or placed by a flex parent.
+    float margin = getFloatProp(ctx, props, "margin", 0.f);
+    absX += margin;
+    absY += margin;
+    if (w > 0.f) w -= 2.f * margin;
+    if (h > 0.f) h -= 2.f * margin;
+
     // backgroundColor
     std::string bgColor;
     {
@@ -218,18 +226,38 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
         JS_FreeValue(ctx, bgVal);
     }
 
+    float       borderRadius = getFloatProp(ctx, props, "borderRadius", 0.f);
+    std::string borderColor;
+    float       borderWidth  = 1.f;
+    {
+        JSValue bVal = JS_GetPropertyStr(ctx, props, "border");
+        if (JS_IsObject(bVal)) {
+            JSValue cVal = JS_GetPropertyStr(ctx, bVal, "color");
+            if (JS_IsString(cVal)) {
+                const char* s = JS_ToCString(ctx, cVal);
+                if (s) { borderColor = s; JS_FreeCString(ctx, s); }
+            }
+            JS_FreeValue(ctx, cVal);
+            borderWidth = getFloatProp(ctx, bVal, "width", 1.f);
+        }
+        JS_FreeValue(ctx, bVal);
+    }
+
     // Clip + background: if this component has bounds, push a ClipBegin entry
     // so children are clipped to this component's rect
     bool hasClip = (w > 0.f && h > 0.f);
     if (hasClip) {
         auto* engine = static_cast<QuickJSEngine*>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx)));
         QuickJSEngine::DrawEntry clipBegin;
-        clipBegin.type   = QuickJSEngine::DrawEntryType::ClipBegin;
-        clipBegin.absX   = absX;
-        clipBegin.absY   = absY;
-        clipBegin.width  = w;
-        clipBegin.height = h;
-        clipBegin.bgColor = bgColor;
+        clipBegin.type         = QuickJSEngine::DrawEntryType::ClipBegin;
+        clipBegin.absX         = absX;
+        clipBegin.absY         = absY;
+        clipBegin.width        = w;
+        clipBegin.height       = h;
+        clipBegin.bgColor      = bgColor;
+        clipBegin.borderRadius = borderRadius;
+        clipBegin.borderColor  = borderColor;
+        clipBegin.borderWidth  = borderWidth;
         engine->drawEntries_.push_back(std::move(clipBegin));
     }
 
@@ -334,8 +362,10 @@ static void buildComponentTree(JSContext* ctx, JSValueConst node, IRenderer* ren
                                  : getFloatProp(ctx, childProps, "height", 0.f);
                 float crossSz = isRow ? getFloatProp(ctx, childProps, "height", 0.f)
                                       : getFloatProp(ctx, childProps, "width",  0.f);
-                childSizes[i] = sz;
-                childCrossSizes[i] = crossSz;
+                float childMargin = getFloatProp(ctx, childProps, "margin", 0.f);
+                // margin expands the space a child occupies in the flex layout
+                childSizes[i]     = sz     + 2.f * childMargin;
+                childCrossSizes[i] = crossSz + 2.f * childMargin;
                 totalChildSize += sz;
                 JS_FreeValue(ctx, childProps);
                 JS_FreeValue(ctx, child);
@@ -633,15 +663,37 @@ void QuickJSEngine::draw()
     // Draw each component — handle clip regions and draw calls
     for (auto& entry : drawEntries_) {
         switch (entry.type) {
-        case DrawEntryType::ClipBegin:
-            // Save state, set clip rect, optionally paint background
+        case DrawEntryType::ClipBegin: {
             renderer_->save(nullptr);
-            renderer_->clipRect(entry.absX, entry.absY, entry.width, entry.height);
+            // Clip to rounded or plain rect
+            if (entry.borderRadius > 0.f)
+                renderer_->clipRoundRect(entry.absX, entry.absY, entry.width, entry.height, entry.borderRadius);
+            else
+                renderer_->clipRect(entry.absX, entry.absY, entry.width, entry.height);
+            // Background fill
             if (!entry.bgColor.empty()) {
                 renderer_->setFillStyle(entry.bgColor);
-                renderer_->fillRect(entry.absX, entry.absY, entry.width, entry.height);
+                if (entry.borderRadius > 0.f) {
+                    renderer_->beginPath(nullptr);
+                    renderer_->roundRect(entry.absX, entry.absY, entry.width, entry.height, entry.borderRadius);
+                    renderer_->fill(nullptr);
+                } else {
+                    renderer_->fillRect(entry.absX, entry.absY, entry.width, entry.height);
+                }
+            }
+            // Border stroke
+            if (!entry.borderColor.empty()) {
+                renderer_->setStrokeStyle(entry.borderColor);
+                renderer_->setLineWidth(entry.borderWidth);
+                renderer_->beginPath(nullptr);
+                if (entry.borderRadius > 0.f)
+                    renderer_->roundRect(entry.absX, entry.absY, entry.width, entry.height, entry.borderRadius);
+                else
+                    renderer_->rect(entry.absX, entry.absY, entry.width, entry.height);
+                renderer_->stroke(nullptr);
             }
             break;
+        }
 
         case DrawEntryType::ClipEnd:
             // Restore state (pops the clip)

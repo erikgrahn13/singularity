@@ -40,7 +40,10 @@ class QuickJSEngine : public IJSEngine {
         DrawEntryType type = DrawEntryType::Draw;
         float absX = 0, absY = 0;
         float width = 0, height = 0;
-        std::string bgColor;   // if non-empty, fill this rect before calling fn
+        std::string bgColor;        // if non-empty, fill this rect before calling fn
+        float borderRadius = 0.f;   // rounded corners
+        std::string borderColor;    // if non-empty, stroke a border
+        float borderWidth  = 1.f;
         JSValue fn = JS_UNDEFINED;
     };
     std::vector<DrawEntry> drawEntries_;

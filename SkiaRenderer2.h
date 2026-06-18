@@ -73,6 +73,7 @@ public:
     void  scale(float x, float y) override;
     void  resetTransform(void*) override;
     void  clipRect(float x, float y, float w, float h) override;
+    void  clipRoundRect(float x, float y, float w, float h, float r) override;
 
     void  registerImage(const std::string& name, const uint8_t* data, int size) override;
     void  drawImage(const std::string& name, float dx, float dy, float dw, float dh) override;

@@ -486,6 +486,13 @@ void SkiaRenderer::resetTransform(void*)         { if (auto* c = canvas()) c->re
 void SkiaRenderer::clipRect(float x, float y, float w, float h) {
     if (auto* c = canvas()) c->clipRect(SkRect::MakeXYWH(x, y, w, h));
 }
+void SkiaRenderer::clipRoundRect(float x, float y, float w, float h, float r) {
+    if (auto* c = canvas()) {
+        SkRRect rr;
+        rr.setRectXY(SkRect::MakeXYWH(x, y, w, h), r, r);
+        c->clipRRect(rr, true); // true = anti-aliased
+    }
+}
 
 // ── Images ────────────────────────────────────────────────────────────────────
 

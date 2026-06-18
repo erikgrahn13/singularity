@@ -100,6 +100,7 @@ public:
 
     // --- Clipping ---
     virtual void clipRect(float x, float y, float w, float h) = 0;
+    virtual void clipRoundRect(float x, float y, float w, float h, float r) {}
 
     // --- Shadow / Glow ---
     virtual void setShadowColor(const std::string& color) = 0;
