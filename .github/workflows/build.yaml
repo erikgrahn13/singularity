@@ -63,8 +63,8 @@ jobs:
         with:
           name: Plugins-${{ runner.os }}
           path: |
-            build/**/out/VST3/Release/**/*.vst3
-            build/**/out/APP/Release/**/*
+            build/**/out/VST3/**/*.vst3
+            build/**/out/APP/**/*
           if-no-files-found: warn
 
   release:
