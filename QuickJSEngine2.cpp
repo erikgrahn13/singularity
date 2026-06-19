@@ -529,24 +529,48 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     // Custom normalizer: maps "singularity/<widget>.js" → SINGULARITY_WIDGETS_DIR/<widget>.js
     // so users can write  import { Knob } from "singularity/knob.js"  regardless of where
     // their plugin lives.  Any other path falls through to the standard relative-path resolver.
-    auto normalizer = [](JSContext* ctx, const char* base_name, const char* name, void*) -> char* {
+    auto normalizer = [](JSContext* ctx,
+                        const char* base_name,
+                        const char* name,
+                        void*) -> char* {
         std::string_view mod(name);
-        // Match "singularity/<something>" but NOT the bare "singularity" native module.
+
+        // Built-in/root singularity module
+        if (mod == "singularity") {
+            return js_strdup(ctx, name);
+        }
+
+        // Widget imports: singularity/knob.js, singularity/button.js, etc.
         if (mod.starts_with("singularity/") && mod.size() > 12) {
-            std::string widget(mod.substr(12)); // everything after "singularity/"
+            std::string widget(mod);
+
             if (!widget.ends_with(".js"))
                 widget += ".js";
-            std::string path = std::string(SINGULARITY_WIDGETS_DIR) + "/" + widget;
+
+    #ifdef NDEBUG
+            // Release: keep virtual name so it matches qjsc embedded bytecode
+            return js_strdup(ctx, widget.c_str());
+    #else
+            // Debug: load widget source from filesystem
+            std::string path =
+                std::string(SINGULARITY_WIDGETS_DIR) + "/" +
+                std::string(widget.substr(12));
+
             return js_strdup(ctx, path.c_str());
+    #endif
         }
-        // Resolve relative paths (./foo, ../foo) against the importing file's directory.
-        // Bare specifiers (e.g. "singularity") and absolute paths are returned as-is;
-        // js_module_loader handles them (pre-registered native modules are found first).
+
+        // Relative imports: ./App.js, ../foo.js, etc.
         if (mod.starts_with("./") || mod.starts_with("../")) {
             namespace fs = std::filesystem;
-            auto resolved = (fs::path(base_name).parent_path() / name).lexically_normal();
-            return js_strdup(ctx, resolved.string().c_str());
+
+            fs::path base = base_name ? fs::path(base_name).parent_path() : fs::path(".");
+            fs::path resolved = (base / std::string(mod)).lexically_normal();
+
+            return js_strdup(ctx, resolved.generic_string().c_str());
         }
+
+        // Everything else unchanged
         return js_strdup(ctx, name);
     };
 
