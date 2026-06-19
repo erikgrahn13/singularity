@@ -62,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: Plugins-${{ runner.os }}
-          path: build/VST3/**/*.vst3
+          path: |
+            build/**/out/VST3/Release/**/*.vst3
+            build/**/out/APP/Release/**/*
           if-no-files-found: warn
 
   release:

@@ -278,6 +278,7 @@ function(singularity_create_plugin target)
                 target_sources(${target}_APP PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated_data_resources.h)
                 target_include_directories(${target}_APP PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
             endif()
+            set_target_properties(${target}_APP PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/out/APP/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>)
         elseif(type STREQUAL "VST3")
             # Generate stable UIDs from plugin target name
             set(_uid_seed "${target}")
@@ -308,6 +309,8 @@ function(singularity_create_plugin target)
                 "${CMAKE_CURRENT_BINARY_DIR}/plugincids.h"
             )
             set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
+            set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
+
             smtg_add_vst3plugin(${target}_VST3
                 PACKAGE_NAME ${target}
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
