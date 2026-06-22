@@ -402,7 +402,8 @@ void SkiaRenderer::stroke(void*) { if (auto* c = canvas()) c->drawPath(path_.sna
 
 void SkiaRenderer::fillText(const std::string& text, float x, float y) {
     if (auto* c = canvas()) {
-        SkFont font(typeface_, state_.fontSize);
+        sk_sp<SkTypeface> tf = resolveTypeface();
+        SkFont font(tf, state_.fontSize);
         SkTextUtils::Align a = SkTextUtils::kLeft_Align;
         if (state_.textAlign == "center")                       a = SkTextUtils::kCenter_Align;
         else if (state_.textAlign == "right" ||
@@ -412,10 +413,10 @@ void SkiaRenderer::fillText(const std::string& text, float x, float y) {
 }
 void SkiaRenderer::strokeText(const std::string& text, float x, float y) {
     if (auto* c = canvas())
-        SkTextUtils::DrawString(c, text.c_str(), x, y, SkFont(typeface_, state_.fontSize), strokePaint());
+        SkTextUtils::DrawString(c, text.c_str(), x, y, SkFont(resolveTypeface(), state_.fontSize), strokePaint());
 }
 float SkiaRenderer::measureText(const std::string& text) {
-    return SkFont(typeface_, state_.fontSize)
+    return SkFont(resolveTypeface(), state_.fontSize)
         .measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
 }
 
@@ -431,12 +432,46 @@ void SkiaRenderer::setLineCap(const std::string& cap) {
 }
 void SkiaRenderer::setFont(const std::string& font) {
     auto px = font.find("px");
-    if (px != std::string::npos)
-        try { state_.fontSize = std::stof(font.substr(0, px)); } catch (...) {}
+    if (px != std::string::npos) {
+        // Walk backwards over digits/dot to find start of the numeric size
+        size_t numEnd = px;
+        size_t numStart = numEnd;
+        while (numStart > 0 && (std::isdigit((unsigned char)font[numStart-1]) || font[numStart-1] == '.'))
+            --numStart;
+        if (numStart < numEnd)
+            try { state_.fontSize = std::stof(font.substr(numStart, numEnd - numStart)); } catch (...) {}
+
+        // Extract optional family name after "px "
+        state_.fontFamily.clear();
+        size_t famStart = px + 2;
+        while (famStart < font.size() && font[famStart] == ' ') ++famStart;
+        if (famStart < font.size())
+            state_.fontFamily = font.substr(famStart);
+    }
 }
 void SkiaRenderer::setGlobalAlpha(float a)               { state_.alpha = a; }
 void SkiaRenderer::setTextAlign(const std::string& a)    { state_.textAlign = a; }
 void SkiaRenderer::setTextBaseline(const std::string& b) { state_.textBase = b; }
+
+sk_sp<SkTypeface> SkiaRenderer::resolveTypeface() {
+    if (state_.fontFamily.empty()) return typeface_;
+    auto it = loadedTypefaces_.find(state_.fontFamily);
+    if (it == loadedTypefaces_.end()) {
+        for (const auto& candidate : std::vector<std::string>{
+            resourcePath_ + "/" + state_.fontFamily,
+            resourcePath_ + "/Fonts/" + state_.fontFamily,
+            resourcePath_ + "/fonts/" + state_.fontFamily
+        }) {
+            auto data = SkData::MakeFromFileName(candidate.c_str());
+            if (data) {
+                auto loaded = fontMgr_->makeFromData(data);
+                if (loaded) { loadedTypefaces_[state_.fontFamily] = std::move(loaded); break; }
+            }
+        }
+        it = loadedTypefaces_.find(state_.fontFamily);
+    }
+    return it != loadedTypefaces_.end() ? it->second : typeface_;
+}
 void SkiaRenderer::setShadowColor(const std::string& c)  { state_.shadowColor = parseColor4f(c); }
 void SkiaRenderer::setShadowBlur(float blur)             { state_.shadowBlur = blur; }
 void SkiaRenderer::setShadowOffsetX(float x)             { state_.shadowOffsetX = x; }

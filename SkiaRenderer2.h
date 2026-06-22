@@ -96,6 +96,7 @@ private:
         SkPaint::Cap  lineCap      = SkPaint::kButt_Cap;
         SkPaint::Join lineJoin     = SkPaint::kMiter_Join;
         float         fontSize     = 16.0f;
+        std::string   fontFamily;
         std::string   textAlign    = "left";
         std::string   textBase     = "alphabetic";
         int           fillGrad     = -1;
@@ -118,6 +119,7 @@ private:
 
     sk_sp<SkFontMgr>  fontMgr_;
     sk_sp<SkTypeface> typeface_;
+    std::map<std::string, sk_sp<SkTypeface>> loadedTypefaces_;
     sk_sp<SkSurface>  sceneSurface_; // FP16 offscreen for HDR rendering
     float             bloomStrength_ = 0.0f; // off by default, set via ctx.bloom
     std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now();
@@ -129,4 +131,5 @@ private:
     SkPaint   fillPaint() const;
     SkPaint   strokePaint() const;
     void      applyShadow(SkPaint& p) const;
+    sk_sp<SkTypeface> resolveTypeface();
 };
