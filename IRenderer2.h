@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 class IWindow;
 
@@ -124,6 +125,21 @@ public:
                        float dx, float dy, float dw, float dh) {}
     virtual void clearImageCache() {}
     virtual void registerImage(const std::string& name, const uint8_t* data, int size) {}
+
+    // --- SkSL Runtime shaders ---
+    struct ShaderUniform {
+        std::string name;
+        std::vector<float> values; // 1 = float, 2 = float2, 3 = float3, 4 = float4
+    };
+    virtual void drawShader(const std::string& sksl,
+                            const std::vector<ShaderUniform>& uniforms,
+                            float x, float y, float w, float h) {}
+
+    // Like drawShader but also binds a registered image as a `uniform shader iImage` child.
+    virtual void drawShaderWithImage(const std::string& sksl,
+                                     const std::vector<ShaderUniform>& uniforms,
+                                     const std::string& imageName,
+                                     float x, float y, float w, float h) {}
 
     virtual ~IRenderer() = default;
 

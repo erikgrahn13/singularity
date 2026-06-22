@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "dawn/webgpu_cpp.h"
@@ -16,6 +17,7 @@
 #include "include/core/SkPathBuilder.h"
 #include "include/core/SkPaint.h"
 #include "include/core/SkFontMgr.h"
+#include "include/effects/SkRuntimeEffect.h"
 
 class SkiaRenderer : public IRenderer {
 public:
@@ -77,6 +79,13 @@ public:
 
     void  registerImage(const std::string& name, const uint8_t* data, int size) override;
     void  drawImage(const std::string& name, float dx, float dy, float dw, float dh) override;
+    void  drawShader(const std::string& sksl,
+                     const std::vector<ShaderUniform>& uniforms,
+                     float x, float y, float w, float h) override;
+    void  drawShaderWithImage(const std::string& sksl,
+                              const std::vector<ShaderUniform>& uniforms,
+                              const std::string& imageName,
+                              float x, float y, float w, float h) override;
 
 private:
     wgpu::Instance   instance_;
@@ -126,10 +135,12 @@ private:
 
     std::map<std::string, sk_sp<SkImage>> images_;
     std::string resourcePath_;
+    std::unordered_map<std::string, sk_sp<SkRuntimeEffect>> shaderCache_;
 
     SkCanvas* canvas() const;
     SkPaint   fillPaint() const;
     SkPaint   strokePaint() const;
     void      applyShadow(SkPaint& p) const;
     sk_sp<SkTypeface> resolveTypeface();
+    sk_sp<SkRuntimeEffect> getOrCompileShader(const std::string& sksl);
 };

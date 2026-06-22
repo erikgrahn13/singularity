@@ -597,3 +597,103 @@ void SkiaRenderer::drawImage(const std::string& name, float dx, float dy, float 
 
     c->drawImageRect(it->second, dst, SkSamplingOptions(SkFilterMode::kLinear));
 }
+
+// Shared helper: compile-and-cache an SkRuntimeEffect from SkSL source.
+sk_sp<SkRuntimeEffect> SkiaRenderer::getOrCompileShader(const std::string& sksl) {
+    auto it = shaderCache_.find(sksl);
+    if (it != shaderCache_.end()) return it->second;
+    auto result = SkRuntimeEffect::MakeForShader(SkString(sksl.c_str()));
+    if (!result.effect) {
+        fprintf(stderr, "[drawShader] SkSL compile error: %s\n", result.errorText.c_str());
+        return nullptr;
+    }
+    shaderCache_[sksl] = result.effect;
+    return result.effect;
+}
+
+static void applyUniforms(SkRuntimeShaderBuilder& builder,
+                          const std::vector<IRenderer::ShaderUniform>& uniforms) {
+    for (const auto& u : uniforms) {
+        auto uniform = builder.uniform(u.name.c_str());
+        if      (u.values.size() == 1) uniform = u.values[0];
+        else if (u.values.size() == 2) uniform = SkV2{u.values[0], u.values[1]};
+        else if (u.values.size() == 3) uniform = SkV3{u.values[0], u.values[1], u.values[2]};
+        else if (u.values.size() == 4) uniform = SkV4{u.values[0], u.values[1], u.values[2], u.values[3]};
+    }
+}
+
+void SkiaRenderer::drawShader(const std::string& sksl,
+                              const std::vector<ShaderUniform>& uniforms,
+                              float x, float y, float w, float h) {
+    auto* c = canvas();
+    if (!c) return;
+    auto effect = getOrCompileShader(sksl);
+    if (!effect) return;
+    SkRuntimeShaderBuilder builder(effect);
+    applyUniforms(builder, uniforms);
+    SkPaint paint;
+    paint.setShader(builder.makeShader());
+    c->drawRect(SkRect::MakeXYWH(x, y, w, h), paint);
+}
+
+void SkiaRenderer::drawShaderWithImage(const std::string& sksl,
+                                       const std::vector<ShaderUniform>& uniforms,
+                                       const std::string& imageName,
+                                       float x, float y, float w, float h) {
+    auto* c = canvas();
+    if (!c) return;
+
+    // Resolve the image (same logic as drawImage)
+    std::string key = std::filesystem::path(imageName).filename().string();
+    auto it = images_.find(key);
+    if (it == images_.end()) {
+        std::vector<std::string> candidates = {
+            resourcePath_ + "/" + key,
+            resourcePath_ + "/Images/" + key,
+        };
+#ifndef NDEBUG
+        candidates.push_back(std::string(UI_DIR) + "/" + key);
+        candidates.push_back(imageName);
+#endif
+        for (auto& path : candidates) {
+            auto skData = SkData::MakeFromFileName(path.c_str());
+            if (skData) {
+                auto img = SkImages::DeferredFromEncodedData(skData);
+                if (img) {
+                    auto gpuImg = SkImages::TextureFromImage(rec_.get(), img);
+                    images_[key] = gpuImg ? gpuImg : img;
+                    it = images_.find(key);
+                    break;
+                }
+            }
+        }
+        if (it == images_.end()) {
+            fprintf(stderr, "[drawShaderWithImage] failed to load: %s\n", imageName.c_str());
+            return;
+        }
+    }
+    if (!it->second->isTextureBacked()) {
+        auto gpuImg = SkImages::TextureFromImage(rec_.get(), it->second);
+        if (gpuImg) it->second = gpuImg;
+    }
+
+    auto effect = getOrCompileShader(sksl);
+    if (!effect) return;
+
+    SkRuntimeShaderBuilder builder(effect);
+    applyUniforms(builder, uniforms);
+
+    // Bind the image as a shader child named "iImage".
+    // Scale so that eval coords in [0,w]x[0,h] map to the full image.
+    SkMatrix localMatrix = SkMatrix::Scale(
+        (float)it->second->width()  / w,
+        (float)it->second->height() / h);
+    builder.child("iImage") = it->second->makeShader(
+        SkTileMode::kClamp, SkTileMode::kClamp,
+        SkSamplingOptions(SkFilterMode::kLinear),
+        &localMatrix);
+
+    SkPaint paint;
+    paint.setShader(builder.makeShader());
+    c->drawRect(SkRect::MakeXYWH(x, y, w, h), paint);
+}

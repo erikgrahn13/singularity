@@ -645,6 +645,8 @@ void QuickJSEngine::createCanvasContext()
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "createLinearGradient", JS_NewCFunction(ctx_, js_createLinearGradient, "createLinearGradient", 4));
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "createRadialGradient", JS_NewCFunction(ctx_, js_createRadialGradient, "createRadialGradient", 6));
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "drawImage",          JS_NewCFunction(ctx_, js_drawImage,          "drawImage",          5));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "drawShader",         JS_NewCFunction(ctx_, js_drawShader,         "drawShader",         6));
+    JS_SetPropertyStr(ctx_, jsCanvasCtx_, "drawShaderWithImage",JS_NewCFunction(ctx_, js_drawShaderWithImage,"drawShaderWithImage", 7));
     JS_SetPropertyStr(ctx_, jsCanvasCtx_, "time",               JS_NewCFunction(ctx_, js_time,               "time",               0));
 
     // Properties (write-only setters)

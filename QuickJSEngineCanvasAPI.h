@@ -555,3 +555,95 @@ static JSValue js_drawImage(JSContext* ctx, JSValueConst this_val, int argc, JSV
     JS_FreeCString(ctx, name);
     return JS_UNDEFINED;
 }
+
+// Shared helper: parse a JS uniforms object into a vector of ShaderUniforms
+static std::vector<IRenderer::ShaderUniform> parseShaderUniforms(JSContext* ctx, JSValueConst obj)
+{
+    std::vector<IRenderer::ShaderUniform> uniforms;
+    JSPropertyEnum* props = nullptr;
+    uint32_t propCount = 0;
+    if (JS_GetOwnPropertyNames(ctx, &props, &propCount, obj,
+                                JS_GPN_STRING_MASK | JS_GPN_ENUM_ONLY) == 0) {
+        for (uint32_t i = 0; i < propCount; i++) {
+            const char* key = JS_AtomToCString(ctx, props[i].atom);
+            if (!key) continue;
+            JSValue val = JS_GetProperty(ctx, obj, props[i].atom);
+            IRenderer::ShaderUniform u;
+            u.name = key;
+            if (JS_IsArray(val)) {
+                JSValue lenVal = JS_GetPropertyStr(ctx, val, "length");
+                int32_t len = 0;
+                JS_ToInt32(ctx, &len, lenVal);
+                JS_FreeValue(ctx, lenVal);
+                for (int32_t j = 0; j < len; j++) {
+                    JSValue elem = JS_GetPropertyUint32(ctx, val, j);
+                    double d = 0; JS_ToFloat64(ctx, &d, elem);
+                    u.values.push_back((float)d);
+                    JS_FreeValue(ctx, elem);
+                }
+            } else {
+                double d = 0; JS_ToFloat64(ctx, &d, val);
+                u.values.push_back((float)d);
+            }
+            uniforms.push_back(std::move(u));
+            JS_FreeValue(ctx, val);
+            JS_FreeCString(ctx, key);
+        }
+        js_free(ctx, props);
+    }
+    return uniforms;
+}
+
+// ctx.drawShader(sksl, uniforms, x, y, w, h)
+static JSValue js_drawShader(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv){
+    if (argc < 6)
+        return JS_ThrowTypeError(ctx, "drawShader requires 6 arguments (sksl, uniforms, x, y, w, h)");
+
+    const char* sksl = JS_ToCString(ctx, argv[0]);
+    if (!sksl)
+        return JS_ThrowTypeError(ctx, "drawShader: first argument must be a string (SkSL source)");
+
+    auto uniforms = parseShaderUniforms(ctx, argv[1]);
+
+    double x = 0, y = 0, w = 0, h = 0;
+    JS_ToFloat64(ctx, &x, argv[2]);
+    JS_ToFloat64(ctx, &y, argv[3]);
+    JS_ToFloat64(ctx, &w, argv[4]);
+    JS_ToFloat64(ctx, &h, argv[5]);
+
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->drawShader(sksl, uniforms, (float)x, (float)y, (float)w, (float)h);
+
+    JS_FreeCString(ctx, sksl);
+    return JS_UNDEFINED;
+}
+
+// ctx.drawShaderWithImage(sksl, uniforms, imageName, x, y, w, h)
+// The SkSL must declare: uniform shader iImage;  — sample it with iImage.eval(uv * iResolution)
+static JSValue js_drawShaderWithImage(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
+{
+    if (argc < 7)
+        return JS_ThrowTypeError(ctx, "drawShaderWithImage requires 7 arguments (sksl, uniforms, imageName, x, y, w, h)");
+
+    const char* sksl = JS_ToCString(ctx, argv[0]);
+    if (!sksl)
+        return JS_ThrowTypeError(ctx, "drawShaderWithImage: first argument must be a SkSL string");
+
+    auto uniforms = parseShaderUniforms(ctx, argv[1]);
+
+    const char* imageName = JS_ToCString(ctx, argv[2]);
+    if (!imageName) { JS_FreeCString(ctx, sksl); return JS_ThrowTypeError(ctx, "drawShaderWithImage: imageName must be a string"); }
+
+    double x = 0, y = 0, w = 0, h = 0;
+    JS_ToFloat64(ctx, &x, argv[3]);
+    JS_ToFloat64(ctx, &y, argv[4]);
+    JS_ToFloat64(ctx, &w, argv[5]);
+    JS_ToFloat64(ctx, &h, argv[6]);
+
+    auto* data = static_cast<DrawContextData*>(JS_GetContextOpaque(ctx));
+    data->renderer->drawShaderWithImage(sksl, uniforms, imageName, (float)x, (float)y, (float)w, (float)h);
+
+    JS_FreeCString(ctx, imageName);
+    JS_FreeCString(ctx, sksl);
+    return JS_UNDEFINED;
+}
