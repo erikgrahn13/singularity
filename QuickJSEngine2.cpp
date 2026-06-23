@@ -584,23 +584,41 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
     installConsole();
 
 #ifndef NDEBUG
-    auto buf = js_load_file(ctx_, &buf_len, entryFile.c_str());
-
-    if (!buf) {
-        std::cout << "Failed loading js file\n";
-        return;
-    }
-
-    auto module_val = JS_Eval(ctx_, (const char*)buf, buf_len, entryFile.c_str(), JS_EVAL_TYPE_MODULE);
-
-    if (JS_IsException(module_val)) {
-        js_std_dump_error(ctx_);
+    // If the entry point is App.js, synthesize the mount wrapper in-memory so
+    // plugin authors don't need a boilerplate main.js in their source tree.
+    std::filesystem::path entryPath(entryFile);
+    if (entryPath.filename() == "App.js") {
+        std::string synthetic =
+            "import App from \"" + entryFile + "\";\n"
+            "import { mount } from \"singularity\";\n"
+            "mount(App);\n";
+        auto module_val = JS_Eval(ctx_, synthetic.c_str(), synthetic.size(),
+                                  "<main>", JS_EVAL_TYPE_MODULE);
+        if (JS_IsException(module_val)) {
+            js_std_dump_error(ctx_);
+        } else {
+            callApp(ctx_, renderer_);
+        }
+        JS_FreeValue(ctx_, module_val);
     } else {
-        callApp(ctx_, renderer_);
-    }
+        auto buf = js_load_file(ctx_, &buf_len, entryFile.c_str());
 
-    JS_FreeValue(ctx_, module_val);
-    js_free(ctx_, buf);
+        if (!buf) {
+            std::cout << "Failed loading js file\n";
+            return;
+        }
+
+        auto module_val = JS_Eval(ctx_, (const char*)buf, buf_len, entryFile.c_str(), JS_EVAL_TYPE_MODULE);
+
+        if (JS_IsException(module_val)) {
+            js_std_dump_error(ctx_);
+        } else {
+            callApp(ctx_, renderer_);
+        }
+
+        JS_FreeValue(ctx_, module_val);
+        js_free(ctx_, buf);
+    }
 #else
     qjsc_load_modules(ctx_);
     callApp(ctx_, renderer_);

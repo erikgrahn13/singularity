@@ -113,13 +113,38 @@ function(singularity_create_plugin target)
     endif()
 
 
-    # Inside the function, after resolving UI paths:
-    list(GET UI 0 UI_MAIN_FILE)
+    # Resolve the UI entry point — defaults to App.js if UI was not specified.
+    if(PARAMS_UI)
+        list(GET PARAMS_UI 0 UI_MAIN_FILE)
+    else()
+        set(UI_MAIN_FILE "App.js")
+    endif()
     if(NOT IS_ABSOLUTE "${UI_MAIN_FILE}")
         set(UI_MAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/${UI_MAIN_FILE}")
     endif()
+    if(NOT EXISTS "${UI_MAIN_FILE}")
+        message(FATAL_ERROR "[singularity] No App.js found at '${UI_MAIN_FILE}'. "
+            "Each plugin must provide an App.js (or pass UI <file> explicitly).")
+    endif()
 
-    cmake_path(GET UI_MAIN_FILE STEM _ui_stem)
+    # If the entry point is App.js, plugin authors don't need a boilerplate main.js:
+    # - Debug: QuickJSEngine2.cpp detects App.js and synthesizes the mount wrapper in-memory.
+    # - Release: qjsc needs a real file to compile, so we generate a wrapper main.js in
+    #   the build dir for that step only. UI_MAIN still points to App.js so the debug
+    #   path gets the original file.
+    cmake_path(GET UI_MAIN_FILE FILENAME _ui_main_filename)
+    if(_ui_main_filename STREQUAL "App.js")
+        set(_qjsc_input "${CMAKE_CURRENT_BINARY_DIR}/main.js")
+        file(WRITE "${_qjsc_input}"
+            "import { mount } from \"singularity\";\n"
+            "import App from \"${UI_MAIN_FILE}\";\n"
+            "mount(App);\n"
+        )
+        set(_ui_stem "main")
+    else()
+        set(_qjsc_input "${UI_MAIN_FILE}")
+        cmake_path(GET UI_MAIN_FILE STEM _ui_stem)
+    endif()
 
     if(RESOURCES)
         list(GET RESOURCES 0 _first_resource)
@@ -135,6 +160,7 @@ function(singularity_create_plugin target)
         UI_RESOURCES_DIR="${_resources_dir}"
         QSJC_SYMBOL=qjsc_${_ui_stem}
         QSJC_SYMBOL_SIZE=qjsc_${_ui_stem}_size
+        UI_MAIN_IS_APP_JS=$<IF:$<STREQUAL:${_ui_main_filename},App.js>,1,0>
         PACKAGE_NAME="${pkg_name}"
         SINGULARITY_WIDGETS_DIR="${SINGULARITY_ROOT_DIR}/widgets"
     )
@@ -154,9 +180,9 @@ function(singularity_create_plugin target)
         COMMAND $<TARGET_FILE:qjsc>
             -M singularity,js_init_module_singularity
             -o ${CMAKE_CURRENT_BINARY_DIR}/generated.h
-            ${UI_MAIN_FILE}
+            ${_qjsc_input}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS qjsc ${UI_MAIN_FILE}
+        DEPENDS qjsc ${_qjsc_input}
         VERBATIM
     )
 
