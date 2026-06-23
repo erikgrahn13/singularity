@@ -102,7 +102,7 @@ function(singularity_create_plugin target)
             "-framework CoreGraphics"
         )
     elseif(UNIX AND NOT APPLE)
-        # set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/linux/X11Window.cpp)
         target_link_libraries(${target} PUBLIC
             X11::X11
