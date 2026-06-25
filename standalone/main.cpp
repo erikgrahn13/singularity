@@ -1,13 +1,14 @@
-#include <visage/app.h>
-#include <visage_ui/events.h>
-#include <visage_graphics/post_effects.h>
+#include <iostream>
 
 #include "ISingularityAudio.h"
 #include "../SingularityController.h"
-#include "../IRenderer2.h"
-#include "../IJSEngine.h"
-#include "../IFileWatcher.h"
+#include "../platform/IWindow.h"
+
 #include PLUGIN_CLASS_HEADER
+
+#ifdef SINGULARITY_HAS_EMBEDDED_RESOURCES
+#include "generated_resources.h"
+#endif
 
 #if defined(__linux__)
 #include "PipeWire.h"
@@ -20,75 +21,41 @@ using PlatformAudio = CoreAudio<PLUGIN_CLASS>;
 using PlatformAudio = ASIO<PLUGIN_CLASS>;
 #endif
 
-#include <iostream>
-#if __has_include("embedded/generated_resources.h")
-#include "embedded/generated_resources.h"
-namespace singularity { namespace generated { ::visage::EmbeddedFile fileByName(const std::string& filename); } }
-#endif
-
-#include <filesystem>
-#include <algorithm>
-
 
 int main()
 {
-  visage::ApplicationWindow app;
-
-  auto audio = std::make_unique<PlatformAudio>();
-  setOnParameterChanged([&](int id, double value) {
-    audio->pushParameterChange(id, value);
-  });
-
-  auto controller = std::make_unique<SingularityController>(&app, getParameterContainer(), UI_RESOURCES_DIR);
-
-#if !defined NDEBUG
-    visage::EventTimer timer;
-    timer.startTimer(50);
-    timer.onTimerCallback().add([&]{
-        controller->tick();
+    std::cout << "Hello main2" << std::endl;
+    auto audio = std::make_unique<PlatformAudio>();
+    setOnParameterChanged([&](int id, double value) {
+        audio->pushParameterChange(id, value);
     });
+
+    auto controller = std::make_unique<SingularityController>(getParameterContainer(), UI_RESOURCES_DIR);
+    controller->setLogger([](const std::string& msg) {
+        std::cout << msg << std::endl;
+    });
+    controller->initialize();
+
+#ifdef SINGULARITY_HAS_EMBEDDED_RESOURCES
+    singularity_register_images(controller.get());
 #endif
 
+    auto width  = controller->width();
+    auto height = controller->height();
 
-  controller->setLogger([](const std::string& msg) {
-    std::cout << msg << std::endl;
-  });
+    auto window = IWindow::createWindow(width, height);
+    window->setResizable(PLUGIN_CLASS::isResizable);
+    controller->attachToWindow(*window);
 
-  // Explicitly register embedded resources for standalone builds.
-#if __has_include("embedded/generated_resources.h")
-  {
-    namespace fs = std::filesystem;
-    std::string resdir = UI_RESOURCES_DIR;
-    if (!resdir.empty() && fs::exists(resdir) && fs::is_directory(resdir)) {
-      for (auto &entry : fs::directory_iterator(resdir)) {
-        if (!entry.is_regular_file()) continue;
-        auto name = entry.path().filename().string();
+    controller->setOnResize([&](int w, int h) {
+        window->resize(w, h);
+    });
 
-        // sanitize: replace '.', ' ', '-' with '_'
-        std::string key = name;
-        std::replace_if(key.begin(), key.end(), [](char c){ return c=='.' || c==' ' || c=='-'; }, '_');
+    window->setOnFrame([&]() {
+        controller->tick();  // checks reloadPending_, calls reload() if set
+    });
 
-        auto f = singularity::generated::fileByName(key);
-        if (f.name) {
-          controller->registerImage(std::string(f.name), f.data, f.size);
-          controller->registerImage(name, f.data, f.size);
-        }
-      }
-    }
-  }
-#endif
+    window->run();
 
-  controller->initialize();
-
-  auto width  = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->width();
-  auto height = static_cast<visage::ApplicationWindow*>(controller->getRootFrame())->height();
-
-  app.show(visage::Dimension::logicalPixels(800),
-           visage::Dimension::logicalPixels(600));
-  
-  app.runEventLoop();
-
-  return 0;
+    return 0;
 }
-
-

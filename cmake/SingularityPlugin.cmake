@@ -58,8 +58,8 @@ function(singularity_create_plugin target)
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
-        ${SINGULARITY_ROOT_DIR}/QuickJSEngine2.cpp
-        ${SINGULARITY_ROOT_DIR}/SkiaRenderer2.cpp
+        ${SINGULARITY_ROOT_DIR}/QuickJSEngine.cpp
+        ${SINGULARITY_ROOT_DIR}/SkiaRenderer.cpp
     )
 
     target_link_libraries(${target} PUBLIC 
@@ -257,7 +257,7 @@ function(singularity_create_plugin target)
         # Standalone plugin
         if(type STREQUAL "APP")
             add_executable(${target}_APP 
-                ${SINGULARITY_ROOT_DIR}/standalone/main2.cpp
+                ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
                 ${SINGULARITY_ROOT_DIR}/standalone/ISingularityAudio.cpp
             )
             if(WIN32)

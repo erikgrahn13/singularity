@@ -1,594 +1,699 @@
-// #include "tmpshader.h"
 #include "SkiaRenderer.h"
-#include <visage/app.h>
-#include "include/core/SkFontMgr.h"
-#include "include/encode/SkPngEncoder.h"
+#include "platform/IWindow.h"
+#include "dawn/native/DawnNative.h"
+#include "dawn/dawn_proc.h"
+#include "include/gpu/graphite/ContextOptions.h"
+#include "include/gpu/graphite/Recording.h"
+#include "include/gpu/graphite/GraphiteTypes.h"
+#include "include/gpu/graphite/dawn/DawnGraphiteTypes.h"
+#include "include/gpu/graphite/dawn/DawnBackendContext.h"
+#include "include/gpu/graphite/BackendTexture.h"
+#include "include/core/SkSurface.h"
 #include "include/core/SkCanvas.h"
+#include "include/core/SkImageInfo.h"
+#include "include/core/SkPath.h"
 #include "include/core/SkFont.h"
-#include "include/core/SkData.h"
 #include "include/core/SkFontMetrics.h"
 #include "include/utils/SkTextUtils.h"
-#include "include/effects/SkImageFilters.h"
 #include "include/effects/SkGradientShader.h"
+#include "include/gpu/graphite/Surface.h"
+#include "include/core/SkData.h"
+#include "include/core/SkImage.h"
+#include "include/gpu/graphite/Image.h"
+#include "include/effects/SkImageFilters.h"
+#include "include/core/SkColorFilter.h"
 
-#ifdef _WIN32
-#  include "include/ports/SkTypeface_win.h"
-#elif __APPLE__
-#  include "include/ports/SkFontMgr_mac_ct.h"
-#else
-#  include "include/ports/SkFontMgr_fontconfig.h"
+#include <algorithm>
+#include <filesystem>
+#include <stdexcept>
+
+#ifdef __linux__
+#include "platform/linux/X11Window.h"
+#include "include/ports/SkFontMgr_fontconfig.h"
 #include "include/ports/SkFontScanner_FreeType.h"
-#endif
-
-SkiaRenderer::SkiaRenderer(int width, int height)
-{
-    skiaSurface = SkSurfaces::Raster(SkImageInfo::MakeN32Premul(width, height));
-
-#ifdef _WIN32
-        fontMgr = SkFontMgr_New_DirectWrite();
+    #undef Always
+    #undef Success
+    #undef None
+    #undef Status
+    #undef Bool
+    #undef True
+    #undef False
 #elif __APPLE__
-        fontMgr = SkFontMgr_New_CoreText(nullptr);
-#else
-        fontMgr = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
+#include "include/ports/SkFontMgr_mac_ct.h"
+#include "platform/macos/AppKitWindow.h"
 #endif
-    defaultTypeface = fontMgr->legacyMakeTypeface(nullptr, SkFontStyle());
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-DrawingContent SkiaRenderer::getDrawingContent()
-{
-    SkPixmap pixmap;
-    skiaSurface->peekPixels(&pixmap);
-    return {pixmap.addr(), pixmap.rowBytes(), skiaSurface->width(), skiaSurface->height()};
-}
-
-SkColor SkiaRenderer::applyAlpha(SkColor color) const
-{
-    uint8_t a = (uint8_t)(SkColorGetA(color) * currentState.globalAlpha);
-    return SkColorSetA(color, a);
-}
-
-void SkiaRenderer::applyShadowAndBlur(SkPaint &paint) const
-{
-    if(currentState.shadowColor != SK_ColorTRANSPARENT && currentState.shadowBlur > 0.0)
-    {
-        paint.setImageFilter(SkImageFilters::DropShadow(
-            currentState.shadowOffsetX,
-             currentState.shadowOffsetY,
-            currentState.shadowBlur * 0.5f,
-            currentState.shadowBlur * 0.5f,
-            currentState.shadowColor,
-            nullptr
-        ));
+// Parses a CSS color string to SkColor4f (linear values for color(srgb-linear),
+// normalized 0-1 for #hex / rgba() / rgb()). Values may exceed 1.0 for HDR.
+static SkColor4f parseColor4f(const std::string& s, float alpha = 1.0f) {
+    if (s.size() > 1 && s[0] == '#') {
+        unsigned long v = std::strtoul(s.c_str() + 1, nullptr, 16);
+        size_t n = s.size() - 1;
+        if (n == 6) return { ((v>>16)&0xFF)/255.f, ((v>>8)&0xFF)/255.f, (v&0xFF)/255.f, alpha };
+        if (n == 8) return { ((v>>16)&0xFF)/255.f, ((v>>8)&0xFF)/255.f, (v&0xFF)/255.f, ((v>>24)&0xFF)/255.f * alpha };
+        if (n == 3) return { ((v>>8)&0xF)/15.f,    ((v>>4)&0xF)/15.f,   (v&0xF)/15.f,  alpha };
     }
+    if (s.size() > 5 && s[0]=='r' && s[1]=='g' && s[2]=='b' && s[3]=='a' && s[4]=='(') {
+        float r=0, g=0, b=0, a=1;
+        sscanf(s.c_str(), "rgba(%f,%f,%f,%f)", &r, &g, &b, &a);
+        return { r/255.f, g/255.f, b/255.f, a * alpha };
+    }
+    if (s.size() > 4 && s[0]=='r' && s[1]=='g' && s[2]=='b' && s[3]=='(') {
+        float r=0, g=0, b=0;
+        sscanf(s.c_str(), "rgb(%f,%f,%f)", &r, &g, &b);
+        return { r/255.f, g/255.f, b/255.f, alpha };
+    }
+    // color(srgb-linear r g b [a]) — HDR linear values, can exceed 1.0
+    if (s.size() > 18 && s.rfind("color(srgb-linear", 0) == 0) {
+        float r=0, g=0, b=0, a=1;
+        sscanf(s.c_str(), "color(srgb-linear %f %f %f %f)", &r, &g, &b, &a);
+        return { r, g, b, a * alpha };
+    }
+    return {1.f, 1.f, 1.f, alpha};
 }
 
-void SkiaRenderer::applyGradient(SkPaint &paint) const
-{
-    if(currentState.fillGradientId < 0)
-    {
-        return ;
-    }
-
-    auto& g = gradients[currentState.fillGradientId];
-
-    std::vector<SkColor> colors;
-    std::vector<SkScalar> positions;
-    for (auto& stop : g.colorStops)
-    {
-        positions.push_back(stop.first);
-        colors.push_back(stop.second);
-    }
-
-    sk_sp<SkShader> shader;
-
-    if(g.type == GradientData::Type::Radial)
-    {
-        shader = SkGradientShader::MakeTwoPointConical(
-            {g.x0, g.y0}, g.r0,
-            {g.x1, g.y1}, g.r1,
-            colors.data(), positions.data(), (int)colors.size(),
-            SkTileMode::kClamp);
-    }
-    else
-    {
-        SkPoint pts[2] = { {g.x0, g.y0}, {g.x1, g.y1} };
-        shader = SkGradientShader::MakeLinear(pts, colors.data(), positions.data(),
-                                                (int)colors.size(), SkTileMode::kClamp);
-    }
-
-    paint.setShader(shader);
-}
-
-SkColor SkiaRenderer::parseColor(const std::string &color)
-{
-    // TODO: implement all the names colors, and also HSLA and RGBA
-
-    SkColor newColor = SK_ColorBLACK;
-    if (color.empty()) 
-    {
-        return newColor;
-    }
-
-    if (color[0] == '#') {
-        std::string hex = color.substr(1);
-        if (hex.size() == 3)
-            hex = { hex[0], hex[0], hex[1], hex[1], hex[2], hex[2] };
-        if (hex.size() == 6) {
-            unsigned int rgb = (unsigned int)std::stoul(hex, nullptr, 16);
-            newColor = SkColorSetARGB(0xFF, (rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
-        } else if (hex.size() == 8) {
-            unsigned long rgba = std::stoul(hex, nullptr, 16);
-            newColor = SkColorSetARGB(rgba & 0xFF, (rgba >> 24) & 0xFF, (rgba >> 16) & 0xFF, (rgba >> 8) & 0xFF);
-        }
-    }
-
-    return newColor;
-}
-
-void SkiaRenderer::clear()
-{
-    auto canvas = skiaSurface->getCanvas();
-    canvas->clear(SK_ColorBLACK);
-    canvas->resetMatrix();
-    gradients.clear();
-
-    currentState = DrawState{};
-    stateStack.clear();
-}
-
-void SkiaRenderer::save()
-{
-    stateStack.push_back(currentState);
-    skiaSurface->getCanvas()->save();
-}
-
-void SkiaRenderer::restore()
-{
-    if(stateStack.empty())
+void SkiaRenderer::applyShadow(SkPaint& p) const {
+    if (state_.shadowBlur <= 0.0f && state_.shadowOffsetX == 0.0f && state_.shadowOffsetY == 0.0f)
         return;
-    currentState = stateStack.back();
-    stateStack.pop_back();
-    skiaSurface->getCanvas()->restore();
+    if (state_.shadowColor.fA <= 0.0f)
+        return;
+    // Convert to SkColor (clamped 8-bit) for the image filter
+    SkColor shadowC = state_.shadowColor.toSkColor();
+    p.setImageFilter(
+        SkImageFilters::DropShadow(
+            state_.shadowOffsetX, state_.shadowOffsetY,
+            state_.shadowBlur * 0.5f, state_.shadowBlur * 0.5f,
+            shadowC, nullptr));
 }
 
-void SkiaRenderer::setGlobalAlpha(float alpha)
-{
-    currentState.globalAlpha = alpha;
-}
-
-void SkiaRenderer::translate(float x, float y)
-{
-    skiaSurface->getCanvas()->translate(x, y);
-}
-
-void SkiaRenderer::rotate(float angle)
-{
-    skiaSurface->getCanvas()->rotate(angle);
-}
-
-void SkiaRenderer::scale(float x, float y)
-{
-    skiaSurface->getCanvas()->scale(x, y);
-}
-
-void SkiaRenderer::resetTransform()
-{
-    skiaSurface->getCanvas()->resetMatrix();
-}
-
-void SkiaRenderer::setFillStyle(const std::string& color)
-{
-    currentState.fillStyle = parseColor(color);
-    currentState.fillGradientId = -1;
-}
-
-void SkiaRenderer::setStrokeStyle(const std::string &color)
-{
-    currentState.strokeStyle = parseColor(color);
-}
-
-void SkiaRenderer::setLineWidth(float lineWidth)
-{
-    currentState.lineWidth = lineWidth;
-}
-
-void SkiaRenderer::setLineCap(const std::string &cap)
-{
-    if(cap == "butt")
-    {
-        currentState.lineCap = SkPaint::kButt_Cap;
-    }
-    else if(cap == "round")
-    {
-        currentState.lineCap = SkPaint::kRound_Cap;
-    }
-    else if(cap == "square")
-    {
-        currentState.lineCap = SkPaint::kSquare_Cap;
-    }
-}
-
-void SkiaRenderer::setLineJoin(const std::string &join)
-{
-    if(join == "miter")
-    {
-        currentState.lineJoin = SkPaint::kMiter_Join;
-    }
-    else if(join == "round")
-    {
-        currentState.lineJoin = SkPaint::kRound_Join;
-    }
-    else if(join == "bevel")
-    {
-        currentState.lineJoin = SkPaint::kBevel_Join;
-    }
-}
-
-void SkiaRenderer::setShadowColor(const std::string &color)
-{
-    currentState.shadowColor = parseColor(color);
-}
-
-void SkiaRenderer::setShadowBlur(float blur)
-{
-    currentState.shadowBlur = blur;
-}
-
-void SkiaRenderer::setShadowOffsetX(float offsetX)
-{
-    currentState.shadowOffsetX = offsetX;
-}
-
-void SkiaRenderer::setShadowOffsetY(float offsetY)
-{
-    currentState.shadowOffsetY = offsetY;
-}
-
-int SkiaRenderer::createLinearGradient(float x0, float y0, float x1, float y1)
-{
-    gradients.push_back({GradientData::Type::Linear, x0, y0, x1, y1, 0.f, 0.f, {}});
-    return gradients.size() - 1;
-}
-
-int SkiaRenderer::createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1)
-{
-    gradients.push_back({GradientData::Type::Radial, x0, y0, x1, y1, r0, r1, {}});
-    return gradients.size() - 1;
-}
-
-void SkiaRenderer::addColorStop(int id, float offset, const std::string &color)
-{
-    if(id >= 0 && gradients.size())
-    {
-        gradients[id].colorStops.push_back({offset, parseColor(color)});
-    }
-}
-
-void SkiaRenderer::setFillStyleGradient(int i)
-{
-    currentState.fillGradientId = i;
-}
-
-void SkiaRenderer::fillRect(float x, float y, float width, float height)
-{
-    SkPaint paint;
-    paint.setColor(applyAlpha(currentState.fillStyle));
-    paint.setStyle(SkPaint::kFill_Style);
-    paint.setAntiAlias(true); 
-    applyShadowAndBlur(paint);
-    applyGradient(paint);
-
-    skiaSurface->getCanvas()->drawRect(SkRect::MakeXYWH(x, y, width, height), paint);
-}
-
-void SkiaRenderer::strokeRect(float x, float y, float width, float height)
-{
-    SkPaint paint;
-    paint.setColor(applyAlpha(currentState.strokeStyle));
-    paint.setStyle(SkPaint::kStroke_Style);
-    paint.setStrokeWidth(currentState.lineWidth);
-    paint.setStrokeCap(currentState.lineCap);
-    paint.setStrokeJoin(currentState.lineJoin);
-    paint.setAntiAlias(true); 
-    applyShadowAndBlur(paint);
-    skiaSurface->getCanvas()->drawRect(SkRect::MakeXYWH(x, y, width, height), paint);
-}
-
-void SkiaRenderer::roundRect(float x, float y, float width, float height, float radii)
-{
-    SkRRect roundRect;
-    roundRect.setRectXY(SkRect::MakeXYWH(x, y, width, height), radii, radii);
-    currentPath.addRRect(roundRect);
-}
-
-void SkiaRenderer::clearRect(float x, float y, float width, float height)
-{
-    SkRect rect = SkRect::MakeXYWH(x, y, width, height);
-
-    skiaSurface->getCanvas()->save();
-    skiaSurface->getCanvas()->clipRect(rect, SkClipOp::kIntersect, false);
-    skiaSurface->getCanvas()->drawColor(SK_ColorTRANSPARENT, SkBlendMode::kClear);
-    skiaSurface->getCanvas()->restore();
-}
-
-void SkiaRenderer::registerImage(const std::string& name, const uint8_t *data, size_t size)
-{
-    auto skData = SkData::MakeWithoutCopy(data, size);
-    images[name] = SkImages::DeferredFromEncodedData(skData);
-}
-
-void SkiaRenderer::drawImage(const std::string& name, float dx, float dy, float dw, float dh)
-{
-    auto it = images.find(name);
-#if !defined NDEBUG
-    if (it == images.end()) {
-        // Try the name as-is, then relative to UI_DIR
-        auto skData = SkData::MakeFromFileName(name.c_str());
-        if (!skData) {
-            std::string fullPath = std::string(UI_DIR) + "/" + name;
-            printf("[drawImage] trying: %s\n", fullPath.c_str());
-            skData = SkData::MakeFromFileName(fullPath.c_str());
+SkPaint SkiaRenderer::fillPaint() const {
+    SkPaint p;
+    p.setStyle(SkPaint::kFill_Style);
+    p.setAntiAlias(true);
+    if (state_.fillGrad >= 0 && state_.fillGrad < (int)grads_.size()) {
+        auto& g = grads_[state_.fillGrad];
+        std::vector<SkColor4f> colors;
+        std::vector<SkScalar>  pos;
+        for (auto& [t, c] : g.stops) {
+            pos.push_back(t);
+            SkColor4f ca = c; ca.fA *= state_.alpha;
+            colors.push_back(ca);
         }
-        if (skData) {
-            images[name] = SkImages::DeferredFromEncodedData(skData);
-            it = images.find(name);
+        int n = (int)colors.size();
+        auto cs = SkColorSpace::MakeSRGB();
+        if (g.type == Gradient::Type::Linear) {
+            SkPoint pts[2] = { {g.x0, g.y0}, {g.x1, g.y1} };
+            p.setShader(SkGradientShader::MakeLinear(pts, colors.data(), cs, pos.data(), n, SkTileMode::kClamp));
         } else {
-            printf("[drawImage] failed to load: %s\n", name.c_str());
+            p.setShader(SkGradientShader::MakeTwoPointConical(
+                {g.x0, g.y0}, g.r0, {g.x1, g.y1}, g.r1,
+                colors.data(), cs, pos.data(), n, SkTileMode::kClamp));
         }
-        printf("[drawImage] seemed to load: %s\n", name.c_str());
-
+    } else {
+        SkColor4f c = state_.fillColor;
+        c.fA *= state_.alpha;
+        p.setColor4f(c, nullptr);
     }
-#else
-    if (it == images.end()) return;
+    applyShadow(p);
+    return p;
+}
+
+SkPaint SkiaRenderer::strokePaint() const {
+    SkPaint p;
+    p.setStyle(SkPaint::kStroke_Style);
+    p.setAntiAlias(true);
+    SkColor4f c = state_.strokeColor;
+    c.fA *= state_.alpha;
+    p.setColor4f(c, nullptr);
+    p.setStrokeWidth(state_.lineWidth);
+    p.setStrokeCap(state_.lineCap);
+    p.setStrokeJoin(state_.lineJoin);
+    applyShadow(p);
+    return p;
+}
+
+// ── Construction ─────────────────────────────────────────────────────────────
+
+SkiaRenderer::SkiaRenderer(std::string_view resourcePath)
+    : resourcePath_(resourcePath)
+{
+    dawnProcSetProcs(&dawn::native::GetProcs());
+
+    wgpu::InstanceDescriptor instanceDesc{};
+    wgpu::InstanceFeatureName requiredFeatures[] = { wgpu::InstanceFeatureName::TimedWaitAny };
+    instanceDesc.requiredFeatureCount = 1;
+    instanceDesc.requiredFeatures = requiredFeatures;
+    instance_ = wgpu::CreateInstance(&instanceDesc);
+
+    wgpu::Future f1 = instance_.RequestAdapter(nullptr, wgpu::CallbackMode::WaitAnyOnly,
+        [this](wgpu::RequestAdapterStatus status, wgpu::Adapter a, wgpu::StringView) {
+            if (status == wgpu::RequestAdapterStatus::Success)
+                adapter_ = std::move(a);
+            else
+                throw std::runtime_error("Dawn: RequestAdapter failed");
+        });
+    instance_.WaitAny(f1, UINT64_MAX);
+
+    wgpu::Future f2 = adapter_.RequestDevice(nullptr, wgpu::CallbackMode::WaitAnyOnly,
+        [this](wgpu::RequestDeviceStatus status, wgpu::Device d, wgpu::StringView) {
+            if (status == wgpu::RequestDeviceStatus::Success)
+                device_ = std::move(d);
+            else
+                throw std::runtime_error("Dawn: RequestDevice failed");
+        });
+    instance_.WaitAny(f2, UINT64_MAX);
+
+
+#ifdef __linux__
+    fontMgr_  = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
+#elif __APPLE__
+    fontMgr_ = SkFontMgr_New_CoreText(nullptr);
 #endif
-    skiaSurface->getCanvas()->drawImageRect(it->second, SkRect::MakeXYWH(dx, dy, dw, dh), SkSamplingOptions());
+    typeface_ = fontMgr_->legacyMakeTypeface(nullptr, SkFontStyle());
 }
 
-void SkiaRenderer::beginPath()
-{
-    currentPath = SkPathBuilder();
+std::unique_ptr<IRenderer> IRenderer::createRenderer(std::string_view r) {
+    return std::make_unique<SkiaRenderer>(r);
 }
 
-void SkiaRenderer::stroke()
-{
-    SkPaint paint;
-    paint.setStyle(SkPaint::kStroke_Style);
-    paint.setColor(applyAlpha(currentState.strokeStyle));
-    paint.setStrokeWidth(currentState.lineWidth);
-    paint.setStrokeCap(currentState.lineCap);
-    paint.setStrokeJoin(currentState.lineJoin);
-    paint.setAntiAlias(true); 
-    applyShadowAndBlur(paint);
-    skiaSurface->getCanvas()->drawPath(currentPath.snapshot(), paint);
+// ── Swapchain ─────────────────────────────────────────────────────────────────
+
+// ── Window attachment ─────────────────────────────────────────────────────────
+
+void SkiaRenderer::attachToWindow(IWindow& window) {
+
+    wgpu::SurfaceDescriptor surfDesc{};
+
+#ifdef __linux__
+    auto& nativeWindow = static_cast<X11Window&>(window);
+
+    wgpu::SurfaceSourceXlibWindow libDesc{};
+    libDesc.display = nativeWindow.display();
+    libDesc.window  = static_cast<uint64_t>(nativeWindow.xwindow());
+    surfDesc.nextInChain = &libDesc;
+#elif __APPLE__
+    wgpu::SurfaceSourceMetalLayer metalDesc{};
+    metalDesc.layer = createMetalLayerForView(window.nativeHandle());
+    surfDesc.nextInChain = &metalDesc;
+#endif
+
+    surface_ = instance_.CreateSurface(&surfDesc);
+
+    wgpu::SurfaceConfiguration config{};
+    config.device = device_;
+    config.format = wgpu::TextureFormat::BGRA8Unorm; // or query preferred
+    config.width  = window.width();
+    config.height = window.height();
+    config.presentMode = wgpu::PresentMode::Fifo;
+    surface_.Configure(&config);
+
+    skgpu::graphite::DawnBackendContext dawnCtx{};
+    dawnCtx.fInstance = instance_;
+    dawnCtx.fDevice   = device_;
+    dawnCtx.fQueue    = device_.GetQueue();
+    ctx_ = skgpu::graphite::ContextFactory::MakeDawn(dawnCtx, {});
+    rec_ = ctx_->makeRecorder();
 }
 
-void SkiaRenderer::fill()
-{
-    SkPaint paint;
-    paint.setStyle(SkPaint::kFill_Style);
-    paint.setColor(applyAlpha(currentState.fillStyle));
-    paint.setAntiAlias(true);
-    applyShadowAndBlur(paint);
-    applyGradient(paint);
+// ── Destructor ────────────────────────────────────────────────────────────────
 
-    skiaSurface->getCanvas()->drawPath(currentPath.snapshot(), paint);
+SkiaRenderer::~SkiaRenderer() {
+
 }
 
-void SkiaRenderer::moveTo(float x, float y)
-{
-    currentPath.moveTo(x, y);
+// ── Frame lifecycle ───────────────────────────────────────────────────────────
+
+void SkiaRenderer::resize(int w, int h) {
+    IRenderer::resize(w, h);
+    if (!surface_) return;
+
+    wgpu::SurfaceConfiguration config{};
+    config.device = device_;
+    config.format = wgpu::TextureFormat::BGRA8Unorm;
+    config.width  = w;
+    config.height = h;
+    config.presentMode = wgpu::PresentMode::Fifo;
+    surface_.Configure(&config);
 }
 
-void SkiaRenderer::lineTo(float x, float y)
-{
-    currentPath.lineTo(x, y);
+void* SkiaRenderer::beginFrame() {
+    wgpu::SurfaceTexture surfTex;
+    surface_.GetCurrentTexture(&surfTex);
+    if (surfTex.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal &&
+        surfTex.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal)
+        return nullptr;
+
+    auto backendTex = skgpu::graphite::BackendTextures::MakeDawn(surfTex.texture.Get());
+    skSurface_ = SkSurfaces::WrapBackendTexture(rec_.get(),
+                                                 backendTex,
+                                                 kBGRA_8888_SkColorType,
+                                                 nullptr, nullptr);
+
+    bloomStrength_ = 0.0f; // reset each frame — components must re-enable each draw
+
+    // FP16 offscreen surface for HDR rendering (values > 1.0 preserved)
+    auto info = SkImageInfo::Make(width_, height_,
+                                  kRGBA_F16_SkColorType, kPremul_SkAlphaType,
+                                  SkColorSpace::MakeSRGB());
+    sceneSurface_ = SkSurfaces::RenderTarget(rec_.get(), info);
+    if (!sceneSurface_) sceneSurface_ = skSurface_; // fallback to swapchain
+
+    return sceneSurface_->getCanvas();
 }
 
-void SkiaRenderer::closePath()
-{
-    currentPath.close();
+SkCanvas* SkiaRenderer::canvas() const {
+    if (sceneSurface_ && sceneSurface_ != skSurface_)
+        return sceneSurface_->getCanvas();
+    return skSurface_ ? skSurface_->getCanvas() : nullptr;
 }
 
-void SkiaRenderer::quadraticCurveTo(float cpx, float cpy, float x, float y)
-{
-    currentPath.quadTo(cpx, cpy, x, y);
+void* SkiaRenderer::currentCanvas() const { return canvas(); }
+
+void SkiaRenderer::present() {
+    // Composite FP16 scene onto the swapchain, with optional bloom
+    if (sceneSurface_ && sceneSurface_ != skSurface_) {
+        auto sceneImg = sceneSurface_->makeImageSnapshot();
+        if (sceneImg) {
+            auto* dst = skSurface_->getCanvas();
+
+            // 1. Tonemap + draw scene (> 1.0 values clamp to white on BGRA8 swapchain)
+            dst->drawImage(sceneImg.get(), 0, 0, SkSamplingOptions());
+
+            // 2. Multi-scale bloom: 3 passes at different radii, all composited additively.
+            // Narrow pass = tight bright core, medium = glow body, wide = diffuse halo.
+            // This matches the industry-standard approach for neon/laser effects.
+            if (bloomStrength_ > 0.0f) {
+                // Threshold: output=0 at input=1.0, only HDR (>1.0) survives
+                const float k = 4.0f;
+                float threshMat[20] = {
+                    k, 0, 0, 0, -k,
+                    0, k, 0, 0, -k,
+                    0, 0, k, 0, -k,
+                    0, 0, 0, 1,  0
+                };
+                auto threshFilter = SkImageFilters::ColorFilter(
+                    SkColorFilters::Matrix(threshMat), nullptr);
+
+                // Three passes: narrow (tight core), medium (glow body), wide (diffuse halo)
+                // bloomStrength_ scales relative weights: narrow stays sharp, wide spreads more
+                struct BloomPass { float sigma; float weight; };
+                BloomPass passes[3] = {
+                    { 4.0f,  bloomStrength_ * 2.0f },   // tight core
+                    { 12.0f, bloomStrength_ * 3.0f },   // glow body
+                    { 32.0f, bloomStrength_ * 2.0f },   // wide diffuse halo
+                };
+
+                for (auto& p : passes) {
+                    float wMat[20] = {
+                        p.weight, 0,        0,        0, 0,
+                        0,        p.weight, 0,        0, 0,
+                        0,        0,        p.weight, 0, 0,
+                        0,        0,        0,        1, 0
+                    };
+                    auto weightFilter = SkImageFilters::ColorFilter(
+                        SkColorFilters::Matrix(wMat), threshFilter);
+                    auto blurFilter = SkImageFilters::Blur(
+                        p.sigma, p.sigma, SkTileMode::kDecal, weightFilter);
+
+                    SkPaint bloomPaint;
+                    bloomPaint.setImageFilter(blurFilter);
+                    bloomPaint.setBlendMode(SkBlendMode::kPlus);
+                    dst->drawImage(sceneImg.get(), 0, 0, SkSamplingOptions(), &bloomPaint);
+                }
+            }
+        }
+        sceneSurface_.reset();
+    }
+
+    auto recording = rec_->snap();
+    if (!recording) return;
+
+    skgpu::graphite::InsertRecordingInfo info{};
+    info.fRecording     = recording.get();
+    info.fTargetSurface = skSurface_.get();
+
+    ctx_->insertRecording(info);
+    ctx_->submit(skgpu::graphite::SyncToCpu::kNo);
+
+    surface_.Present();
+    skSurface_.reset();
 }
 
-void SkiaRenderer::bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y)
-{
-    currentPath.cubicTo(cp1x, cp1y, cp2x, cp2y, x, y);
+// ── Draw methods ─────────────────────────────────────────────────────────────
+
+void SkiaRenderer::fillRect(float x, float y, float w, float h) {
+    if (auto* c = canvas()) c->drawRect(SkRect::MakeXYWH(x,y,w,h), fillPaint());
+}
+void SkiaRenderer::strokeRect(float x, float y, float w, float h) {
+    if (auto* c = canvas()) c->drawRect(SkRect::MakeXYWH(x,y,w,h), strokePaint());
+}
+void SkiaRenderer::clearRect(float x, float y, float w, float h) {
+    if (auto* c = canvas()) {
+        c->save();
+        c->clipRect(SkRect::MakeXYWH(x,y,w,h));
+        c->drawColor(SK_ColorTRANSPARENT, SkBlendMode::kClear);
+        c->restore();
+    }
 }
 
-void SkiaRenderer::arcTo(float x1, float y1, float x2, float y2, float radius)
-{
-    currentPath.arcTo(SkPoint::Make(x1, y1), SkPoint::Make(x2, y2), radius);
+void SkiaRenderer::beginPath(void*)          { path_ = SkPathBuilder(); }
+void SkiaRenderer::moveTo(float x, float y)  { path_.moveTo(x, y); }
+void SkiaRenderer::lineTo(float x, float y)  { path_.lineTo(x, y); }
+void SkiaRenderer::closePath(void*)          { path_.close(); }
+
+void SkiaRenderer::arc(float cx, float cy, float r, float start, float end, bool ccw) {
+    SkRect oval = SkRect::MakeXYWH(cx-r, cy-r, r*2, r*2);
+    float sweep = (end - start) * (180.f / SK_FloatPI);
+    if (ccw) sweep -= 360.f;
+    path_.addArc(oval, start * (180.f / SK_FloatPI), sweep);
 }
-
-void SkiaRenderer::ellipse(float x, float y, float radiusX, float radiusY, float rotation, float startAngle, float endAngle)
-{
-    // Build arc centered at origin (no rotation yet)
-    SkRect oval = SkRect::MakeXYWH(-radiusX, -radiusY, radiusX * 2, radiusY * 2);
-    float startDeg = startAngle * (180.f / SK_FloatPI);
-    float sweepDeg = (endAngle - startAngle) * (180.f / SK_FloatPI);
-
+void SkiaRenderer::arcTo(float x1, float y1, float x2, float y2, float r) {
+    path_.arcTo(SkPoint::Make(x1,y1), SkPoint::Make(x2,y2), r);
+}
+void SkiaRenderer::quadraticCurveTo(float cpx, float cpy, float x, float y) {
+    path_.quadTo(cpx, cpy, x, y);
+}
+void SkiaRenderer::bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y) {
+    path_.cubicTo(cp1x, cp1y, cp2x, cp2y, x, y);
+}
+void SkiaRenderer::ellipse(float cx, float cy, float rx, float ry,
+                            float rot, float start, float end, bool ccw) {
+    float sweep = (end - start) * (180.f / SK_FloatPI);
+    if (ccw) sweep -= 360.f;
     SkPathBuilder tmp;
-    tmp.addArc(oval, startDeg, sweepDeg);
-
-    // Rotate around origin, then translate to (x, y)
-    SkMatrix matrix;
-    matrix.setRotate(rotation * (180.f / SK_FloatPI));
-    matrix.postTranslate(x, y);
-
-    currentPath.addPath(tmp.snapshot(), matrix);
+    tmp.addArc(SkRect::MakeXYWH(-rx,-ry,rx*2,ry*2), start*(180.f/SK_FloatPI), sweep);
+    SkMatrix m;
+    m.setRotate(rot * (180.f / SK_FloatPI));
+    m.postTranslate(cx, cy);
+    path_.addPath(tmp.snapshot(), m);
+}
+void SkiaRenderer::rect(float x, float y, float w, float h) {
+    path_.addRect(SkRect::MakeXYWH(x,y,w,h));
+}
+void SkiaRenderer::roundRect(float x, float y, float w, float h, float r) {
+    SkRRect rr;
+    rr.setRectXY(SkRect::MakeXYWH(x,y,w,h), r, r);
+    path_.addRRect(rr);
 }
 
-void SkiaRenderer::rect(float x, float y, float width, float height)
-{
-    currentPath.addRect(SkRect::MakeXYWH(x, y, width, height));
-}
+void SkiaRenderer::fill(void*)   { if (auto* c = canvas()) c->drawPath(path_.snapshot(), fillPaint()); }
+void SkiaRenderer::stroke(void*) { if (auto* c = canvas()) c->drawPath(path_.snapshot(), strokePaint()); }
 
-void SkiaRenderer::arc(float x, float y, float radius, float startAngle, float endAngle)
-{
-    SkRect oval = SkRect::MakeXYWH(x - radius, y - radius, radius * 2, radius *2);
-    float sweepDeg = (endAngle - startAngle) * (180.f / SK_FloatPI);
-    currentPath.addArc(oval, startAngle * (180.f / SK_FloatPI), sweepDeg);
-}
-
-void SkiaRenderer::fillText(const std::string &text, float x, float y)
-{
-    SkTextUtils::Align align = SkTextUtils::kLeft_Align;
-    if (currentState.textAlign == "center") 
-    {
-        align = SkTextUtils::kCenter_Align;
+void SkiaRenderer::fillText(const std::string& text, float x, float y) {
+    if (auto* c = canvas()) {
+        sk_sp<SkTypeface> tf = resolveTypeface();
+        SkFont font(tf, state_.fontSize);
+        SkTextUtils::Align a = SkTextUtils::kLeft_Align;
+        if (state_.textAlign == "center")                       a = SkTextUtils::kCenter_Align;
+        else if (state_.textAlign == "right" ||
+                 state_.textAlign == "end")                     a = SkTextUtils::kRight_Align;
+        SkTextUtils::DrawString(c, text.c_str(), x, y, font, fillPaint(), a);
     }
-    else if (currentState.textAlign == "right" || currentState.textAlign == "end")
-    {
-        align = SkTextUtils::kRight_Align;
-    }
-    
-    SkFontMetrics metrics;
-    SkFont font(defaultTypeface, currentState.fontSize);
-    font.getMetrics(&metrics);
+}
+void SkiaRenderer::strokeText(const std::string& text, float x, float y) {
+    if (auto* c = canvas())
+        SkTextUtils::DrawString(c, text.c_str(), x, y, SkFont(resolveTypeface(), state_.fontSize), strokePaint());
+}
+float SkiaRenderer::measureText(const std::string& text) {
+    return SkFont(resolveTypeface(), state_.fontSize)
+        .measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
+}
 
-    if (currentState.textBaseline == "top")
-        y -= metrics.fAscent;           // fAscent is negative, so this moves y down
-    else if (currentState.textBaseline == "middle")
-        y -= (metrics.fAscent + metrics.fDescent) / 2.f;
-    else if (currentState.textBaseline == "bottom")
-        y -= metrics.fDescent;
-    else if (currentState.textBaseline == "hanging")
-        y += metrics.fCapHeight;
+// ── Style setters ─────────────────────────────────────────────────────────────
+
+void SkiaRenderer::setFillStyle(const std::string& c)   { state_.fillColor = parseColor4f(c); state_.fillGrad = -1; }
+void SkiaRenderer::setStrokeStyle(const std::string& c) { state_.strokeColor = parseColor4f(c); }
+void SkiaRenderer::setLineWidth(float w)                { state_.lineWidth = w; }
+void SkiaRenderer::setLineCap(const std::string& cap) {
+    if      (cap == "round")  state_.lineCap = SkPaint::kRound_Cap;
+    else if (cap == "square") state_.lineCap = SkPaint::kSquare_Cap;
+    else                      state_.lineCap = SkPaint::kButt_Cap;
+}
+void SkiaRenderer::setFont(const std::string& font) {
+    auto px = font.find("px");
+    if (px != std::string::npos) {
+        // Walk backwards over digits/dot to find start of the numeric size
+        size_t numEnd = px;
+        size_t numStart = numEnd;
+        while (numStart > 0 && (std::isdigit((unsigned char)font[numStart-1]) || font[numStart-1] == '.'))
+            --numStart;
+        if (numStart < numEnd)
+            try { state_.fontSize = std::stof(font.substr(numStart, numEnd - numStart)); } catch (...) {}
+
+        // Extract optional family name after "px "
+        state_.fontFamily.clear();
+        size_t famStart = px + 2;
+        while (famStart < font.size() && font[famStart] == ' ') ++famStart;
+        if (famStart < font.size())
+            state_.fontFamily = font.substr(famStart);
+    }
+}
+void SkiaRenderer::setGlobalAlpha(float a)               { state_.alpha = a; }
+void SkiaRenderer::setTextAlign(const std::string& a)    { state_.textAlign = a; }
+void SkiaRenderer::setTextBaseline(const std::string& b) { state_.textBase = b; }
+
+sk_sp<SkTypeface> SkiaRenderer::resolveTypeface() {
+    if (state_.fontFamily.empty()) return typeface_;
+    auto it = loadedTypefaces_.find(state_.fontFamily);
+    if (it == loadedTypefaces_.end()) {
+        for (const auto& candidate : std::vector<std::string>{
+            resourcePath_ + "/" + state_.fontFamily,
+            resourcePath_ + "/Fonts/" + state_.fontFamily,
+            resourcePath_ + "/fonts/" + state_.fontFamily
+        }) {
+            auto data = SkData::MakeFromFileName(candidate.c_str());
+            if (data) {
+                auto loaded = fontMgr_->makeFromData(data);
+                if (loaded) { loadedTypefaces_[state_.fontFamily] = std::move(loaded); break; }
+            }
+        }
+        it = loadedTypefaces_.find(state_.fontFamily);
+    }
+    return it != loadedTypefaces_.end() ? it->second : typeface_;
+}
+void SkiaRenderer::setShadowColor(const std::string& c)  { state_.shadowColor = parseColor4f(c); }
+void SkiaRenderer::setShadowBlur(float blur)             { state_.shadowBlur = blur; }
+void SkiaRenderer::setShadowOffsetX(float x)             { state_.shadowOffsetX = x; }
+void SkiaRenderer::setShadowOffsetY(float y)             { state_.shadowOffsetY = y; }
+void SkiaRenderer::setBloom(float strength)              { bloomStrength_ = strength; }
+double SkiaRenderer::getTime() const {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime_).count();
+}
+
+// ── Gradients ────────────────────────────────────────────────────────────────
+
+int SkiaRenderer::createLinearGradient(float x0, float y0, float x1, float y1) {
+    grads_.push_back({ Gradient::Type::Linear, x0, y0, x1, y1, 0, 0, {} });
+    return (int)grads_.size() - 1;
+}
+int SkiaRenderer::createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1) {
+    grads_.push_back({ Gradient::Type::Radial, x0, y0, x1, y1, r0, r1, {} });
+    return (int)grads_.size() - 1;
+}
+void SkiaRenderer::addColorStop(int id, float offset, const std::string& color, float) {
+    if (id >= 0 && id < (int)grads_.size())
+        grads_[id].stops.push_back({ offset, parseColor4f(color) });
+}
+void SkiaRenderer::setFillStyleGradient(int id)   { state_.fillGrad = id; }
+void SkiaRenderer::setStrokeStyleGradient(int)    {}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+void SkiaRenderer::save(void*) {
+    if (auto* c = canvas()) { stack_.push_back(state_); c->save(); }
+}
+void SkiaRenderer::restore(void*) {
+    if (auto* c = canvas(); c && !stack_.empty()) {
+        state_ = stack_.back(); stack_.pop_back(); c->restore();
+    }
+}
+
+// ── Transforms ───────────────────────────────────────────────────────────────
+
+void SkiaRenderer::translate(float x, float y)  { if (auto* c = canvas()) c->translate(x, y); }
+void SkiaRenderer::rotate(float a)               { if (auto* c = canvas()) c->rotate(a * (180.f / SK_FloatPI)); }
+void SkiaRenderer::scale(float x, float y)       { if (auto* c = canvas()) c->scale(x, y); }
+void SkiaRenderer::resetTransform(void*)         { if (auto* c = canvas()) c->resetMatrix(); }
+
+// ── Clipping ──────────────────────────────────────────────────────────────────
+
+void SkiaRenderer::clipRect(float x, float y, float w, float h) {
+    if (auto* c = canvas()) c->clipRect(SkRect::MakeXYWH(x, y, w, h));
+}
+void SkiaRenderer::clipRoundRect(float x, float y, float w, float h, float r) {
+    if (auto* c = canvas()) {
+        SkRRect rr;
+        rr.setRectXY(SkRect::MakeXYWH(x, y, w, h), r, r);
+        c->clipRRect(rr, true); // true = anti-aliased
+    }
+}
+
+// ── Images ────────────────────────────────────────────────────────────────────
+
+void SkiaRenderer::registerImage(const std::string& name, const uint8_t* data, int size) {
+    auto skData = SkData::MakeWithCopy(data, size);
+    auto img = SkImages::DeferredFromEncodedData(skData);
+    if (img) {
+        images_[name] = img;
+        fprintf(stderr, "[drawImage] registered: %s (%dx%d)\n", name.c_str(), img->width(), img->height());
+    } else {
+        fprintf(stderr, "[drawImage] failed to decode registered image: %s\n", name.c_str());
+    }
+}
+
+void SkiaRenderer::drawImage(const std::string& name, float dx, float dy, float dw, float dh) {
+    auto* c = canvas();
+    if (!c) { fprintf(stderr, "[drawImage] no canvas\n"); return; }
+
+    // Normalise path: strip leading "./" or directory components
+    std::string key = std::filesystem::path(name).filename().string();
+
+    auto it = images_.find(key);
+    if (it == images_.end()) {
+        // Try loading from the bundle's Resources directory (works in both Debug and Release)
+        std::vector<std::string> candidates = {
+            resourcePath_ + "/" + key,
+            resourcePath_ + "/Images/" + key,
+            resourcePath_ + "/Fonts/" + key,
+        };
+#ifndef NDEBUG
+        // In Debug builds, also try the source directory
+        candidates.push_back(std::string(UI_DIR) + "/" + key);
+        candidates.push_back(name);
+#endif
+        for (auto& path : candidates) {
+            auto skData = SkData::MakeFromFileName(path.c_str());
+            if (skData) {
+                fprintf(stderr, "[drawImage] loaded from: %s (%zu bytes)\n", path.c_str(), skData->size());
+                auto img = SkImages::DeferredFromEncodedData(skData);
+                if (img) {
+                    auto gpuImg = SkImages::TextureFromImage(rec_.get(), img);
+                    if (gpuImg)
+                        images_[key] = gpuImg;
+                    else
+                        images_[key] = img;
+                    it = images_.find(key);
+                    break;
+                }
+            }
+        }
+        if (it == images_.end()) {
+            fprintf(stderr, "[drawImage] failed to load: %s\n", name.c_str());
+            return;
+        }
+    }
+
+    SkRect dst = SkRect::MakeXYWH(dx, dy, dw, dh);
+
+    // Ensure the image is GPU-backed for Skia Graphite.
+    // If the cached image is still raster (e.g. from registerImage()), upload it
+    // once and store the GPU texture back so subsequent frames are free.
+    if (!it->second->isTextureBacked()) {
+        auto gpuImage = SkImages::TextureFromImage(rec_.get(), it->second);
+        if (gpuImage)
+            it->second = gpuImage;
+    }
+
+    c->drawImageRect(it->second, dst, SkSamplingOptions(SkFilterMode::kLinear));
+}
+
+// Shared helper: compile-and-cache an SkRuntimeEffect from SkSL source.
+sk_sp<SkRuntimeEffect> SkiaRenderer::getOrCompileShader(const std::string& sksl) {
+    auto it = shaderCache_.find(sksl);
+    if (it != shaderCache_.end()) return it->second;
+    auto result = SkRuntimeEffect::MakeForShader(SkString(sksl.c_str()));
+    if (!result.effect) {
+        fprintf(stderr, "[drawShader] SkSL compile error: %s\n", result.errorText.c_str());
+        return nullptr;
+    }
+    shaderCache_[sksl] = result.effect;
+    return result.effect;
+}
+
+static void applyUniforms(SkRuntimeShaderBuilder& builder,
+                          const std::vector<IRenderer::ShaderUniform>& uniforms) {
+    for (const auto& u : uniforms) {
+        auto uniform = builder.uniform(u.name.c_str());
+        if      (u.values.size() == 1) uniform = u.values[0];
+        else if (u.values.size() == 2) uniform = SkV2{u.values[0], u.values[1]};
+        else if (u.values.size() == 3) uniform = SkV3{u.values[0], u.values[1], u.values[2]};
+        else if (u.values.size() == 4) uniform = SkV4{u.values[0], u.values[1], u.values[2], u.values[3]};
+    }
+}
+
+void SkiaRenderer::drawShader(const std::string& sksl,
+                              const std::vector<ShaderUniform>& uniforms,
+                              float x, float y, float w, float h) {
+    auto* c = canvas();
+    if (!c) return;
+    auto effect = getOrCompileShader(sksl);
+    if (!effect) return;
+    SkRuntimeShaderBuilder builder(effect);
+    applyUniforms(builder, uniforms);
+    SkPaint paint;
+    paint.setShader(builder.makeShader());
+    c->drawRect(SkRect::MakeXYWH(x, y, w, h), paint);
+}
+
+void SkiaRenderer::drawShaderWithImage(const std::string& sksl,
+                                       const std::vector<ShaderUniform>& uniforms,
+                                       const std::string& imageName,
+                                       float x, float y, float w, float h) {
+    auto* c = canvas();
+    if (!c) return;
+
+    // Resolve the image (same logic as drawImage)
+    std::string key = std::filesystem::path(imageName).filename().string();
+    auto it = images_.find(key);
+    if (it == images_.end()) {
+        std::vector<std::string> candidates = {
+            resourcePath_ + "/" + key,
+            resourcePath_ + "/Images/" + key,
+        };
+#ifndef NDEBUG
+        candidates.push_back(std::string(UI_DIR) + "/" + key);
+        candidates.push_back(imageName);
+#endif
+        for (auto& path : candidates) {
+            auto skData = SkData::MakeFromFileName(path.c_str());
+            if (skData) {
+                auto img = SkImages::DeferredFromEncodedData(skData);
+                if (img) {
+                    auto gpuImg = SkImages::TextureFromImage(rec_.get(), img);
+                    images_[key] = gpuImg ? gpuImg : img;
+                    it = images_.find(key);
+                    break;
+                }
+            }
+        }
+        if (it == images_.end()) {
+            fprintf(stderr, "[drawShaderWithImage] failed to load: %s\n", imageName.c_str());
+            return;
+        }
+    }
+    if (!it->second->isTextureBacked()) {
+        auto gpuImg = SkImages::TextureFromImage(rec_.get(), it->second);
+        if (gpuImg) it->second = gpuImg;
+    }
+
+    auto effect = getOrCompileShader(sksl);
+    if (!effect) return;
+
+    SkRuntimeShaderBuilder builder(effect);
+    applyUniforms(builder, uniforms);
+
+    // Bind the image as a shader child named "iImage".
+    // Scale so that eval coords in [0,w]x[0,h] map to the full image.
+    SkMatrix localMatrix = SkMatrix::Scale(
+        (float)it->second->width()  / w,
+        (float)it->second->height() / h);
+    builder.child("iImage") = it->second->makeShader(
+        SkTileMode::kClamp, SkTileMode::kClamp,
+        SkSamplingOptions(SkFilterMode::kLinear),
+        &localMatrix);
 
     SkPaint paint;
-    paint.setStyle(SkPaint::kFill_Style);
-    paint.setColor(applyAlpha(currentState.fillStyle));
-    paint.setAntiAlias(true);
-    applyShadowAndBlur(paint);
-    applyGradient(paint);
-
-    SkTextUtils::DrawString(skiaSurface->getCanvas(), text.c_str(), x, y, font, paint, align);
-}
-
-void SkiaRenderer::strokeText(const std::string &text, float x, float y)
-{
-    SkTextUtils::Align align = SkTextUtils::kLeft_Align;
-    if (currentState.textAlign == "center") 
-    {
-        align = SkTextUtils::kCenter_Align;
-    }
-    else if (currentState.textAlign == "right" || currentState.textAlign == "end")
-    {
-        align = SkTextUtils::kRight_Align;
-    }
-    
-    SkFontMetrics metrics;
-    SkFont font(defaultTypeface, currentState.fontSize);
-    font.getMetrics(&metrics);
-
-    if (currentState.textBaseline == "top")
-        y -= metrics.fAscent;           // fAscent is negative, so this moves y down
-    else if (currentState.textBaseline == "middle")
-        y -= (metrics.fAscent + metrics.fDescent) / 2.f;
-    else if (currentState.textBaseline == "bottom")
-        y -= metrics.fDescent;
-    else if (currentState.textBaseline == "hanging")
-        y += metrics.fCapHeight;
-
-    SkPaint paint;
-    paint.setStyle(SkPaint::kStroke_Style);
-    paint.setColor(applyAlpha(currentState.strokeStyle));
-    paint.setAntiAlias(true);
-    applyShadowAndBlur(paint);
-    SkTextUtils::DrawString(skiaSurface->getCanvas(), text.c_str(), x, y, font, paint, align);
-}
-
-float SkiaRenderer::measureText(const std::string &text)
-{
-    SkFont font(defaultTypeface, currentState.fontSize);
-    return font.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
-}
-
-void SkiaRenderer::font(const std::string &text)
-{
-    auto pxPos = text.find("px");
-    if (pxPos == std::string::npos) return; // not a valid font string
-
-    size_t sizeStart = pxPos;
-    while (sizeStart > 0 && (std::isdigit((unsigned char)text[sizeStart - 1]) || text[sizeStart - 1] == '.'))
-        --sizeStart;
-
-    // 3. Extract the size number e.g. "16"
-    currentState.fontSize = std::stof(text.substr(sizeStart, pxPos - sizeStart));
-
-    // 4. Everything after "px " is the font family e.g. "Arial"
-    currentState.fontFamily = (pxPos + 3 <= text.size()) ? text.substr(pxPos + 3) : "";
-
-    // 5. Check for "bold" / "italic" in the prefix
-    std::string prefix = text.substr(0, sizeStart);
-    bool bold   = prefix.find("bold")   != std::string::npos;
-    bool italic = prefix.find("italic") != std::string::npos;
-    currentState.fontStyle = SkFontStyle(
-        bold   ? SkFontStyle::kBold_Weight  : SkFontStyle::kNormal_Weight,
-        SkFontStyle::kNormal_Width,
-        italic ? SkFontStyle::kItalic_Slant : SkFontStyle::kUpright_Slant
-    );
-
-    defaultTypeface = fontMgr->legacyMakeTypeface(currentState.fontFamily.c_str(), currentState.fontStyle);
-}
-
-void SkiaRenderer::textAlign(const std::string &align)
-{
-    currentState.textAlign = align;
-}
-
-void SkiaRenderer::textBaseline(const std::string &baseline)
-{
-    currentState.textBaseline = baseline;
-}
-
-std::vector<uint8_t> SkiaRenderer::encodeFrameToPng()
-{
-    SkPixmap pixmap;
-    skiaSurface->peekPixels(&pixmap);
-    sk_sp<SkData> data = SkPngEncoder::Encode(pixmap, {});
-    if (!data) return {};
-    return std::vector<uint8_t>(static_cast<const uint8_t*>(data->data()),
-                                static_cast<const uint8_t*>(data->data()) + data->size());
-}
-
-int SkiaRenderer::getWidth() const  { return skiaSurface->width(); }
-int SkiaRenderer::getHeight() const { return skiaSurface->height(); }
-
-void SkiaRenderer::postRender(void* nativeCanvas)
-{
-    if (!nativeCanvas) return;
-    int w = getWidth(), h = getHeight();
-    cachedRGBA_.resize(w * h * 4);  // constant size after first frame; pointer stays stable
-    SkImageInfo info = SkImageInfo::Make(w, h, kRGBA_8888_SkColorType, kOpaque_SkAlphaType);
-    if (!skiaSurface->readPixels(info, cachedRGBA_.data(), w * 4, 0, 0))
-        return;
-
-    auto* vc = static_cast<visage::Canvas*>(nativeCanvas);
-
-    // Build a raw-pixel Image. visage::Image::operator== does NOT compare the raw flag,
-    // so the atlas key matches the entry from the first frame — one stable slot forever.
-    // force_update=true makes imageAtlas call bgfx::copy() immediately, so the pointer
-    // only needs to survive this call (it's a member, so it always does).
-    visage::Image img{ cachedRGBA_.data(), w * h * 4, w, h };
-    img.raw = true;
-    vc->imageAtlas()->addImage(img, true);  // force RGBA re-upload each frame
-
-    vc->setColor(0xffffffff);
-    vc->image(img, 0, 0);  // atlas finds existing slot (raw excluded from key); adds draw shape
-}
-
-std::unique_ptr<IRenderer> createRenderer(int width, int height)
-{
-    return std::make_unique<SkiaRenderer>(width, height);
-}
-
-void SkiaRenderer::renderBackground(float t)
-{
-    SkCanvas* canvas = skiaSurface->getCanvas();
-    // DrawMetaballsBackground(canvas, skiaSurface->width(), skiaSurface->height(), t);
+    paint.setShader(builder.makeShader());
+    c->drawRect(SkRect::MakeXYWH(x, y, w, h), paint);
 }
