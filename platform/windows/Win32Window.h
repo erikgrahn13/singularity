@@ -12,52 +12,6 @@ class Win32Window : public IWindow {
 public:
     Win32Window(int width, int height);
     Win32Window(int width, int height, void* parent);
-        : Win32Window(title, width, height, static_cast<HWND>(parent), childMode) {}
-
-    
-    Win32Window(const std::string& title, int width, int height, HWND parent = nullptr, bool childMode = false)
-        : m_width(width), m_height(height)
-    {
-        WNDCLASSEXW wc{};
-        wc.cbSize        = sizeof(wc);
-        wc.lpfnWndProc   = WndProc;
-        wc.hInstance     = GetModuleHandleW(nullptr);
-        wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
-        wc.lpszClassName = L"SingularityWindow";
-        RegisterClassExW(&wc); // no-op if already registered
-
-        if (parent && childMode) {
-            // Child window — embedded into host (VST3)
-            m_hwnd = CreateWindowExW(
-                0, L"SingularityWindow", nullptr,
-                WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-                0, 0, width, height,
-                parent, nullptr, GetModuleHandleW(nullptr), this
-            );
-        } else {
-            // Top-level window (standalone or owned modal like settings)
-            int len = MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, nullptr, 0);
-            std::wstring wtitle(len, 0);
-            MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, wtitle.data(), len);
-
-            RECT rect{0, 0, width, height};
-            AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-
-            m_hwnd = CreateWindowExW(
-                0, L"SingularityWindow", wtitle.c_str(),
-                WS_OVERLAPPEDWINDOW,
-                CW_USEDEFAULT, CW_USEDEFAULT,
-                rect.right - rect.left, rect.bottom - rect.top,
-                parent, nullptr, GetModuleHandleW(nullptr), this
-            );
-            ShowWindow(m_hwnd, SW_SHOW);
-            UpdateWindow(m_hwnd);
-        }
-
-        if (!m_hwnd)
-            throw std::runtime_error("Failed to create Win32 window");
-    }
-
     ~Win32Window() override { if (m_hwnd) DestroyWindow(m_hwnd); }
 
     Win32Window(const Win32Window&) = delete;
