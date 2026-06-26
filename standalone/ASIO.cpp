@@ -20,7 +20,7 @@ ASIO<PluginType>::ASIO() : ISingularityAudio<PluginType>()
     char deviceName[MAXDRVNAMELEN];
     tmpDriver.asioGetDriverName(0, deviceName, MAXDRVNAMELEN);
 
-    strcpy(deviceName,"SSL ASIO Driver 1");
+    strcpy(deviceName,"WineASIO");
     auto status = loadAsioDriver(deviceName);
     if(status == 0)
     {
