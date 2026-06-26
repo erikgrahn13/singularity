@@ -10,6 +10,7 @@
 class X11Window : public IWindow {
     public:
 
+    X11Window(int width, int height);
     X11Window(int width, int height, void* parentWindow);
     ~X11Window();
 

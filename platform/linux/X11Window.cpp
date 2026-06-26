@@ -4,9 +4,34 @@
 #include <libportal/portal.h>
 #include <glib.h>
 
+std::unique_ptr<IWindow> IWindow::createWindow(int width, int height)
+{
+    return std::make_unique<X11Window>(width, height);
+}
+
 std::unique_ptr<IWindow> IWindow::createWindow(int width, int height, void* parentWindow)
 {
     return std::make_unique<X11Window>(width, height, parentWindow);
+}
+
+X11Window::X11Window(int width, int height) : width_(width), height_(height)
+{
+        display_ = XOpenDisplay(NULL);
+        if(!display_)
+        {
+            throw std::runtime_error("Failed to open X11 display");
+        }
+
+        // Screen* screen = DefaultScreenOfDisplay(display);
+        int screenIdl = DefaultScreen(display_);
+
+        Window rootWindow = DefaultRootWindow(display_);
+        window_ = XCreateSimpleWindow(display_, rootWindow, 0, 0, width, height, 0, 0, 0);
+
+        XSelectInput(display_, window_, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | StructureNotifyMask);
+
+        XClearWindow(display_, window_);
+        XMapRaised(display_, window_);
 }
 
 X11Window::X11Window(int width, int height, void* parentWindow) : width_(width), height_(height)
@@ -20,20 +45,18 @@ X11Window::X11Window(int width, int height, void* parentWindow) : width_(width),
         // Screen* screen = DefaultScreenOfDisplay(display);
         int screenIdl = DefaultScreen(display_);
 
-        Window rootWindow = parentWindow ? (Window)(uintptr_t)parentWindow : DefaultRootWindow(display_);
+        Window rootWindow = (Window)(uintptr_t)parentWindow;
         window_ = XCreateSimpleWindow(display_, rootWindow, 0, 0, width, height, 0, 0, 0);
 
         XSelectInput(display_, window_, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | StructureNotifyMask);
 
-        if (parentWindow) {
-            Atom xembedInfo = XInternAtom(display_, "_XEMBED_INFO", False);
-            unsigned long info[2] = { 0, 1 }; // version=0, flags=XEMBED_MAPPED
-            XChangeProperty(display_, window_, xembedInfo, xembedInfo, 32,
-                            PropModeReplace, (unsigned char*)info, 2);
-        }
+        Atom xembedInfo = XInternAtom(display_, "_XEMBED_INFO", False);
+        unsigned long info[2] = { 0, 1 }; // version=0, flags=XEMBED_MAPPED
+        XChangeProperty(display_, window_, xembedInfo, xembedInfo, 32,
+                        PropModeReplace, (unsigned char*)info, 2);
 
         XClearWindow(display_, window_);
-        XMapRaised(display_, window_);
+        XMapWindow(display_, window_);
 }
 
 X11Window::~X11Window()
