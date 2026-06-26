@@ -10,9 +10,11 @@
 
 class Win32Window : public IWindow {
 public:
-    Win32Window(const std::string& title, int width, int height, void* parent, bool childMode)
+    Win32Window(int width, int height);
+    Win32Window(int width, int height, void* parent);
         : Win32Window(title, width, height, static_cast<HWND>(parent), childMode) {}
 
+    
     Win32Window(const std::string& title, int width, int height, HWND parent = nullptr, bool childMode = false)
         : m_width(width), m_height(height)
     {
