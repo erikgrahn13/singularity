@@ -108,46 +108,39 @@ extern "C" void* createMetalLayerForView(void* nsView) {
 
 class AppKitWindowImpl : public IWindow {
 public:
+    // Standalone: creates its own NSWindow
+    AppKitWindowImpl(int width, int height) : width_(width), height_(height) {
+        NSRect frame = NSMakeRect(0, 0, width, height);
+        view_ = [[EventView alloc] initWithFrame:frame];
+
+        window_ = [[NSWindow alloc]
+            initWithContentRect:frame
+            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
+            backing:NSBackingStoreBuffered
+            defer:NO];
+        [window_ setContentView:view_];
+        [window_ setAcceptsMouseMovedEvents:YES];
+        [window_ center];
+
+        delegate_ = [[AppKitDelegate alloc] init];
+        delegate_.window = window_;
+        embedded_ = false;
+
+        setupViewTracking(frame);
+    }
+
+    // Embedded: attaches to a host-provided parent NSView
     AppKitWindowImpl(int width, int height, void* parentWindow) : width_(width), height_(height) {
         NSRect frame = NSMakeRect(0, 0, width, height);
         view_ = [[EventView alloc] initWithFrame:frame];
 
-        if (parentWindow) {
-            // Plugin mode: embed our view into the host-provided parent NSView
-            NSView* parent = (__bridge NSView*)parentWindow;
-            [view_ setFrame:parent.bounds];
-            [view_ setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-            [parent addSubview:view_];
-            embedded_ = true;
-        } else {
-            // Standalone mode: create our own window
-            window_ = [[NSWindow alloc]
-                initWithContentRect:frame
-                styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
-                backing:NSBackingStoreBuffered
-                defer:NO];
-            [window_ setContentView:view_];
-            [window_ setAcceptsMouseMovedEvents:YES];
-            [window_ center];
+        NSView* parent = (__bridge NSView*)parentWindow;
+        [view_ setFrame:parent.bounds];
+        [view_ setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [parent addSubview:view_];
+        embedded_ = true;
 
-            delegate_ = [[AppKitDelegate alloc] init];
-            delegate_.window = window_;
-            embedded_ = false;
-        }
-
-        // Add a tracking area so mouseMoved fires even when the window isn't key
-        NSTrackingArea* trackingArea = [[NSTrackingArea alloc]
-            initWithRect:frame
-            options:NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect
-            owner:view_
-            userInfo:nil];
-        [view_ addTrackingArea:trackingArea];
-
-        // Wire event callbacks
-        view_.onMouseDown  = &onMouseDown_;
-        view_.onMouseUp    = &onMouseUp_;
-        view_.onMouseMove  = &onMouseMove_;
-        view_.onMouseWheel = &onMouseWheel_;
+        setupViewTracking(frame);
     }
 
     void run() override {
@@ -216,6 +209,20 @@ public:
     void setOnClose    (std::function<void()> cb)          override { onClose_     = std::move(cb); }
 
 private:
+    void setupViewTracking(NSRect frame) {
+        NSTrackingArea* trackingArea = [[NSTrackingArea alloc]
+            initWithRect:frame
+            options:NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect
+            owner:view_
+            userInfo:nil];
+        [view_ addTrackingArea:trackingArea];
+
+        view_.onMouseDown  = &onMouseDown_;
+        view_.onMouseUp    = &onMouseUp_;
+        view_.onMouseMove  = &onMouseMove_;
+        view_.onMouseWheel = &onMouseWheel_;
+    }
+
     NSWindow*       window_       = nil;
     EventView*      view_         = nil;
     AppKitDelegate* delegate_     = nil;
@@ -232,4 +239,8 @@ private:
 
 std::unique_ptr<IWindow> IWindow::createWindow(int w, int h, void* parentWindow) {
     return std::make_unique<AppKitWindowImpl>(w, h, parentWindow);
+}
+
+std::unique_ptr<IWindow> IWindow::createWindow(int w, int h) {
+    return std::make_unique<AppKitWindowImpl>(w, h);
 }

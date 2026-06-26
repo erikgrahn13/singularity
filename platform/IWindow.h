@@ -29,6 +29,8 @@ public:
     virtual void openFileDialog(const std::string& title,
                                 std::function<void(const std::string&)> callback) {}
 
-    static std::unique_ptr<IWindow> createWindow(int width, int height, void* parentWindow = nullptr);
+    static std::unique_ptr<IWindow> createWindow(int width, int height);
+    static std::unique_ptr<IWindow> createWindow(int width, int height, void* parentWindow);
+
 
 };
