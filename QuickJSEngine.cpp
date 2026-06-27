@@ -580,10 +580,10 @@ void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
 
     js_init_module_singularity(ctx_, "singularity");
 
-    size_t buf_len;
     installConsole();
 
 #ifndef NDEBUG
+    size_t buf_len;
     // If the entry point is App.js, synthesize the mount wrapper in-memory so
     // plugin authors don't need a boilerplate main.js in their source tree.
     std::filesystem::path entryPath(entryFile);

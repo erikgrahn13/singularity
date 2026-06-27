@@ -15,7 +15,7 @@
 #include "include/core/SkFont.h"
 #include "include/core/SkFontMetrics.h"
 #include "include/utils/SkTextUtils.h"
-#include "include/effects/SkGradientShader.h"
+#include "include/effects/SkGradient.h"
 #include "include/gpu/graphite/Surface.h"
 #include "include/core/SkData.h"
 #include "include/core/SkImage.h"
@@ -43,7 +43,7 @@
 #include "platform/macos/AppKitWindow.h"
 #elif _WIN32
 #include "platform/windows/Win32Window.h"
-#include "include/ports/SkFontMgr_win_dw.h"
+#include "include/ports/SkTypeface_win.h"
 #endif
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -103,15 +103,17 @@ SkPaint SkiaRenderer::fillPaint() const {
             SkColor4f ca = c; ca.fA *= state_.alpha;
             colors.push_back(ca);
         }
-        int n = (int)colors.size();
         auto cs = SkColorSpace::MakeSRGB();
+        SkGradient::Colors gradColors(SkSpan<const SkColor4f>(colors),
+                                      SkSpan<const float>(pos),
+                                      SkTileMode::kClamp, cs);
+        SkGradient grad(gradColors, {});
         if (g.type == Gradient::Type::Linear) {
             SkPoint pts[2] = { {g.x0, g.y0}, {g.x1, g.y1} };
-            p.setShader(SkGradientShader::MakeLinear(pts, colors.data(), cs, pos.data(), n, SkTileMode::kClamp));
+            p.setShader(SkShaders::LinearGradient(pts, grad));
         } else {
-            p.setShader(SkGradientShader::MakeTwoPointConical(
-                {g.x0, g.y0}, g.r0, {g.x1, g.y1}, g.r1,
-                colors.data(), cs, pos.data(), n, SkTileMode::kClamp));
+            p.setShader(SkShaders::TwoPointConicalGradient(
+                {g.x0, g.y0}, g.r0, {g.x1, g.y1}, g.r1, grad));
         }
     } else {
         SkColor4f c = state_.fillColor;
@@ -168,6 +170,7 @@ SkiaRenderer::SkiaRenderer(std::string_view resourcePath)
     instance_.WaitAny(f2, UINT64_MAX);
 
 
+    fontMgr_ = SkFontMgr::RefEmpty();
 #ifdef __linux__
     fontMgr_  = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
 #elif __APPLE__

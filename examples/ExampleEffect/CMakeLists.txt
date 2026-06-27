@@ -7,8 +7,6 @@ project(ExampleEffect
 
 singularity_create_plugin(
     ${PROJECT_NAME}
-    UI
-        main.js
     FORMATS APP VST3
     PLUGIN_CLASS ExampleEffect
     PLUGIN_CLASS_HEADER "ExampleEffect.h"
