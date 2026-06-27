@@ -1,10 +1,10 @@
 if(WIN32)
     # set(SKIA_URL https://github.com/olilarkin/skia-builder/releases/download/chrome%2Fm144/skia-build-win-x64-gpu-release.zip)
-    set(SKIA_URL https://github.com/erikgrahn13/skia-builder/releases/download/chrome%2Fm144/skia-build-win-x64-gpu-release.zip)
+    set(SKIA_URL https://github.com/erikgrahn13/skia-builder/releases/download/chrome%2Fm149/skia-build-win-x64-gpu-release.zip)
 elseif(APPLE)
-    set(SKIA_URL https://github.com/erikgrahn13/skia-builder/releases/download/chrome%2Fm144/skia-build-mac-universal-gpu-release.zip)
+    set(SKIA_URL https://github.com/erikgrahn13/skia-builder/releases/download/chrome%2Fm149/skia-build-mac-universal-gpu-release.zip)
 else()
-    set(SKIA_URL https://github.com/erikgrahn13/skia-builder/releases/download/chrome%2Fm144/skia-build-linux-x64-gpu-release.zip)
+    set(SKIA_URL https://github.com/erikgrahn13/skia-builder/releases/download/chrome%2Fm149/skia-build-linux-x64-gpu-release.zip)
 endif()
 
 FetchContent_Declare(
