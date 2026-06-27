@@ -41,6 +41,9 @@
 #elif __APPLE__
 #include "include/ports/SkFontMgr_mac_ct.h"
 #include "platform/macos/AppKitWindow.h"
+#elif _WIN32
+#include "platform/windows/Win32Window.h"
+#include "include/ports/SkFontMgr_win_dw.h"
 #endif
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -169,6 +172,8 @@ SkiaRenderer::SkiaRenderer(std::string_view resourcePath)
     fontMgr_  = SkFontMgr_New_FontConfig(nullptr, SkFontScanner_Make_FreeType());
 #elif __APPLE__
     fontMgr_ = SkFontMgr_New_CoreText(nullptr);
+#elif _WIN32
+    fontMgr_ = SkFontMgr_New_DirectWrite();
 #endif
     typeface_ = fontMgr_->legacyMakeTypeface(nullptr, SkFontStyle());
 }
@@ -196,6 +201,13 @@ void SkiaRenderer::attachToWindow(IWindow& window) {
     wgpu::SurfaceSourceMetalLayer metalDesc{};
     metalDesc.layer = createMetalLayerForView(window.nativeHandle());
     surfDesc.nextInChain = &metalDesc;
+#elif _WIN32
+    auto& nativeWindow = static_cast<Win32Window&>(window);
+
+    wgpu::SurfaceSourceWindowsHWND hwndDesc{};
+    hwndDesc.hinstance = GetModuleHandleW(nullptr);
+    hwndDesc.hwnd      = nativeWindow.hwnd();
+    surfDesc.nextInChain = &hwndDesc;
 #endif
 
     surface_ = instance_.CreateSurface(&surfDesc);

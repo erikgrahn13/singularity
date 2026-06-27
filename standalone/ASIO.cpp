@@ -20,7 +20,7 @@ ASIO<PluginType>::ASIO() : ISingularityAudio<PluginType>()
     char deviceName[MAXDRVNAMELEN];
     tmpDriver.asioGetDriverName(0, deviceName, MAXDRVNAMELEN);
 
-    strcpy(deviceName,"WineASIO");
+    strcpy(deviceName,"WineASIO Driver");
     auto status = loadAsioDriver(deviceName);
     if(status == 0)
     {
