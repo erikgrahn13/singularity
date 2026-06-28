@@ -88,7 +88,7 @@ function(singularity_create_plugin target)
     if(WIN32)
         set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_NAME "${target}_shared")
         target_sources(${target} PRIVATE ${SINGULARITY_ROOT_DIR}/platform/windows/Win32Window.cpp)
-        target_link_libraries(${target} PUBLIC dxguid.lib kernelbase.lib)
+        target_link_libraries(${target} PUBLIC dxguid.lib)
     elseif(APPLE)
         target_sources(${target} PRIVATE
             ${SINGULARITY_ROOT_DIR}/platform/macos/AppKitWindow.mm
