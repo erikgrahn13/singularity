@@ -22,6 +22,17 @@ FetchContent_MakeAvailable(vst3sdk)
 
 smtg_enable_vst3_sdk()
 
+# smtg_configure_cmake_generator() (called above) sets CMAKE_CONFIGURATION_TYPES
+# via a plain set(), which is scoped to this directory.  When Singularity is
+# consumed as a FetchContent dependency that value never reaches the consumer's
+# root scope, so the VST3 SDK's Windows-bundle foreach loop sees an empty list
+# and fails to redirect the DLL into Contents/<arch>/ → LNK1104.
+# Using CACHE FORCE promotes the value to the global CMake cache, making it
+# visible to every target in the build regardless of scope.
+if(WIN32)
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
+endif()
+
 # Workaround: VST3 SDK threadchecker_mac.mm uses std::terminate() without
 # #include <exception>. Newer Xcode/macOS SDKs no longer transitively provide it.
 if(APPLE AND TARGET sdk_common)
