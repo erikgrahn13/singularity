@@ -7,7 +7,7 @@
 #include <functional>
 #include "../utilities/SingularityQueue.h"
 #include "../IParameterProvider.h"
-#include "../SingularityPlugin.h"
+#include "SingularityPlugin.h"
 
 IParameterProvider& getParameterContainer();
 void setOnParameterChanged(std::function<void(int, double)> cb);

@@ -3,7 +3,7 @@
 #include "SingularityView.h"
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ibstream.h"
-#include "../SingularityPlugin.h"
+#include "SingularityPlugin.h"
 #include PLUGIN_CLASS_HEADER
 #include <limits>
 #include <memory>

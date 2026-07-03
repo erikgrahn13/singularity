@@ -67,17 +67,6 @@
             ]
         },
         {
-            "name": "VST3PluginTestHost Windows",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "C:/Program Files/Steinberg/VST3PluginTestHost/VST3PluginTestHost.exe",
-            "args": ["--pluginfolder", "${command:cmake.buildDirectory}"],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "console": "newExternalWindow",
-            "preLaunchTask": "CMake: build"
-        },
-        {
             "name": "Editorhost Windows",
             "type": "cppvsdbg",
             "request": "launch",
@@ -93,7 +82,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "cwd": "${workspaceFolder}/Example",
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
             "environment": [],
             "args": []
         },
@@ -102,7 +91,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "cwd": "${workspaceFolder}/Example",
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
             "environment": [],
             "args": [],
             "MIMode": "lldb"

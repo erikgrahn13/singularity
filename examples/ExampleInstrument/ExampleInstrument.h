@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../SingularityPlugin.h"
+#include "SingularityPlugin.h"
 
 class ExampleInstrument {
 public:

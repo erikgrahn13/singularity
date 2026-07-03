@@ -11,7 +11,7 @@
 #include "pluginterfaces/vst/ivstevents.h"
 #include "plugincids.h"
 #include PLUGIN_CLASS_HEADER
-#include "../SingularityPlugin.h"
+#include "SingularityPlugin.h"
 #include <span>
 #include <vector>
 #include <algorithm>

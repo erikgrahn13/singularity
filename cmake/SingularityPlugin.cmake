@@ -280,7 +280,7 @@ function(singularity_create_plugin target)
             endif()
 
             target_include_directories(${target}_APP PRIVATE
-                ${SINGULARITY_ROOT_DIR}/platform
+                ${SINGULARITY_ROOT_DIR}
                 ${CMAKE_CURRENT_SOURCE_DIR}
             )
             target_compile_definitions(${target}_APP PRIVATE
