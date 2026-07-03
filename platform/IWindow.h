@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 #include <memory>
-#include "../IRenderer2.h"
+#include "IRenderer.h"
 
 class IWindow {
 public:

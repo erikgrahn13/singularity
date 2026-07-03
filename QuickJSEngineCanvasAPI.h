@@ -1,6 +1,6 @@
 #pragma once
 #include "quickjs-libc.h"
-#include "IRenderer2.h"
+#include "IRenderer.h"
 
 struct DrawContextData {
     IRenderer* renderer;

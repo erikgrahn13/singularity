@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IRenderer2.h"
+#include "IRenderer.h"
 #include "IParameterProvider.h"
 #include <functional>
 #include <memory>

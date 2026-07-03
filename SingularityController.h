@@ -1,5 +1,5 @@
 #pragma once
-#include "IRenderer2.h"
+#include "IRenderer.h"
 #include "IJSEngine.h"
 #include "IFileWatcher.h"
 #include "IParameterProvider.h"
