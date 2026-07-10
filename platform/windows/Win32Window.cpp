@@ -1,5 +1,9 @@
 #include "Win32Window.h"
 
+// Helper macros to widen a narrow string literal from a macro
+#define WIDEN2(x) L ## x
+#define WIDEN(x) WIDEN2(x)
+
 std::unique_ptr<IWindow> IWindow::createWindow(int width, int height) {
     return std::make_unique<Win32Window>(width, height);
 }
@@ -22,7 +26,7 @@ Win32Window::Win32Window(int width, int height)
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
     m_hwnd = CreateWindowExW(
-        0, L"SingularityWindow", PLUGIN_NAME,
+        0, L"SingularityWindow", WIDEN(PLUGIN_NAME),
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         rect.right - rect.left, rect.bottom - rect.top,
