@@ -22,7 +22,7 @@ Win32Window::Win32Window(int width, int height)
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
     m_hwnd = CreateWindowExW(
-        0, L"SingularityWindow", nullptr,
+        0, L"SingularityWindow", PLUGIN_NAME,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         rect.right - rect.left, rect.bottom - rect.top,

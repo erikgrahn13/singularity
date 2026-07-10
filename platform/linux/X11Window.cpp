@@ -27,6 +27,7 @@ X11Window::X11Window(int width, int height) : width_(width), height_(height)
 
         Window rootWindow = DefaultRootWindow(display_);
         window_ = XCreateSimpleWindow(display_, rootWindow, 0, 0, width, height, 0, 0, 0);
+        XStoreName(display_, window_, PLUGIN_NAME);
 
         XSelectInput(display_, window_, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | StructureNotifyMask);
 

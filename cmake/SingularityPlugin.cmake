@@ -5,19 +5,11 @@ set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 
 function(singularity_create_plugin target)
-    set(oneValueArgs PACKAGE_NAME VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER)
+    set(oneValueArgs VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER PLUGIN_NAME)
     set(multiValueArgs SOURCES UI FORMATS RESOURCES DATA_RESOURCES)
 
     # Parse the arguments
     cmake_parse_arguments(PARAMS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Now handle the parsed arguments
-    # If PACKAGE_NAME is not provided, use the target name as the default
-    set(pkg_name "${PARAMS_PACKAGE_NAME}")
-
-    if(NOT pkg_name)
-        set(pkg_name ${target})
-    endif()
 
     # If SOURCES is not provided, use the unparsed arguments (if any) as source files
     set(SOURCES "${PARAMS_SOURCES}")
@@ -155,6 +147,12 @@ function(singularity_create_plugin target)
         set(_resources_dir "")
     endif()
 
+    if(PARAMS_PLUGIN_NAME)
+        set(_plugin_title "${PARAMS_PLUGIN_NAME}")
+    else()
+        set(_plugin_title "${target}")
+    endif()
+
     target_compile_definitions(${target} PUBLIC
         UI_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         UI_MAIN="${UI_MAIN_FILE}"
@@ -162,8 +160,8 @@ function(singularity_create_plugin target)
         QSJC_SYMBOL=qjsc_${_ui_stem}
         QSJC_SYMBOL_SIZE=qjsc_${_ui_stem}_size
         UI_MAIN_IS_APP_JS=$<IF:$<STREQUAL:${_ui_main_filename},App.js>,1,0>
-        PACKAGE_NAME="${pkg_name}"
         SINGULARITY_WIDGETS_DIR="${SINGULARITY_ROOT_DIR}/widgets"
+        PLUGIN_NAME="${_plugin_title}"
     )
 
     # Create a "singularity/" symlink in the binary dir so qjsc can resolve
@@ -339,7 +337,7 @@ function(singularity_create_plugin target)
             set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
 
             smtg_add_vst3plugin(${target}_VST3
-                PACKAGE_NAME ${target}
+                PACKAGE_NAME "${_plugin_title}"
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.h
                 ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.h
@@ -381,7 +379,6 @@ function(singularity_create_plugin target)
             endif()
 
             target_compile_definitions(${target}_VST3 PRIVATE
-                PLUGIN_NAME="${target}"
                 VENDOR="${VENDOR}"
                 URL="${URL}"
                 EMAIL="${EMAIL}"
