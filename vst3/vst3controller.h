@@ -144,8 +144,6 @@ private:
             flags |= Vst::ParameterInfo::kIsReadOnly;
         if (parameter.wrapAround)
             flags |= Vst::ParameterInfo::kIsWrapAround;
-        if (parameter.isBypass)
-            flags |= Vst::ParameterInfo::kIsBypass;
         if (parameter.type == ParamType::Choice || !parameter.choices.empty())
             flags |= Vst::ParameterInfo::kIsList;
         return flags;

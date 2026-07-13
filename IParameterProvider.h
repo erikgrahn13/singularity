@@ -35,7 +35,6 @@ struct Parameter {
     bool automatable = true;
     bool readOnly = false;
     bool wrapAround = false;
-    bool isBypass = false;
 
     // Generic parameter grouping. Adapters can map this to their own grouping
     // system (for example VST3 UnitID) without exposing format-specific names.
