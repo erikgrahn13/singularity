@@ -314,6 +314,12 @@ protected:
 			return std::clamp(std::round(plainValue) / maxIndex, 0.0, 1.0);
 		}
 
+		if (parameter.type == ParamType::Stepped && parameter.steps > 1)
+		{
+			const auto maxStep = static_cast<double>(parameter.steps - 1);
+			return std::clamp(std::round(plainValue) / maxStep, 0.0, 1.0);
+		}
+
 		if (parameter.maxValue == parameter.minValue)
 			return 0.0;
 
@@ -330,6 +336,9 @@ protected:
 
 		if (parameter.type == ParamType::Choice && !parameter.choices.empty())
 			return std::round(clamped * static_cast<double>(parameter.choices.size() - 1));
+
+		if (parameter.type == ParamType::Stepped && parameter.steps > 1)
+			return std::round(clamped * static_cast<double>(parameter.steps - 1));
 
 		const auto plain = parameter.minValue + clamped * (parameter.maxValue - parameter.minValue);
 		if (parameter.type == ParamType::Stepped)

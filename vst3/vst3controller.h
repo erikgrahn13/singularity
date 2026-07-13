@@ -86,6 +86,40 @@ public:
             return;
         }
 
+        if (parameter.type == ParamType::Choice && !parameter.choices.empty())
+        {
+            const auto maxIndex = static_cast<double>(parameter.choices.size() - 1);
+            parameters.addParameter(new Vst::RangeParameter(
+                title,
+                parameter.id,
+                unitString,
+                0.0,
+                maxIndex,
+                std::clamp(std::round(parameter.defaultValue), 0.0, maxIndex),
+                stepCountFor(parameter),
+                flags,
+                groupId,
+                shortTitleString));
+            return;
+        }
+
+        if (parameter.type == ParamType::Stepped && parameter.steps > 1)
+        {
+            const auto maxStep = static_cast<double>(parameter.steps - 1);
+            parameters.addParameter(new Vst::RangeParameter(
+                title,
+                parameter.id,
+                unitString,
+                0.0,
+                maxStep,
+                std::clamp(std::round(parameter.defaultValue), 0.0, maxStep),
+                stepCountFor(parameter),
+                flags,
+                groupId,
+                shortTitleString));
+            return;
+        }
+
         parameters.addParameter(title, unitString, stepCountFor(parameter),
             plainToNormalized(parameter, parameter.defaultValue),
             flags, parameter.id, groupId, shortTitleString);
@@ -162,6 +196,12 @@ private:
             if (maxIndex <= 0.0)
                 return 0.0;
             return std::clamp(std::round(plainValue) / maxIndex, 0.0, 1.0);
+        }
+
+        if (parameter.type == ParamType::Stepped && parameter.steps > 1)
+        {
+            const auto maxStep = static_cast<double>(parameter.steps - 1);
+            return std::clamp(std::round(plainValue) / maxStep, 0.0, 1.0);
         }
 
         if (parameter.maxValue == parameter.minValue)
