@@ -174,6 +174,12 @@ function(singularity_create_plugin target)
         SYMBOLIC
     )
 
+    # Imported widgets are compiled into the release UI by qjsc. Track all widget
+    # sources so editing App.js or a widget cannot leave stale embedded bytecode.
+    file(GLOB _singularity_widget_sources CONFIGURE_DEPENDS
+        "${SINGULARITY_ROOT_DIR}/widgets/*.js"
+    )
+
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.h
         COMMAND $<TARGET_FILE:qjsc>
@@ -181,7 +187,7 @@ function(singularity_create_plugin target)
             -o ${CMAKE_CURRENT_BINARY_DIR}/generated.h
             ${_qjsc_input}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS qjsc ${_qjsc_input}
+        DEPENDS qjsc ${_qjsc_input} "${UI_MAIN_FILE}" ${_singularity_widget_sources}
         VERBATIM
     )
 

@@ -102,6 +102,7 @@ public:
 			{
 				for (auto& param : mParams)
 				{
+					if (param.metadata.readOnly) continue;
 					if (param.saParam.getParamID () == paramID)
 					{
 						if (param.metadata.type == ParamType::Float)
@@ -121,6 +122,17 @@ public:
 
 	tresult PLUGIN_API process (Vst::ProcessData& data) SMTG_OVERRIDE
 	{
+		// Output parameters are calculated afresh for each process block. This
+		// also guarantees that host-declared silence publishes zero/default.
+		for (auto& parameter : mParams)
+		{
+			if (!parameter.metadata.readOnly) continue;
+			const auto normalizedDefault = plainToNormalized(
+				parameter.metadata, parameter.metadata.defaultValue);
+			parameter.smoothed = normalizedDefault;
+			parameter.rampTarget = normalizedDefault;
+		}
+
 		handleParameterChanges (data.inputParameterChanges);
 
 
@@ -165,9 +177,11 @@ public:
 				processAudio<Vst::kSample64> (data);
 		}
 
+		publishOutputParameters(data);
+
 		//--- Cleanup SA params ---
 		for (auto& parameter : mParams)
-			parameter.saParam.endChanges ();
+			if (!parameter.metadata.readOnly) parameter.saParam.endChanges ();
 
 		return kResultOk;
 	}
@@ -212,6 +226,12 @@ public:
 			std::array<std::pair<unsigned int, double>, std::tuple_size_v<decltype(PluginType::getParameters())>> params;
 			for (int i = 0; i < mParams.size(); ++i)
 			{
+				if (mParams[i].metadata.readOnly)
+				{
+					params[i] = {mParams[i].metadata.id,
+						normalizedToPlain(mParams[i].metadata, mParams[i].smoothed)};
+					continue;
+				}
 				double target = mParams[i].saParam.advance (slice.numSamples);
 				if (mParams[i].metadata.type != ParamType::Float)
 				{
@@ -253,6 +273,13 @@ public:
 				auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
 				mPlugin.template process<SampleT> (inputSpan, outputSpan, slice.numSamples, ParamList{params});
 			}
+
+			for (int i = 0; i < static_cast<int>(mParams.size()); ++i)
+			{
+				if (!mParams[i].metadata.readOnly) continue;
+				mParams[i].smoothed = plainToNormalized(mParams[i].metadata, params[i].second);
+				mParams[i].rampTarget = mParams[i].smoothed;
+			}
 		};
 
 		Vst::ProcessDataSlicer slicer (16);
@@ -270,6 +297,7 @@ public:
 		mBypassProcessorDouble.setActive (bypass);
 		for (auto& parameter : mParams)
 		{
+			if (parameter.metadata.readOnly) continue;
 			double value = 0.0;
 			if (!streamer.readDouble (value)) break;
 			parameter.smoothed   = value;
@@ -284,11 +312,31 @@ public:
 		IBStreamer streamer (state, kLittleEndian);
 		streamer.writeInt32 (mBypassProcessorFloat.isActive () ? 1 : 0);
 		for (auto& parameter : mParams)
-			streamer.writeDouble (parameter.smoothed);
+			if (!parameter.metadata.readOnly) streamer.writeDouble (parameter.smoothed);
 		return kResultOk;
 	}
 
 protected:
+	void publishOutputParameters(Vst::ProcessData& data)
+	{
+		if (!data.outputParameterChanges)
+			return;
+
+		for (auto& parameter : mParams)
+		{
+			if (!parameter.metadata.readOnly) continue;
+
+			int32 queueIndex = 0;
+			auto* queue = data.outputParameterChanges->addParameterData(
+				parameter.metadata.id, queueIndex);
+			if (!queue) continue;
+
+			int32 pointIndex = 0;
+			queue->addPoint(std::max<int32>(0, data.numSamples - 1),
+				parameter.smoothed, pointIndex);
+		}
+	}
+
 	PluginType mPlugin;
 	Vst::BypassProcessor<Vst::Sample32> mBypassProcessorFloat;
 	Vst::BypassProcessor<Vst::Sample64> mBypassProcessorDouble;

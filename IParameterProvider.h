@@ -47,13 +47,23 @@ struct ParamList
 {
     // Values are plain framework values, not host-normalized transport values.
     using ParamValue = std::pair<unsigned int, double>;
-    std::span<const ParamValue> data;
+    std::span<ParamValue> data;
 
     double get (unsigned int id, double fallback = 0.0) const
     {
         for (auto& [pid, val] : data)
             if (pid == id) return val;
         return fallback;
+    }
+
+    void set (unsigned int id, double value)
+    {
+        for (auto& [pid, currentValue] : data)
+            if (pid == id)
+            {
+                currentValue = value;
+                return;
+            }
     }
 };
 

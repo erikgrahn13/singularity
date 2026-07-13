@@ -62,6 +62,7 @@ tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 		auto* param = parameters.getParameterByIndex(i);
 		if (!param) continue;
 		if (param->getInfo().id == Steinberg::Vst::kMaxParamId) continue; // bypass already read
+		if (param->getInfo().flags & Vst::ParameterInfo::kIsReadOnly) continue;
 		double value = 0.0;
 		if (!streamer.readDouble(value)) break;
 		setParamNormalized(param->getInfo().id, value);

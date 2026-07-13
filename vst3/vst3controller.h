@@ -139,6 +139,8 @@ public:
         auto* parameter = getParameterObject(id);
         if (!parameter)
             return;
+		if (parameter->getInfo().flags & Vst::ParameterInfo::kIsReadOnly)
+			return;
 
         const auto normalizedValue = parameter->toNormalized(value);
         beginEdit(id);

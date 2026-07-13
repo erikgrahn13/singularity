@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SingularityPlugin.h"
+#include <algorithm>
+#include <cmath>
 // #include "embedded/ExampleEffect_generated.h"
 
 class ExampleEffect {
@@ -32,10 +34,12 @@ public:
             },
             {
                 .id = 15,
-                .name = "Analyzer",
-                .shortName = "Analyzr",
-                .type = ParamType::Bool,
-                .defaultValue = 1.0,
+                .name = "Output Level",
+                .shortName = "Level",
+                .type = ParamType::Float,
+                .minValue = 0.0,
+                .maxValue = 1.0,
+                .defaultValue = 0.0,
                 .automatable = false,
                 .readOnly = true,
             },
@@ -51,10 +55,18 @@ public:
                  ParamList params)
     {
         double volume = params.get (13);
+        // The processor seeds output parameters once per block. Reading the
+        // current value preserves the maximum across its 16-sample slices.
+        double peak = params.get (15);
 
         for (int s = 0; s < numSamples; ++s)
             for (int ch = 0; ch < (int)outputs.size(); ++ch)
+            {
                 outputs[ch][s] = static_cast<SampleType>(inputs[0][s] * volume);
+                peak = std::max(peak, std::abs(static_cast<double>(outputs[ch][s])));
+            }
+
+        params.set (15, std::clamp(peak, 0.0, 1.0));
     }
 };
 

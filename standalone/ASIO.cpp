@@ -178,6 +178,7 @@ ASIOTime* ASIO<PluginType>::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index,
 {
     // Drain parameter changes from the GUI thread — no locks, no allocation
     instance->processParameterChanges();
+    instance->resetOutputParameters();
 
     instance->tInfo = *timeInfo;
 
@@ -254,6 +255,8 @@ ASIOTime* ASIO<PluginType>::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index,
             buffSize,
             ParamList{instance->_params});
     }
+
+    instance->publishOutputParameters();
 
     // --- Convert non-interleaved float → ASIO native buffers ---
     for (int ch = 0; ch < instance->outputBuffers; ++ch) {

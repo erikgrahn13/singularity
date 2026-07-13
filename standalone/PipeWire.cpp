@@ -28,6 +28,7 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
 
         // Drain parameter changes queued from the GUI thread
         instance->processParameterChanges();
+        instance->resetOutputParameters();
 
         // Wrap raw pointers in span arrays matching the plugin interface
         float*       outputPtrs[1] = { out };
@@ -50,6 +51,8 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
                         n_samples,
                         ParamList{instance->_params});
         }
+
+        instance->publishOutputParameters();
 }
 
 // static void do_quit(void *userdata, int signal_number)
