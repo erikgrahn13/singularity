@@ -12,6 +12,7 @@
 #include "plugincids.h"
 #include PLUGIN_CLASS_HEADER
 #include "SingularityPlugin.h"
+#include "vst3parameterhelpers.h"
 #include <span>
 #include <vector>
 #include <algorithm>
@@ -46,7 +47,7 @@ public:
 		mParams.clear();
 		for (auto& parameter : PluginType::getParameters ())
 		{
-			const auto normalizedDefault = plainToNormalized (parameter, parameter.defaultValue);
+			const auto normalizedDefault = SingularityVst3::plainToNormalized (parameter, parameter.defaultValue);
 			mParams.push_back ({parameter, { parameter.id, normalizedDefault}, normalizedDefault, normalizedDefault});
 		}		
 		return kResultOk;
@@ -215,7 +216,7 @@ public:
 				if (mParams[i].metadata.type != ParamType::Float)
 				{
 					mParams[i].smoothed = target;
-					params[i] = { mParams[i].saParam.getParamID(), normalizedToPlain(mParams[i].metadata, mParams[i].smoothed) };
+					params[i] = { mParams[i].saParam.getParamID(), SingularityVst3::normalizedToPlain(mParams[i].metadata, mParams[i].smoothed) };
 					continue;
 				}
 				if (target != mParams[i].rampTarget)
@@ -233,7 +234,7 @@ public:
 						mParams[i].rampPerStep = 0.0;
 					}
 				}
-				params[i] = { mParams[i].saParam.getParamID(), normalizedToPlain(mParams[i].metadata, mParams[i].smoothed) };
+				params[i] = { mParams[i].saParam.getParamID(), SingularityVst3::normalizedToPlain(mParams[i].metadata, mParams[i].smoothed) };
 			}
 
 			Vst::AudioBusBuffers* outputs = slice.outputs;
@@ -262,18 +263,21 @@ public:
 	{
 		if (!state) return kResultFalse;
 		IBStreamer streamer (state, kLittleEndian);
-		int32 savedBypass = 0;
-		if (!streamer.readInt32 (savedBypass)) return kResultFalse;
-		bool bypass = savedBypass > 0;
-		mBypassProcessorFloat.setActive  (bypass);
-		mBypassProcessorDouble.setActive (bypass);
+		int32 firstValue = 0;
+		if (!streamer.readInt32 (firstValue)) return kResultFalse;
+
+		if (firstValue == SingularityVst3::kStateMagic)
+		{
+			return readVersionedState (streamer);
+		}
+
+		// Legacy state format: bypass int32 followed by normalized values in parameter order.
+		setBypassState (firstValue > 0);
 		for (auto& parameter : mParams)
 		{
 			double value = 0.0;
 			if (!streamer.readDouble (value)) break;
-			parameter.smoothed   = value;
-			parameter.rampTarget = value;
-			parameter.saParam.setValue (value);
+			setNormalizedParameterValue (parameter, value);
 		}
 		return kResultOk;
 	}
@@ -281,9 +285,15 @@ public:
 	tresult PLUGIN_API getState (IBStream* state) SMTG_OVERRIDE
 	{
 		IBStreamer streamer (state, kLittleEndian);
+		streamer.writeInt32 (SingularityVst3::kStateMagic);
+		streamer.writeInt32 (SingularityVst3::kStateVersion);
 		streamer.writeInt32 (mBypassProcessorFloat.isActive () ? 1 : 0);
+		streamer.writeInt32 (static_cast<int32> (mParams.size ()));
 		for (auto& parameter : mParams)
+		{
+			streamer.writeInt32 (static_cast<int32> (parameter.metadata.id));
 			streamer.writeDouble (parameter.smoothed);
+		}
 		return kResultOk;
 	}
 
@@ -291,21 +301,6 @@ protected:
 	PluginType mPlugin;
 	Vst::BypassProcessor<Vst::Sample32> mBypassProcessorFloat;
 	Vst::BypassProcessor<Vst::Sample64> mBypassProcessorDouble;
-	static double plainToNormalized(const ::Parameter& parameter, double plainValue)
-	{
-		if (parameter.maxValue == parameter.minValue)
-			return 0.0;
-
-		return std::clamp((plainValue - parameter.minValue) /
-			(parameter.maxValue - parameter.minValue), 0.0, 1.0);
-	}
-
-	static double normalizedToPlain(const ::Parameter& parameter, double normalizedValue)
-	{
-		const auto clamped = std::clamp(normalizedValue, 0.0, 1.0);
-		return parameter.minValue + clamped * (parameter.maxValue - parameter.minValue);
-	}
-
 	struct Param
 	{
 		::Parameter metadata;
@@ -314,6 +309,54 @@ protected:
 		double rampTarget  = 0.0;
 		double rampPerStep = 0.0;
 	};
+
+	void setBypassState(bool bypass)
+	{
+		mBypassProcessorFloat.setActive  (bypass);
+		mBypassProcessorDouble.setActive (bypass);
+	}
+
+	void setNormalizedParameterValue(Param& parameter, double value)
+	{
+		parameter.smoothed   = value;
+		parameter.rampTarget = value;
+		parameter.saParam.setValue (value);
+	}
+
+	Param* findParameter(unsigned int id)
+	{
+		for (auto& parameter : mParams)
+			if (parameter.metadata.id == id)
+				return &parameter;
+		return nullptr;
+	}
+
+	tresult readVersionedState(IBStreamer& streamer)
+	{
+		int32 version = 0;
+		if (!streamer.readInt32 (version) || version != SingularityVst3::kStateVersion)
+			return kResultFalse;
+
+		int32 bypassState = 0;
+		if (!streamer.readInt32 (bypassState)) return kResultFalse;
+		setBypassState (bypassState > 0);
+
+		int32 parameterCount = 0;
+		if (!streamer.readInt32 (parameterCount)) return kResultFalse;
+
+		for (int32 i = 0; i < parameterCount; ++i)
+		{
+			int32 parameterId = 0;
+			double normalizedValue = 0.0;
+			if (!streamer.readInt32 (parameterId) || !streamer.readDouble (normalizedValue))
+				return kResultFalse;
+
+			if (auto* parameter = findParameter (static_cast<unsigned int> (parameterId)))
+				setNormalizedParameterValue (*parameter, normalizedValue);
+		}
+
+		return kResultOk;
+	}
 
 	std::vector<Param> mParams;
 	std::vector<MidiEvent> mMidiEvents;

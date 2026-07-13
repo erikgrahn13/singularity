@@ -15,6 +15,24 @@ In this policy:
 - **Normalized value** means the VST3 host-facing automation value in the
   inclusive `0.0` to `1.0` range.
 
+## Implemented adapter behavior
+
+- Float parameters are registered with the VST3 SDK `RangeParameter` class so the
+  host sees the plugin-declared plain `minValue`, `maxValue`, and `defaultValue`.
+- Choice parameters can be declared with `ParamType::Choice` and `choices`; the
+  VST3 controller registers them with `StringListParameter` so hosts can display
+  choice names.
+- Boolean, stepped, and choice parameters expose discrete VST3 step counts.
+- Parameter metadata can carry `units`, `shortName`, VST3 flags, and `unitId`, and plugin classes can optionally expose `getParameterGroups()` for VST3 units.
+- Shared helper functions in the VST3 adapter own step-count, flag, and
+  plain/normalized conversion logic so the controller and processor use the same
+  mapping.
+- The VST3 processor keeps sample-accurate automation state normalized internally
+  and converts values to plain units before building the `ParamList` passed into
+  plugin DSP.
+- VST3 state is versioned and writes parameter IDs with values, while still
+  accepting the previous order-based state format for compatibility.
+
 ## Ownership boundaries
 
 ### Shared Singularity API
@@ -39,29 +57,16 @@ The VST3 adapter owns the conversion between plain and normalized values:
 - When the Singularity UI sets a parameter, the VST3 controller should convert the
   plain value to the normalized VST3 value required by the host edit/automation
   APIs.
-- State should be stored in a versioned format that can unambiguously restore the
-  intended parameter values. Prefer plain values for framework-owned state, while
-  remaining careful about backwards compatibility with existing normalized-only
-  projects.
-
-## Current implementation status
-
-The VST3 adapter now uses SDK `RangeParameter` metadata for float parameters and
-converts between VST3-normalized values and Singularity plain values at the
-controller/processor boundary for linear ranges. Persisted VST3 state remains
-normalized for compatibility until a dedicated state-versioning migration lands.
-Follow-up work should extract shared conversion helpers and extend the same policy
-to richer metadata such as units, flags, and named choices with SDK classes such
-as `StringListParameter`.
+- Versioned state should use stable parameter IDs so parameters can be reordered
+  without breaking future project loading.
 
 ## Examples
 
-A plugin author should be able to declare and consume a cutoff parameter like
-this:
+A plugin author can declare and consume a cutoff parameter like this:
 
 ```cpp
-{ .id = 100, .name = "Cutoff", .minValue = 20.0, .maxValue = 20000.0,
-  .defaultValue = 1000.0 }
+{ .id = 100, .name = "Cutoff", .shortName = "Cutoff", .units = "Hz",
+  .minValue = 20.0, .maxValue = 20000.0, .defaultValue = 1000.0 }
 ```
 
 and then use the value directly in DSP:
@@ -73,13 +78,11 @@ auto cutoffHz = params.get(100, 1000.0);
 The plugin author should not need to know the VST3-normalized value for `1000 Hz`.
 That conversion belongs to the VST3 adapter.
 
-## Migration guidance
+A choice parameter can declare names for host display:
 
-Implementation PRs that touch parameters should preserve this boundary:
+```cpp
+{ .id = 200, .name = "Oscillator Shape", .type = ParamType::Choice,
+  .defaultValue = 0.0, .choices = { "Sine", "Saw", "Square" } }
+```
 
-1. Treat framework-level parameter metadata values as plain values.
-2. Convert to/from VST3-normalized values inside the VST3 adapter only.
-3. Keep realtime processor state separate from controller-side SDK metadata.
-4. Prefer shared conversion helpers so the processor and controller agree on the
-   same mapping.
-5. Add backwards-compatibility handling before changing persisted state formats.
+DSP receives the selected choice index as a plain value.

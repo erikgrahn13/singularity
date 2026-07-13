@@ -7,8 +7,8 @@
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "public.sdk/source/vst/vstparameters.h"
 #include "IParameterProvider.h"
+#include "vst3parameterhelpers.h"
 #include "pluginterfaces/vst/vsttypes.h"
-#include <algorithm>
 #include <limits>
 
 namespace Steinberg {
@@ -55,29 +55,74 @@ public:
 	END_DEFINE_INTERFACES (EditController)
     DELEGATE_REFCOUNT (EditController)
 
+    void addSingularityParameterGroup(const ::ParameterGroup& group)
+    {
+        Vst::String128 name{};
+        SingularityVst3::copyAsciiToString128(group.name, name);
+        addUnit(new Vst::Unit(
+            name,
+            static_cast<Vst::UnitID>(group.id),
+            static_cast<Vst::UnitID>(group.parentId)));
+    }
+
 //------------------------------------------------------------------------
     void addSingularityParameter(const ::Parameter& parameter)
     {
+        using namespace SingularityVst3;
+
         Vst::String128 title{};
-        copyAsciiToString128(parameter.name.c_str(), title);
+        Vst::String128 shortTitle{};
+        Vst::String128 units{};
+        copyAsciiToString128(parameter.name, title);
+        copyAsciiToString128(parameter.shortName, shortTitle);
+        copyAsciiToString128(parameter.units, units);
+
+        auto* unitString = parameter.units.empty() ? nullptr : units;
+        auto* shortTitleString = parameter.shortName.empty() ? nullptr : shortTitle;
+        const auto flags = flagsFor(parameter);
+        const auto unitId = static_cast<Vst::UnitID>(parameter.unitId);
+
+        if (parameter.type == ParamType::Choice || !parameter.choices.empty())
+        {
+            auto* choiceParameter = new Vst::StringListParameter(
+                title,
+                parameter.id,
+                unitString,
+                flags,
+                unitId,
+                shortTitleString);
+
+            for (const auto& choice : parameter.choices)
+            {
+                Vst::String128 choiceTitle{};
+                copyAsciiToString128(choice, choiceTitle);
+                choiceParameter->appendString(choiceTitle);
+            }
+
+            choiceParameter->setNormalized(plainToNormalized(parameter, parameter.defaultValue));
+            parameters.addParameter(choiceParameter);
+            return;
+        }
 
         if (parameter.type == ParamType::Float)
         {
             parameters.addParameter(new Vst::RangeParameter(
                 title,
                 parameter.id,
-                nullptr,
+                unitString,
                 parameter.minValue,
                 parameter.maxValue,
                 parameter.defaultValue,
-                0,
-                Vst::ParameterInfo::kCanAutomate));
+                stepCountFor(parameter),
+                flags,
+                unitId,
+                shortTitleString));
             return;
         }
 
-        parameters.addParameter(title, nullptr, stepCountFor(parameter),
+        parameters.addParameter(title, unitString, stepCountFor(parameter),
             plainToNormalized(parameter, parameter.defaultValue),
-            Vst::ParameterInfo::kCanAutomate, parameter.id);
+            flags, parameter.id, unitId, shortTitleString);
     }
 
     // IParameterProvider
@@ -100,36 +145,6 @@ public:
         EditControllerEx1::setParamNormalized(id, normalizedValue);
         performEdit(id, normalizedValue);
         endEdit(id);
-    }
-
-private:
-    static void copyAsciiToString128(const char* source, Vst::String128 target)
-    {
-        for (int i = 0; source[i] && i < 127; ++i)
-            target[i] = source[i];
-    }
-
-    static int32 stepCountFor(const ::Parameter& parameter)
-    {
-        switch (parameter.type)
-        {
-            case ParamType::Bool:
-                return 1;
-            case ParamType::Stepped:
-                return std::max(1, parameter.steps - 1);
-            case ParamType::Float:
-            default:
-                return 0;
-        }
-    }
-
-    static double plainToNormalized(const ::Parameter& parameter, double plainValue)
-    {
-        if (parameter.maxValue == parameter.minValue)
-            return 0.0;
-
-        return std::clamp((plainValue - parameter.minValue) /
-            (parameter.maxValue - parameter.minValue), 0.0, 1.0);
     }
 
 protected:

@@ -5,6 +5,7 @@
 #include <span>
 #include <utility>
 #include <unordered_map>
+#include <vector>
 
 struct ParameterChange
 {
@@ -12,11 +13,13 @@ struct ParameterChange
     double value;
 };
 
-enum class ParamType { Float, Bool, Stepped };
+enum class ParamType { Float, Bool, Stepped, Choice };
 
 struct Parameter {
     unsigned int id = 0;
     std::string name;
+    std::string shortName;
+    std::string units;
     ParamType type = ParamType::Float;
 
     // Framework-facing parameter values are plain values in the plugin author's
@@ -27,6 +30,22 @@ struct Parameter {
     double defaultValue = 0.0;
 
     int steps = 0; // Only used for Stepped type
+    std::vector<std::string> choices; // Used for Choice parameters
+
+    bool automatable = true;
+    bool readOnly = false;
+    bool wrapAround = false;
+    bool isBypass = false;
+    bool isList = false;
+    bool isProgramChange = false;
+
+    int32_t unitId = 0;
+};
+
+struct ParameterGroup {
+    int32_t id = 0;
+    int32_t parentId = 0;
+    std::string name;
 };
 
 struct ParamList
