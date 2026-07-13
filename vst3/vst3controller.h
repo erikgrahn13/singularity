@@ -7,8 +7,8 @@
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "public.sdk/source/vst/vstparameters.h"
 #include "IParameterProvider.h"
-#include "vst3parameterhelpers.h"
 #include "pluginterfaces/vst/vsttypes.h"
+#include <algorithm>
 #include <limits>
 
 namespace Steinberg {
@@ -55,21 +55,8 @@ public:
 	END_DEFINE_INTERFACES (EditController)
     DELEGATE_REFCOUNT (EditController)
 
-    void addSingularityParameterGroup(const ::ParameterGroup& group)
-    {
-        Vst::String128 name{};
-        SingularityVst3::copyAsciiToString128(group.name, name);
-        addUnit(new Vst::Unit(
-            name,
-            static_cast<Vst::UnitID>(group.id),
-            static_cast<Vst::UnitID>(group.parentId)));
-    }
-
-//------------------------------------------------------------------------
     void addSingularityParameter(const ::Parameter& parameter)
     {
-        using namespace SingularityVst3;
-
         Vst::String128 title{};
         Vst::String128 shortTitle{};
         Vst::String128 units{};
@@ -81,28 +68,6 @@ public:
         auto* shortTitleString = parameter.shortName.empty() ? nullptr : shortTitle;
         const auto flags = flagsFor(parameter);
         const auto unitId = static_cast<Vst::UnitID>(parameter.unitId);
-
-        if (parameter.type == ParamType::Choice || !parameter.choices.empty())
-        {
-            auto* choiceParameter = new Vst::StringListParameter(
-                title,
-                parameter.id,
-                unitString,
-                flags,
-                unitId,
-                shortTitleString);
-
-            for (const auto& choice : parameter.choices)
-            {
-                Vst::String128 choiceTitle{};
-                copyAsciiToString128(choice, choiceTitle);
-                choiceParameter->appendString(choiceTitle);
-            }
-
-            choiceParameter->setNormalized(plainToNormalized(parameter, parameter.defaultValue));
-            parameters.addParameter(choiceParameter);
-            return;
-        }
 
         if (parameter.type == ParamType::Float)
         {
@@ -145,6 +110,56 @@ public:
         EditControllerEx1::setParamNormalized(id, normalizedValue);
         performEdit(id, normalizedValue);
         endEdit(id);
+    }
+
+private:
+    static void copyAsciiToString128(const std::string& source, Vst::String128 target)
+    {
+        for (int i = 0; i < 127 && i < static_cast<int>(source.size()); ++i)
+            target[i] = source[static_cast<std::size_t>(i)];
+    }
+
+    static int32 stepCountFor(const ::Parameter& parameter)
+    {
+        switch (parameter.type)
+        {
+            case ParamType::Bool:
+                return 1;
+            case ParamType::Choice:
+                return static_cast<int32>(parameter.choices.empty() ? std::max(1, parameter.steps - 1) : parameter.choices.size() - 1);
+            case ParamType::Stepped:
+                return std::max<int32>(1, parameter.steps - 1);
+            case ParamType::Float:
+            default:
+                return 0;
+        }
+    }
+
+    static int32 flagsFor(const ::Parameter& parameter)
+    {
+        int32 flags = 0;
+        if (parameter.automatable)
+            flags |= Vst::ParameterInfo::kCanAutomate;
+        if (parameter.readOnly)
+            flags |= Vst::ParameterInfo::kIsReadOnly;
+        if (parameter.wrapAround)
+            flags |= Vst::ParameterInfo::kIsWrapAround;
+        if (parameter.isBypass)
+            flags |= Vst::ParameterInfo::kIsBypass;
+        if (parameter.isList || parameter.type == ParamType::Choice || !parameter.choices.empty())
+            flags |= Vst::ParameterInfo::kIsList;
+        if (parameter.isProgramChange)
+            flags |= Vst::ParameterInfo::kIsProgramChange;
+        return flags;
+    }
+
+    static double plainToNormalized(const ::Parameter& parameter, double plainValue)
+    {
+        if (parameter.maxValue == parameter.minValue)
+            return 0.0;
+
+        return std::clamp((plainValue - parameter.minValue) /
+            (parameter.maxValue - parameter.minValue), 0.0, 1.0);
     }
 
 protected:

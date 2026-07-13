@@ -42,11 +42,6 @@ struct Parameter {
     int32_t unitId = 0;
 };
 
-struct ParameterGroup {
-    int32_t id = 0;
-    int32_t parentId = 0;
-    std::string name;
-};
 
 struct ParamList
 {
