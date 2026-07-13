@@ -9,6 +9,7 @@
 #include "IParameterProvider.h"
 #include "pluginterfaces/vst/vsttypes.h"
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace Steinberg {
@@ -86,7 +87,7 @@ public:
         }
 
         parameters.addParameter(title, unitString, stepCountFor(parameter),
-            parameter.toNormalized(parameter.defaultValue),
+            plainToNormalized(parameter, parameter.defaultValue),
             flags, parameter.id, groupId, shortTitleString);
     }
 
@@ -149,6 +150,26 @@ private:
         return flags;
     }
 
+
+    static double plainToNormalized(const ::Parameter& parameter, double plainValue)
+    {
+        if (parameter.type == ParamType::Bool)
+            return plainValue >= 0.5 ? 1.0 : 0.0;
+
+        if (parameter.type == ParamType::Choice && !parameter.choices.empty())
+        {
+            const auto maxIndex = static_cast<double>(parameter.choices.size() - 1);
+            if (maxIndex <= 0.0)
+                return 0.0;
+            return std::clamp(std::round(plainValue) / maxIndex, 0.0, 1.0);
+        }
+
+        if (parameter.maxValue == parameter.minValue)
+            return 0.0;
+
+        return std::clamp((plainValue - parameter.minValue) /
+            (parameter.maxValue - parameter.minValue), 0.0, 1.0);
+    }
 
 protected:
 };

@@ -15,6 +15,7 @@
 #include <span>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <cstring>
 #include <type_traits>
@@ -46,7 +47,7 @@ public:
 		mParams.clear();
 		for (auto& parameter : PluginType::getParameters ())
 		{
-			const auto normalizedDefault = parameter.toNormalized(parameter.defaultValue);
+			const auto normalizedDefault = plainToNormalized(parameter, parameter.defaultValue);
 			mParams.push_back ({parameter, { parameter.id, normalizedDefault}, normalizedDefault, 0.0});
 		}		
 		return kResultOk;
@@ -215,7 +216,7 @@ public:
 				if (mParams[i].metadata.type != ParamType::Float)
 				{
 					mParams[i].smoothed = target;
-					params[i] = { mParams[i].saParam.getParamID(), mParams[i].metadata.toPlain(mParams[i].smoothed) };
+					params[i] = { mParams[i].saParam.getParamID(), normalizedToPlain(mParams[i].metadata, mParams[i].smoothed) };
 					continue;
 				}
 				if (target != mParams[i].rampTarget)
@@ -233,7 +234,7 @@ public:
 						mParams[i].rampPerStep = 0.0;
 					}
 				}
-				params[i] = { mParams[i].saParam.getParamID(), mParams[i].metadata.toPlain(mParams[i].smoothed) };
+				params[i] = { mParams[i].saParam.getParamID(), normalizedToPlain(mParams[i].metadata, mParams[i].smoothed) };
 			}
 
 			Vst::AudioBusBuffers* outputs = slice.outputs;
@@ -299,6 +300,43 @@ protected:
 		double rampTarget  = 0.0;
 		double rampPerStep = 0.0;
 	};
+
+	static double plainToNormalized(const ::Parameter& parameter, double plainValue)
+	{
+		if (parameter.type == ParamType::Bool)
+			return plainValue >= 0.5 ? 1.0 : 0.0;
+
+		if (parameter.type == ParamType::Choice && !parameter.choices.empty())
+		{
+			const auto maxIndex = static_cast<double>(parameter.choices.size() - 1);
+			if (maxIndex <= 0.0)
+				return 0.0;
+			return std::clamp(std::round(plainValue) / maxIndex, 0.0, 1.0);
+		}
+
+		if (parameter.maxValue == parameter.minValue)
+			return 0.0;
+
+		return std::clamp((plainValue - parameter.minValue) /
+			(parameter.maxValue - parameter.minValue), 0.0, 1.0);
+	}
+
+	static double normalizedToPlain(const ::Parameter& parameter, double normalizedValue)
+	{
+		const auto clamped = std::clamp(normalizedValue, 0.0, 1.0);
+
+		if (parameter.type == ParamType::Bool)
+			return clamped >= 0.5 ? 1.0 : 0.0;
+
+		if (parameter.type == ParamType::Choice && !parameter.choices.empty())
+			return std::round(clamped * static_cast<double>(parameter.choices.size() - 1));
+
+		const auto plain = parameter.minValue + clamped * (parameter.maxValue - parameter.minValue);
+		if (parameter.type == ParamType::Stepped)
+			return std::round(plain);
+
+		return plain;
+	}
 
 	std::vector<Param> mParams;
 	std::vector<MidiEvent> mMidiEvents;
