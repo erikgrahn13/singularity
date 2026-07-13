@@ -67,7 +67,7 @@ public:
         auto* unitString = parameter.units.empty() ? nullptr : units;
         auto* shortTitleString = parameter.shortName.empty() ? nullptr : shortTitle;
         const auto flags = flagsFor(parameter);
-        const auto unitId = static_cast<Vst::UnitID>(parameter.unitId);
+        const auto groupId = static_cast<Vst::UnitID>(parameter.groupId);
 
         if (parameter.type == ParamType::Float)
         {
@@ -80,14 +80,14 @@ public:
                 parameter.defaultValue,
                 stepCountFor(parameter),
                 flags,
-                unitId,
+                groupId,
                 shortTitleString));
             return;
         }
 
         parameters.addParameter(title, unitString, stepCountFor(parameter),
             plainToNormalized(parameter, parameter.defaultValue),
-            flags, parameter.id, unitId, shortTitleString);
+            flags, parameter.id, groupId, shortTitleString);
     }
 
     // IParameterProvider
@@ -146,10 +146,8 @@ private:
             flags |= Vst::ParameterInfo::kIsWrapAround;
         if (parameter.isBypass)
             flags |= Vst::ParameterInfo::kIsBypass;
-        if (parameter.isList || parameter.type == ParamType::Choice || !parameter.choices.empty())
+        if (parameter.type == ParamType::Choice || !parameter.choices.empty())
             flags |= Vst::ParameterInfo::kIsList;
-        if (parameter.isProgramChange)
-            flags |= Vst::ParameterInfo::kIsProgramChange;
         return flags;
     }
 

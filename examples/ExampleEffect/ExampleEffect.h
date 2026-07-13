@@ -29,7 +29,6 @@ public:
                 .defaultValue = 0.0,
                 .steps = 3,
                 .choices = { "Clean", "Warm", "Bright" },
-                .isList = true,
             },
             {
                 .id = 15,

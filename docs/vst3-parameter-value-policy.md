@@ -25,7 +25,7 @@ because VST3 parameters are controller-owned metadata objects:
 - The controller uses the SDK parameter object's `toPlain()` and `toNormalized()`
   methods for `IParameterProvider::getParameter()` and `setParameter()`.
 - Boolean, stepped, and choice parameters expose VST3 step counts.
-- Parameter metadata can carry `units`, `shortName`, VST3 flags, and `unitId`.
+- Parameter metadata can carry `units`, `shortName`, adapter-neutral flags, and `groupId`.
 
 The audio processor still stores and serializes the VST3-normalized values that
 come from host automation. Moving processor-side `ParamList` values to plain units

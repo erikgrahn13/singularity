@@ -36,10 +36,10 @@ struct Parameter {
     bool readOnly = false;
     bool wrapAround = false;
     bool isBypass = false;
-    bool isList = false;
-    bool isProgramChange = false;
 
-    int32_t unitId = 0;
+    // Generic parameter grouping. Adapters can map this to their own grouping
+    // system (for example VST3 UnitID) without exposing format-specific names.
+    int32_t groupId = 0;
 };
 
 
