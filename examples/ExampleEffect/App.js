@@ -7,23 +7,29 @@ export default function App() {
   console.log("Hello From JavaScript");
   const width = 800;
   const height = 600;
+
   return Component({
     width,
     height,
-    backgroundColor: "#f70000",
+    backgroundColor: "#1b1028",
     draw(ctx) {
+      const volume = getParameter(13);
+      const character = getParameter(14);
+      const analyzer = getParameter(15);
+
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(20, 10, 150, 100);
-      // ctx.font = "48px mb-forever-raw.regular.ttf";
-      // ctx.textAlign = "center";
-      // ctx.fillText("ExampleEffect hej", width / 2, 40);
-      // ctx.drawImage("./logo_transparent.png", 100, 0, 200, 200);
+      ctx.fillRect(20, 10, 220, 120);
+
+      ctx.fillStyle = "#1b1028";
+      ctx.font = "16px sans-serif";
+      ctx.fillText(`Volume: ${Number.isNaN(volume) ? "n/a" : volume.toFixed(2)} linear`, 36, 42);
+      ctx.fillText(`Character index: ${Number.isNaN(character) ? "n/a" : character.toFixed(0)}`, 36, 68);
+      ctx.fillText(`Analyzer readonly: ${analyzer >= 0.5 ? "on" : "off"}`, 36, 94);
     },
-    // children: [
-    //   Knob({ x: 0, y: 0, size: 80, parameterId: 13 }),
-    //   Knob({ x: 0, y: 100, size: 80, parameterId: 13 }),
-    //   Slider({x: 100, y: 20, parameterId: 13}),
-    //   Button({x: 20, y: 200})
-    // ],
+    children: [
+      Knob({ x: 280, y: 40, size: 110, parameterId: 13 }),
+      Slider({ x: 430, y: 80, width: 220, height: 28, parameterId: 13 }),
+      Button({ x: 36, y: 150, width: 120, height: 40 }),
+    ],
   });
 }

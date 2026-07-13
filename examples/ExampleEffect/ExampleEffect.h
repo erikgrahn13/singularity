@@ -11,7 +11,35 @@ public:
     static auto getParameters()
     {
         return std::to_array<Parameter>({
-            { .id = 13, .name = "Volume", .type = ParamType::Float, .minValue = 0.0, .maxValue = 1.0, .defaultValue = 0.5 }
+            {
+                .id = 13,
+                .name = "Output Volume",
+                .shortName = "Volume",
+                .units = "linear",
+                .type = ParamType::Float,
+                .minValue = 0.0,
+                .maxValue = 1.0,
+                .defaultValue = 0.5,
+            },
+            {
+                .id = 14,
+                .name = "Character",
+                .shortName = "Char",
+                .type = ParamType::Choice,
+                .defaultValue = 0.0,
+                .steps = 3,
+                .choices = { "Clean", "Warm", "Bright" },
+                .isList = true,
+            },
+            {
+                .id = 15,
+                .name = "Analyzer",
+                .shortName = "Analyzr",
+                .type = ParamType::Bool,
+                .defaultValue = 1.0,
+                .automatable = false,
+                .readOnly = true,
+            },
         });
     }
 
