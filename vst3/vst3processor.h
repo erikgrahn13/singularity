@@ -6,6 +6,8 @@
 #include "public.sdk/source/vst/utility/sampleaccurate.h"
 #include "public.sdk/source/vst/utility/processdataslicer.h"
 #include "public.sdk/source/vst/vstaudioprocessoralgo.h"
+#include "public.sdk/source/vst/utility/dataexchange.h"
+#include "AudioDataExchange.h"
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "pluginterfaces/vst/ivstevents.h"
@@ -19,11 +21,13 @@
 #include <limits>
 #include <cstring>
 #include <type_traits>
+#include <memory>
 
 namespace Steinberg {
 
 template<::SingularityPlugin PluginType>
-class VST3Processor : public Steinberg::Vst::AudioEffect
+class VST3Processor : public Steinberg::Vst::AudioEffect,
+                      public Singularity::AudioDataExchange::IDataSink
 {
 public:
 	VST3Processor () { setControllerClass (kVST3ControllerUID); }
@@ -58,8 +62,41 @@ public:
 		return AudioEffect::terminate ();
 	}
 
+	tresult PLUGIN_API connect (Vst::IConnectionPoint* other) SMTG_OVERRIDE
+	{
+		auto result = AudioEffect::connect(other);
+		if (result == kResultTrue)
+		{
+			auto configCallback = [] (Vst::DataExchangeHandler::Config& config, const Vst::ProcessSetup&) {
+				config.blockSize = sizeof(Singularity::AudioDataExchange::AudioDataBlock);
+				config.numBlocks = 8;
+				config.alignment = 32;
+				config.userContextID = Singularity::AudioDataExchange::kDefaultContextID;
+				return true;
+			};
+			mDataExchange = std::make_unique<Vst::DataExchangeHandler>(this, configCallback);
+			mDataExchange->onConnect(other, getHostContext());
+		}
+		return result;
+	}
+
+	tresult PLUGIN_API disconnect (Vst::IConnectionPoint* other) SMTG_OVERRIDE
+	{
+		if (mDataExchange)
+		{
+			mDataExchange->onDisconnect(other);
+			mDataExchange.reset();
+		}
+		return AudioEffect::disconnect(other);
+	}
+
 	tresult PLUGIN_API setActive (TBool state) SMTG_OVERRIDE
 	{
+		if (mDataExchange)
+		{
+			if (state) mDataExchange->onActivate(processSetup);
+			else mDataExchange->onDeactivate();
+		}
 		return AudioEffect::setActive (state);
 	}
 
@@ -264,14 +301,14 @@ public:
 			if constexpr (PluginType::isInstrument)
 			{
 				auto midiSpan = std::span<const MidiEvent>(mMidiEvents);
-				mPlugin.template process<SampleT> (outputSpan, slice.numSamples, midiSpan, ParamList{params});
+				processInstrumentPlugin<SampleT>(outputSpan, slice.numSamples, midiSpan, ParamList{params});
 			}
 			else
 			{
 				Vst::AudioBusBuffers* inputs = slice.inputs;
 				auto inputBuffers = Vst::getChannelBuffers<SampleSize> (*inputs);
 				auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
-				mPlugin.template process<SampleT> (inputSpan, outputSpan, slice.numSamples, ParamList{params});
+				processEffectPlugin<SampleT>(inputSpan, outputSpan, slice.numSamples, ParamList{params});
 			}
 
 			for (int i = 0; i < static_cast<int>(mParams.size()); ++i)
@@ -284,6 +321,33 @@ public:
 
 		Vst::ProcessDataSlicer slicer (16);
 		slicer.process<SampleSize> (data, doProcessing);
+	}
+
+	template<typename SampleT>
+	void processInstrumentPlugin(std::span<SampleT* const> outputs, int numSamples, std::span<const MidiEvent> midiEvents, ParamList params)
+	{
+		Singularity::AudioDataExchange::ScopedSendContext sendContext(this, processSetup.sampleRate);
+		mPlugin.template process<SampleT>(outputs, numSamples, midiEvents, params);
+	}
+
+	template<typename SampleT>
+	void processEffectPlugin(std::span<const SampleT* const> inputs, std::span<SampleT* const> outputs, int numSamples, ParamList params)
+	{
+		Singularity::AudioDataExchange::ScopedSendContext sendContext(this, processSetup.sampleRate);
+		mPlugin.template process<SampleT>(inputs, outputs, numSamples, params);
+	}
+
+	void pushAudioDataBlock(const Singularity::AudioDataExchange::AudioDataBlock& block) override
+	{
+		if (!mDataExchange)
+			return;
+
+		auto exchangeBlock = mDataExchange->getCurrentOrNewBlock();
+		if (exchangeBlock.blockID != Vst::InvalidDataExchangeBlockID && exchangeBlock.data)
+		{
+			*Singularity::AudioDataExchange::toAudioDataBlock(exchangeBlock.data) = block;
+			mDataExchange->sendCurrentBlock();
+		}
 	}
 
 	tresult PLUGIN_API setState (IBStream* state) SMTG_OVERRIDE
@@ -397,6 +461,7 @@ protected:
 
 	std::vector<Param> mParams;
 	std::vector<MidiEvent> mMidiEvents;
+	std::unique_ptr<Vst::DataExchangeHandler> mDataExchange;
 	int mSmoothSteps = 0;
 };
 

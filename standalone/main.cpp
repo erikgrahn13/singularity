@@ -30,7 +30,7 @@ int main()
         audio->pushParameterChange(id, value);
     });
 
-    auto controller = std::make_unique<SingularityController>(getParameterContainer(), UI_RESOURCES_DIR);
+    auto controller = std::make_unique<SingularityController>(getParameterContainer(), UI_RESOURCES_DIR, &audio->audioDataQueue());
     controller->setLogger([](const std::string& msg) {
         std::cout << msg << std::endl;
     });

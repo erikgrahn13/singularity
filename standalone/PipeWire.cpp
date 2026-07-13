@@ -36,20 +36,18 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
 
         if constexpr (PluginType::isInstrument)
         {
-                instance->mPlugin.template process<float>(
+                instance->processInstrument<float>(
                         outputSpan,
                         n_samples,
-                        std::span<const MidiEvent>{},
-                        ParamList{instance->_params});
+                        std::span<const MidiEvent>{});
         }
         else
         {
                 const float* inputPtrs[1]  = { in  };
-                instance->mPlugin.template process<float>(
+                instance->processEffect<float>(
                         std::span<const float* const>(inputPtrs,  1),
                         outputSpan,
-                        n_samples,
-                        ParamList{instance->_params});
+                        n_samples);
         }
 
         instance->publishOutputParameters();

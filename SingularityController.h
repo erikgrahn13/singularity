@@ -9,7 +9,7 @@
 
 class SingularityController {
     public:
-    SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath = "");
+    SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath = "", Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue = nullptr);
     void initialize();
     void tick(); // call from main thread each frame
     void setLogger(IJSEngine::LogCallback cb);
