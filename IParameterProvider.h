@@ -18,14 +18,20 @@ struct Parameter {
     unsigned int id = 0;
     std::string name;
     ParamType type = ParamType::Float;
+
+    // Framework-facing parameter values are plain values in the plugin author's
+    // declared units. VST3-normalized 0.0-1.0 values must be converted at the
+    // VST3 adapter boundary before reaching shared DSP/UI APIs.
     double minValue = 0.0;
     double maxValue = 1.0;
     double defaultValue = 0.0;
+
     int steps = 0; // Only used for Stepped type
 };
 
 struct ParamList
 {
+    // Values are plain framework values, not host-normalized transport values.
     using ParamValue = std::pair<unsigned int, double>;
     std::span<const ParamValue> data;
 
