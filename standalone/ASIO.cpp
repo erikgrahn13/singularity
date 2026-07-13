@@ -241,14 +241,14 @@ ASIOTime* ASIO<PluginType>::bufferSwitchTimeInfo(ASIOTime* timeInfo, long index,
     // --- Call plugin ---
     if constexpr (PluginType::isInstrument)
     {
-        instance->processInstrument<float>(
+        instance->template processInstrument<float>(
             std::span<float* const>(outputPtrs, instance->outputBuffers),
             buffSize,
             std::span<const MidiEvent>{});
     }
     else
     {
-        instance->processEffect<float>(
+        instance->template processEffect<float>(
             std::span<const float* const>(inputPtrs, instance->inputBuffers),
             std::span<float* const>(outputPtrs, instance->outputBuffers),
             buffSize);

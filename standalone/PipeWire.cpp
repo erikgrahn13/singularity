@@ -36,7 +36,7 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
 
         if constexpr (PluginType::isInstrument)
         {
-                instance->processInstrument<float>(
+                instance->template processInstrument<float>(
                         outputSpan,
                         n_samples,
                         std::span<const MidiEvent>{});
@@ -44,7 +44,7 @@ void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *po
         else
         {
                 const float* inputPtrs[1]  = { in  };
-                instance->processEffect<float>(
+                instance->template processEffect<float>(
                         std::span<const float* const>(inputPtrs,  1),
                         outputSpan,
                         n_samples);

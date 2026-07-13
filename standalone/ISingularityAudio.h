@@ -108,6 +108,7 @@ class ISingularityAudio
                     value = defaultValue;
                     break;
                 }
+    }
 
     template<typename SampleT>
     void processInstrument(std::span<SampleT* const> outputs, int numSamples, std::span<const MidiEvent> midiEvents)
