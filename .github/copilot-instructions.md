@@ -62,6 +62,7 @@ Tests & lint:
 
 - Parameters & events
   - Audio parameters are exposed via IParameterProvider and bound to JS via js_setParameter / js_getParameter plumbing in QuickJSEngine.
+  - Singularity framework-facing parameter values are plain values; VST3-normalized values should be converted inside the VST3 adapter boundary. See docs/vst3-parameter-value-policy.md.
   - UI code should use the provided API to notify the host about parameter changes (see QuickJSEngine methods).
 
 - Build-time expectations

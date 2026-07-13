@@ -29,7 +29,7 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 							Steinberg::Vst::kMaxParamId);
 
 	for (auto& p : PLUGIN_CLASS::getParameters ())
-		addSingularityParameter (p.id, p.name.c_str (), p.defaultValue);
+		addSingularityParameter (p);
 
 
 	return result;
