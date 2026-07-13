@@ -6,6 +6,8 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "public.sdk/source/vst/vstparameters.h"
+#include "public.sdk/source/vst/utility/dataexchange.h"
+#include "AudioDataExchange.h"
 #include "IParameterProvider.h"
 #include "pluginterfaces/vst/vsttypes.h"
 #include <algorithm>
@@ -18,7 +20,9 @@ namespace Steinberg {
 //  VST3Controller
 //------------------------------------------------------------------------
 class VST3Controller : public Steinberg::Vst::EditControllerEx1,
-                       public IParameterProvider
+                       public Steinberg::Vst::IDataExchangeReceiver,
+                       public IParameterProvider,
+                       public Singularity::AudioDataExchange::IDataSink
 {
 public:
 //------------------------------------------------------------------------
@@ -36,6 +40,7 @@ public:
 	Steinberg::tresult PLUGIN_API terminate () SMTG_OVERRIDE;
 
 	// EditController
+	Steinberg::tresult PLUGIN_API notify (Steinberg::Vst::IMessage* message) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API setComponentState (Steinberg::IBStream* state) SMTG_OVERRIDE;
 	Steinberg::IPlugView* PLUGIN_API createView (Steinberg::FIDString name) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API setState (Steinberg::IBStream* state) SMTG_OVERRIDE;
@@ -52,7 +57,7 @@ public:
  	//---Interface---------
 	DEFINE_INTERFACES
 		// Here you can add more supported VST3 interfaces
-		// DEF_INTERFACE (Vst::IXXX)
+		DEF_INTERFACE (Vst::IDataExchangeReceiver)
 	END_DEFINE_INTERFACES (EditController)
     DELEGATE_REFCOUNT (EditController)
 
@@ -124,6 +129,13 @@ public:
             plainToNormalized(parameter, parameter.defaultValue),
             flags, parameter.id, groupId, shortTitleString);
     }
+
+    void PLUGIN_API queueOpened (Steinberg::Vst::DataExchangeUserContextID userContextID, Steinberg::uint32 blockSize, Steinberg::TBool& dispatchOnBackgroundThread) SMTG_OVERRIDE;
+    void PLUGIN_API queueClosed (Steinberg::Vst::DataExchangeUserContextID userContextID) SMTG_OVERRIDE;
+    void PLUGIN_API onDataExchangeBlocksReceived (Steinberg::Vst::DataExchangeUserContextID userContextID, Steinberg::uint32 numBlocks, Steinberg::Vst::DataExchangeBlock* blocks, Steinberg::TBool onBackgroundThread) SMTG_OVERRIDE;
+
+    Singularity::AudioDataExchange::AudioDataQueue& audioDataQueue() { return audioDataQueue_; }
+    void pushAudioDataBlock(const Singularity::AudioDataExchange::AudioDataBlock& block) override { audioDataQueue_.pushAudioDataBlock(block); }
 
     // IParameterProvider
     double getParameter(int id) override
@@ -212,6 +224,9 @@ private:
         return std::clamp((plainValue - parameter.minValue) /
             (parameter.maxValue - parameter.minValue), 0.0, 1.0);
     }
+
+    Vst::DataExchangeReceiverHandler dataExchange_ {this};
+    Singularity::AudioDataExchange::AudioDataQueue audioDataQueue_;
 
 protected:
 };

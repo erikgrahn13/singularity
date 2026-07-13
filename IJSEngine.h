@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include "AudioDataExchange.h"
 
 class IWindow;
 
@@ -13,7 +14,7 @@ class IJSEngine {
     public:
     using LogCallback = std::function<void(const std::string&)>;
     virtual ~IJSEngine() = default;
-    static std::unique_ptr<IJSEngine> createJSEngine(IParameterProvider &parameterStore);
+    static std::unique_ptr<IJSEngine> createJSEngine(IParameterProvider &parameterStore, Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue = nullptr);
     virtual void load(const std::string& entryFile, IRenderer* renderer) = 0;
     virtual void draw() = 0;
     virtual void setLogger(LogCallback cb) = 0;

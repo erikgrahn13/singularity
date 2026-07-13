@@ -123,5 +123,32 @@ tresult PLUGIN_API VST3Controller::getParamValueByString (Vst::ParamID tag, Vst:
 	return EditControllerEx1::getParamValueByString (tag, string, valueNormalized);
 }
 
+tresult PLUGIN_API VST3Controller::notify (Vst::IMessage* message)
+{
+    if (dataExchange_.onMessage(message))
+        return kResultTrue;
+    return EditControllerEx1::notify(message);
+}
+
+void PLUGIN_API VST3Controller::queueOpened (Vst::DataExchangeUserContextID userContextID, uint32, TBool& dispatchOnBackgroundThread)
+{
+    if (userContextID == Singularity::AudioDataExchange::kDefaultContextID)
+        dispatchOnBackgroundThread = false;
+}
+
+void PLUGIN_API VST3Controller::queueClosed (Vst::DataExchangeUserContextID)
+{
+}
+
+void PLUGIN_API VST3Controller::onDataExchangeBlocksReceived (Vst::DataExchangeUserContextID userContextID, uint32 numBlocks, Vst::DataExchangeBlock* blocks, TBool)
+{
+    if (userContextID != Singularity::AudioDataExchange::kDefaultContextID)
+        return;
+
+    for (uint32 index = 0; index < numBlocks; ++index)
+        if (blocks[index].data)
+            pushAudioDataBlock(*Singularity::AudioDataExchange::toAudioDataBlock(blocks[index].data));
+}
+
 //------------------------------------------------------------------------
 } // namespace Steinberg

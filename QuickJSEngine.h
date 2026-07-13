@@ -8,7 +8,7 @@
 
 class QuickJSEngine : public IJSEngine {
     public:
-    QuickJSEngine(IParameterProvider &parameterStore);
+    QuickJSEngine(IParameterProvider &parameterStore, Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue = nullptr);
     void load(const std::string& entryFile, IRenderer* renderer) override;
     void draw() override;
     bool wantsAnimatedRedraw() const override { return hasAnimations_; }
@@ -28,6 +28,7 @@ class QuickJSEngine : public IJSEngine {
 
     JSValue getParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
     JSValue setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
+    JSValue getAudioData(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
 
     void setWindow(IWindow* window) { window_ = window; }
     IWindow* window() const { return window_; }
@@ -80,5 +81,8 @@ class QuickJSEngine : public IJSEngine {
     float   dragOffsetX_     = 0, dragOffsetY_ = 0; // hitbox origin at drag start
 
     IParameterProvider& parameterStore_;
+    Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue_ = nullptr;
+    Singularity::AudioDataExchange::AudioDataBlock latestAudioData_{};
+    std::uint32_t audioDataRevision_ = 0;
     IWindow* window_{nullptr};
 };

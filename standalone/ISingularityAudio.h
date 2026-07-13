@@ -9,6 +9,7 @@
 #include "../utilities/SingularityQueue.h"
 #include "../IParameterProvider.h"
 #include "SingularityPlugin.h"
+#include "../AudioDataExchange.h"
 
 IParameterProvider& getParameterContainer();
 void setOnParameterChanged(std::function<void(int, double)> cb);
@@ -41,6 +42,8 @@ class ISingularityAudio
     {
         _paramChanges.push({id, value});
     }
+
+    Singularity::AudioDataExchange::AudioDataQueue& audioDataQueue() { return _audioDataQueue; }
 
     protected:
     ISingularityAudio()
@@ -80,6 +83,7 @@ class ISingularityAudio
     void callPrepare(double sampleRate, int maxBlockSize)
     {
         if (_prepared) return;
+        _sampleRate = sampleRate;
         _prepared = true;
         mPlugin.prepare(sampleRate, maxBlockSize);
     }
@@ -106,11 +110,27 @@ class ISingularityAudio
                 }
     }
 
+    template<typename SampleT>
+    void processInstrument(std::span<SampleT* const> outputs, int numSamples, std::span<const MidiEvent> midiEvents)
+    {
+        Singularity::AudioDataExchange::ScopedSendContext sendContext(&_audioDataQueue, _sampleRate);
+        mPlugin.template process<SampleT>(outputs, numSamples, midiEvents, ParamList{_params});
+    }
+
+    template<typename SampleT>
+    void processEffect(std::span<const SampleT* const> inputs, std::span<SampleT* const> outputs, int numSamples)
+    {
+        Singularity::AudioDataExchange::ScopedSendContext sendContext(&_audioDataQueue, _sampleRate);
+        mPlugin.template process<SampleT>(inputs, outputs, numSamples, ParamList{_params});
+    }
+
     std::vector<std::pair<unsigned int, double>> _params;
     PluginType mPlugin;
 
     private:
     bool _prepared = false;
+    double _sampleRate = 0.0;
+    Singularity::AudioDataExchange::AudioDataQueue _audioDataQueue;
     SingularityQueue<ParameterChange, 256> _paramChanges;
     std::vector<std::pair<unsigned int, double>> _outputParameters;
 };

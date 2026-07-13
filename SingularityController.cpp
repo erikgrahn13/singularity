@@ -1,11 +1,11 @@
 #include "SingularityController.h"
 #include <iostream>
 
-SingularityController::SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath)
+SingularityController::SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath, Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
 : parameterProvider_(parameterProvider)
 {
     renderer_ = IRenderer::createRenderer(resourcePath);
-    jsEngine_ = IJSEngine::createJSEngine(parameterProvider_);
+    jsEngine_ = IJSEngine::createJSEngine(parameterProvider_, audioDataQueue);
 
 #ifndef NDEBUG
     fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);

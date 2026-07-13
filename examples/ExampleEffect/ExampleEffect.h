@@ -67,6 +67,8 @@ public:
             }
 
         params.set (15, std::clamp(peak, 0.0, 1.0));
+
+        sendAudioDataToUI(outputs, numSamples);
     }
 };
 

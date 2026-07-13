@@ -3,6 +3,7 @@ import { Knob } from "singularity/knob.js";
 import { Button } from "singularity/button.js";
 import { Slider } from "singularity/slider.js";
 import { LevelMeter } from "singularity/levelmeter.js";
+import { Waveform } from "singularity/waveform.js";
 
 export default function App() {
   console.log("Hello From JavaScript");
@@ -32,6 +33,7 @@ export default function App() {
       Slider({ x: 430, y: 80, width: 220, height: 28, parameterId: 13 }),
       Button({ x: 36, y: 150, width: 120, height: 40 }),
       LevelMeter({ x: 180, y: 150, width: 30, height: 180, parameterId: 15 }),
+      Waveform({ x: 36, y: 220, width: 620, height: 180 }),
     ],
   });
 }

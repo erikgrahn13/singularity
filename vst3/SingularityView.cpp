@@ -33,8 +33,9 @@ SingularityView::SingularityView(Vst::EditController* editController)
 
     std::filesystem::path resourcePath = dllPath.parent_path().parent_path() / "Resources";
 
-    auto& params = static_cast<IParameterProvider&>(*static_cast<VST3Controller*>(editController));
-    controller_ = std::make_unique<SingularityController>(params, resourcePath.string());
+    auto* vstController = static_cast<VST3Controller*>(editController);
+    auto& params = static_cast<IParameterProvider&>(*vstController);
+    controller_ = std::make_unique<SingularityController>(params, resourcePath.string(), &vstController->audioDataQueue());
 
     controller_->setLogger([](const std::string& msg) {
         SMTG_DBPRT1("%s\n", msg.c_str());

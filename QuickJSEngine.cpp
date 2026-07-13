@@ -1,6 +1,7 @@
 #include "QuickJSEngine.h"
 #include "IJSEngine.h"
 #include "platform/IWindow.h"
+#include <algorithm>
 #include <iostream>
 #include <filesystem>
 #include <vector>
@@ -10,9 +11,9 @@
 #include "generated_loader.h"
 #endif
 
-std::unique_ptr<IJSEngine> IJSEngine::createJSEngine(IParameterProvider &parameterStore)
+std::unique_ptr<IJSEngine> IJSEngine::createJSEngine(IParameterProvider &parameterStore, Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
 {
-    return std::make_unique<QuickJSEngine>(parameterStore);
+    return std::make_unique<QuickJSEngine>(parameterStore, audioDataQueue);
 }
 
 static JSValue js_mount(JSContext* ctx, JSValueConst this_val,
@@ -90,6 +91,16 @@ static JSValue js_setParameter(JSContext* ctx, JSValueConst this_val,
     return engine->setParameter(ctx, this_val, argc, argv);
 }
 
+static JSValue js_getAudioData(JSContext* ctx, JSValueConst this_val,
+                              int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+
+    return engine->getAudioData(ctx, this_val, argc, argv);
+}
+
 static JSValue js_openFileDialog(JSContext* ctx, JSValueConst this_val,
                                   int argc, JSValueConst* argv)
 {
@@ -130,6 +141,7 @@ static const JSCFunctionListEntry singularity_funcs[] = {
     JS_CFUNC_DEF("mount", 1, js_mount),
     JS_CFUNC_DEF("getParameter", 1, js_getParameter),
     JS_CFUNC_DEF("setParameter", 2, js_setParameter),
+    JS_CFUNC_DEF("getAudioData", 0, js_getAudioData),
     JS_CFUNC_DEF("openFileDialog", 2, js_openFileDialog),
     // JS_CFUNC_DEF("on", 2, js_on),
 };
@@ -470,11 +482,11 @@ static void callApp(JSContext* ctx, IRenderer* renderer) {
     JS_FreeValue(ctx, result);
 }
 
-QuickJSEngine::QuickJSEngine(IParameterProvider &parameterStore)
-: parameterStore_(parameterStore)
+QuickJSEngine::QuickJSEngine(IParameterProvider &parameterStore, Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
+: parameterStore_(parameterStore), audioDataQueue_(audioDataQueue)
 {
-    
 }
+
 
 void QuickJSEngine::load(const std::string &entryFile, IRenderer *renderer)
 {
@@ -853,6 +865,62 @@ JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, 
     // renderer_->redrawAll();
 
     return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::getAudioData(JSContext *ctx, JSValue, int, JSValue *)
+{
+    bool receivedNewBlock = false;
+    Singularity::AudioDataExchange::AudioDataBlock incoming;
+    if (audioDataQueue_)
+        while (audioDataQueue_->popAudioDataBlock(incoming))
+        {
+            const bool formatChanged = receivedNewBlock
+                && (incoming.contextID != latestAudioData_.contextID
+                    || incoming.sampleRate != latestAudioData_.sampleRate
+                    || incoming.sampleSize != latestAudioData_.sampleSize
+                    || incoming.numChannels != latestAudioData_.numChannels);
+
+            if (!receivedNewBlock || formatChanged)
+            {
+                latestAudioData_.contextID = incoming.contextID;
+                latestAudioData_.sampleRate = incoming.sampleRate;
+                latestAudioData_.sampleSize = incoming.sampleSize;
+                latestAudioData_.numChannels = incoming.numChannels;
+                latestAudioData_.numSamples = 0;
+            }
+
+            const auto channels = std::max<std::uint32_t>(1, latestAudioData_.numChannels);
+            const auto capacity = (Singularity::AudioDataExchange::kMaxFloatSamples / channels) * channels;
+            const auto incomingSamples = std::min(incoming.numSamples, capacity);
+            const auto sourceOffset = incoming.numSamples - incomingSamples;
+
+            if (latestAudioData_.numSamples + incomingSamples > capacity)
+            {
+                const auto samplesToDrop = latestAudioData_.numSamples + incomingSamples - capacity;
+                std::move(latestAudioData_.samples + samplesToDrop,
+                          latestAudioData_.samples + latestAudioData_.numSamples,
+                          latestAudioData_.samples);
+                latestAudioData_.numSamples -= samplesToDrop;
+            }
+
+            std::copy_n(incoming.samples + sourceOffset, incomingSamples,
+                        latestAudioData_.samples + latestAudioData_.numSamples);
+            latestAudioData_.numSamples += incomingSamples;
+            receivedNewBlock = true;
+        }
+    if (receivedNewBlock)
+        ++audioDataRevision_;
+
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "revision", JS_NewUint32(ctx, audioDataRevision_));
+    JS_SetPropertyStr(ctx, obj, "sampleRate", JS_NewUint32(ctx, latestAudioData_.sampleRate));
+    JS_SetPropertyStr(ctx, obj, "numChannels", JS_NewUint32(ctx, latestAudioData_.numChannels));
+    JS_SetPropertyStr(ctx, obj, "numSamples", JS_NewUint32(ctx, latestAudioData_.numSamples));
+    JSValue samples = JS_NewArray(ctx);
+    for (std::uint32_t i = 0; i < latestAudioData_.numSamples; ++i)
+        JS_SetPropertyUint32(ctx, samples, i, JS_NewFloat64(ctx, latestAudioData_.samples[i]));
+    JS_SetPropertyStr(ctx, obj, "samples", samples);
+    return obj;
 }
 
 void QuickJSEngine::log(const std::string& msg)

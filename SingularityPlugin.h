@@ -1,6 +1,9 @@
 #pragma once
 #include <span>
 #include "IParameterProvider.h"
+#include "AudioDataExchange.h"
+
+using Singularity::AudioDataExchange::sendAudioDataToUI;
 
 template<typename P>
 concept SingularityFxPlugin =
