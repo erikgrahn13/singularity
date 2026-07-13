@@ -868,10 +868,15 @@ JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, 
 
 JSValue QuickJSEngine::getAudioData(JSContext *ctx, JSValue, int, JSValue *)
 {
+    bool receivedNewBlock = false;
     if (audioDataQueue_)
-        while (audioDataQueue_->popAudioDataBlock(latestAudioData_)) {}
+        while (audioDataQueue_->popAudioDataBlock(latestAudioData_))
+            receivedNewBlock = true;
+    if (receivedNewBlock)
+        ++audioDataRevision_;
 
     JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "revision", JS_NewUint32(ctx, audioDataRevision_));
     JS_SetPropertyStr(ctx, obj, "sampleRate", JS_NewUint32(ctx, latestAudioData_.sampleRate));
     JS_SetPropertyStr(ctx, obj, "numChannels", JS_NewUint32(ctx, latestAudioData_.numChannels));
     JS_SetPropertyStr(ctx, obj, "numSamples", JS_NewUint32(ctx, latestAudioData_.numSamples));

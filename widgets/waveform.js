@@ -1,13 +1,41 @@
 import { Component, getAudioData } from "singularity";
 
-export function Waveform({ x = 0, y = 0, width = 320, height = 120, color = "#70f6ff", backgroundColor = "#12091f" } = {}) {
+export function Waveform({
+  x = 0,
+  y = 0,
+  width = 320,
+  height = 120,
+  color = "#70f6ff",
+  backgroundColor = "#12091f",
+  historyFrames = 16384,
+} = {}) {
+  const history = [];
+  let lastRevision = 0;
+
+  function appendAudioData(audioData) {
+    if (!audioData || audioData.revision === lastRevision)
+      return;
+
+    lastRevision = audioData.revision;
+    const interleaved = audioData.samples ?? [];
+    const channels = Math.max(1, audioData.numChannels ?? 1);
+    const frames = Math.floor(interleaved.length / channels);
+
+    for (let frame = 0; frame < frames; ++frame) {
+      let sum = 0;
+      for (let channel = 0; channel < channels; ++channel)
+        sum += interleaved[frame * channels + channel] ?? 0;
+      history.push(Math.max(-1, Math.min(1, sum / channels)));
+    }
+
+    if (history.length > historyFrames)
+      history.splice(0, history.length - historyFrames);
+  }
+
   return Component({
     x, y, width, height, animate: true, backgroundColor,
     draw(ctx) {
-      const audioData = getAudioData();
-      const interleaved = audioData?.samples ?? [];
-      const channels = Math.max(1, audioData?.numChannels ?? 1);
-      const frames = Math.floor(interleaved.length / channels);
+      appendAudioData(getAudioData());
 
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
@@ -18,23 +46,19 @@ export function Waveform({ x = 0, y = 0, width = 320, height = 120, color = "#70
       ctx.lineTo(width, height * 0.5);
       ctx.stroke();
 
-      if (!frames) return;
+      if (!history.length) return;
 
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let px = 0; px < width; ++px) {
-        const start = Math.floor((px / width) * frames);
-        const end = Math.max(start + 1, Math.floor(((px + 1) / width) * frames));
+        const start = Math.floor((px / width) * history.length);
+        const end = Math.max(start + 1, Math.floor(((px + 1) / width) * history.length));
         let min = 1;
         let max = -1;
-        for (let frame = start; frame < end && frame < frames; ++frame) {
-          let sum = 0;
-          for (let channel = 0; channel < channels; ++channel)
-            sum += interleaved[frame * channels + channel] ?? 0;
-          const sample = Math.max(-1, Math.min(1, sum / channels));
-          min = Math.min(min, sample);
-          max = Math.max(max, sample);
+        for (let i = start; i < end && i < history.length; ++i) {
+          min = Math.min(min, history[i]);
+          max = Math.max(max, history[i]);
         }
         const yMin = (1 - max) * 0.5 * height;
         const yMax = (1 - min) * 0.5 * height;

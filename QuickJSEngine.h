@@ -83,5 +83,6 @@ class QuickJSEngine : public IJSEngine {
     IParameterProvider& parameterStore_;
     Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue_ = nullptr;
     Singularity::AudioDataExchange::AudioDataBlock latestAudioData_{};
+    std::uint32_t audioDataRevision_ = 0;
     IWindow* window_{nullptr};
 };
