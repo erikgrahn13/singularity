@@ -1,6 +1,7 @@
 #include "QuickJSEngine.h"
 #include "IJSEngine.h"
 #include "platform/IWindow.h"
+#include <algorithm>
 #include <iostream>
 #include <filesystem>
 #include <vector>
@@ -869,9 +870,44 @@ JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, 
 JSValue QuickJSEngine::getAudioData(JSContext *ctx, JSValue, int, JSValue *)
 {
     bool receivedNewBlock = false;
+    Singularity::AudioDataExchange::AudioDataBlock incoming;
     if (audioDataQueue_)
-        while (audioDataQueue_->popAudioDataBlock(latestAudioData_))
+        while (audioDataQueue_->popAudioDataBlock(incoming))
+        {
+            const bool formatChanged = receivedNewBlock
+                && (incoming.contextID != latestAudioData_.contextID
+                    || incoming.sampleRate != latestAudioData_.sampleRate
+                    || incoming.sampleSize != latestAudioData_.sampleSize
+                    || incoming.numChannels != latestAudioData_.numChannels);
+
+            if (!receivedNewBlock || formatChanged)
+            {
+                latestAudioData_.contextID = incoming.contextID;
+                latestAudioData_.sampleRate = incoming.sampleRate;
+                latestAudioData_.sampleSize = incoming.sampleSize;
+                latestAudioData_.numChannels = incoming.numChannels;
+                latestAudioData_.numSamples = 0;
+            }
+
+            const auto channels = std::max<std::uint32_t>(1, latestAudioData_.numChannels);
+            const auto capacity = (Singularity::AudioDataExchange::kMaxFloatSamples / channels) * channels;
+            const auto incomingSamples = std::min(incoming.numSamples, capacity);
+            const auto sourceOffset = incoming.numSamples - incomingSamples;
+
+            if (latestAudioData_.numSamples + incomingSamples > capacity)
+            {
+                const auto samplesToDrop = latestAudioData_.numSamples + incomingSamples - capacity;
+                std::move(latestAudioData_.samples + samplesToDrop,
+                          latestAudioData_.samples + latestAudioData_.numSamples,
+                          latestAudioData_.samples);
+                latestAudioData_.numSamples -= samplesToDrop;
+            }
+
+            std::copy_n(incoming.samples + sourceOffset, incomingSamples,
+                        latestAudioData_.samples + latestAudioData_.numSamples);
+            latestAudioData_.numSamples += incomingSamples;
             receivedNewBlock = true;
+        }
     if (receivedNewBlock)
         ++audioDataRevision_;
 
