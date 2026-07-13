@@ -1,5 +1,7 @@
 #pragma once
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <span>
@@ -39,6 +41,42 @@ struct Parameter {
     // Generic parameter grouping. Adapters can map this to their own grouping
     // system (for example VST3 UnitID) without exposing format-specific names.
     int32_t groupId = 0;
+
+    double toNormalized(double plainValue) const
+    {
+        if (type == ParamType::Bool)
+            return plainValue >= 0.5 ? 1.0 : 0.0;
+
+        if (type == ParamType::Choice && !choices.empty())
+        {
+            const auto maxIndex = static_cast<double>(choices.size() - 1);
+            if (maxIndex <= 0.0)
+                return 0.0;
+            return std::clamp(std::round(plainValue) / maxIndex, 0.0, 1.0);
+        }
+
+        if (maxValue == minValue)
+            return 0.0;
+
+        return std::clamp((plainValue - minValue) / (maxValue - minValue), 0.0, 1.0);
+    }
+
+    double toPlain(double normalizedValue) const
+    {
+        const auto clamped = std::clamp(normalizedValue, 0.0, 1.0);
+
+        if (type == ParamType::Bool)
+            return clamped >= 0.5 ? 1.0 : 0.0;
+
+        if (type == ParamType::Choice && !choices.empty())
+            return std::round(clamped * static_cast<double>(choices.size() - 1));
+
+        const auto plain = minValue + clamped * (maxValue - minValue);
+        if (type == ParamType::Stepped)
+            return std::round(plain);
+
+        return plain;
+    }
 };
 
 

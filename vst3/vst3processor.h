@@ -46,7 +46,8 @@ public:
 		mParams.clear();
 		for (auto& parameter : PluginType::getParameters ())
 		{
-			mParams.push_back ({parameter.type, { parameter.id, parameter.defaultValue}, parameter.defaultValue, 0.0});
+			const auto normalizedDefault = parameter.toNormalized(parameter.defaultValue);
+			mParams.push_back ({parameter, { parameter.id, normalizedDefault}, normalizedDefault, 0.0});
 		}		
 		return kResultOk;
 	}
@@ -102,7 +103,7 @@ public:
 				{
 					if (param.saParam.getParamID () == paramID)
 					{
-						if (param.type == ParamType::Float)
+						if (param.metadata.type == ParamType::Float)
 							param.saParam.beginChanges (&queue);
 						else
 						{
@@ -211,10 +212,10 @@ public:
 			for (int i = 0; i < mParams.size(); ++i)
 			{
 				double target = mParams[i].saParam.advance (slice.numSamples);
-				if (mParams[i].type != ParamType::Float)
+				if (mParams[i].metadata.type != ParamType::Float)
 				{
 					mParams[i].smoothed = target;
-					params[i] = { mParams[i].saParam.getParamID(), mParams[i].smoothed };
+					params[i] = { mParams[i].saParam.getParamID(), mParams[i].metadata.toPlain(mParams[i].smoothed) };
 					continue;
 				}
 				if (target != mParams[i].rampTarget)
@@ -232,7 +233,7 @@ public:
 						mParams[i].rampPerStep = 0.0;
 					}
 				}
-				params[i] = { mParams[i].saParam.getParamID(), mParams[i].smoothed };
+				params[i] = { mParams[i].saParam.getParamID(), mParams[i].metadata.toPlain(mParams[i].smoothed) };
 			}
 
 			Vst::AudioBusBuffers* outputs = slice.outputs;
@@ -292,7 +293,7 @@ protected:
 	Vst::BypassProcessor<Vst::Sample64> mBypassProcessorDouble;
 	struct Param
 	{
-		ParamType type;
+		::Parameter metadata;
 		Vst::SampleAccurate::Parameter saParam;
 		double smoothed    = 0.0;
 		double rampTarget  = 0.0;

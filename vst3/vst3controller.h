@@ -86,7 +86,7 @@ public:
         }
 
         parameters.addParameter(title, unitString, stepCountFor(parameter),
-            plainToNormalized(parameter, parameter.defaultValue),
+            parameter.toNormalized(parameter.defaultValue),
             flags, parameter.id, groupId, shortTitleString);
     }
 
@@ -149,14 +149,6 @@ private:
         return flags;
     }
 
-    static double plainToNormalized(const ::Parameter& parameter, double plainValue)
-    {
-        if (parameter.maxValue == parameter.minValue)
-            return 0.0;
-
-        return std::clamp((plainValue - parameter.minValue) /
-            (parameter.maxValue - parameter.minValue), 0.0, 1.0);
-    }
 
 protected:
 };

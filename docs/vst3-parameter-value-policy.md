@@ -27,9 +27,9 @@ because VST3 parameters are controller-owned metadata objects:
 - Boolean, stepped, and choice parameters expose VST3 step counts.
 - Parameter metadata can carry `units`, `shortName`, adapter-neutral flags (not bypass; the framework provides bypass automatically), and `groupId`.
 
-The audio processor still stores and serializes the VST3-normalized values that
-come from host automation. Moving processor-side `ParamList` values to plain units
-should be done in a smaller follow-up once the controller metadata path is stable.
+The audio processor stores VST3 automation internally as normalized values for
+sample-accurate processing, then converts those values to plain units before
+building the `ParamList` passed to plugin DSP.
 
 ## Ownership boundaries
 
@@ -38,6 +38,7 @@ should be done in a smaller follow-up once the controller metadata path is stabl
 The following framework-facing APIs should deal in plain values:
 
 - `Parameter::minValue`, `Parameter::maxValue`, and `Parameter::defaultValue`.
+- `ParamList` values passed to plugin DSP.
 - `IParameterProvider::getParameter()` and `IParameterProvider::setParameter()`.
 - JavaScript `getParameter()` and `setParameter()` bindings.
 - Standalone backend parameter storage and parameter-change queues.
@@ -49,6 +50,8 @@ The VST3 adapter owns the conversion between plain and normalized values:
 - Host automation input arrives as normalized VST3 values.
 - Host-facing parameter registration should expose enough metadata for conversion,
   including range, step count, units, flags, and list choices.
+- Before calling Singularity plugin DSP, the VST3 processor converts normalized
+  automation values to plain parameter values.
 - When the Singularity UI sets a parameter, the VST3 controller converts the plain
   value to the normalized VST3 value required by the host edit/automation APIs.
 
