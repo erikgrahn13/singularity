@@ -133,7 +133,7 @@ tresult PLUGIN_API VST3Controller::notify (Vst::IMessage* message)
 void PLUGIN_API VST3Controller::queueOpened (Vst::DataExchangeUserContextID userContextID, uint32, TBool& dispatchOnBackgroundThread)
 {
     if (userContextID == Singularity::AudioDataExchange::kDefaultContextID)
-        dispatchOnBackgroundThread = false;
+        dispatchOnBackgroundThread = true;
 }
 
 void PLUGIN_API VST3Controller::queueClosed (Vst::DataExchangeUserContextID)
