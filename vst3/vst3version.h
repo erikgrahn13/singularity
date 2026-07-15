@@ -11,6 +11,6 @@
 #else
 #define stringFileDescription	PLUGIN_NAME" VST3"
 #endif
-#define stringCompanyName		"Steinberg Media Technologies GmbH\0"
-#define stringLegalCopyright	"Copyright(c) 2022 Steinberg Media Technologies GmbH."
+#define stringCompanyName		VENDOR
+#define stringLegalCopyright	"Copyright(c) " VENDOR
 #define stringLegalTrademarks	"VST is a trademark of Steinberg Media Technologies GmbH"
