@@ -1,5 +1,11 @@
 include_guard(GLOBAL)
 
+option(SINGULARITY_BUILD_CAPI_TESTS "Build CAPI adapter tests" OFF)
+if(SINGULARITY_BUILD_CAPI_TESTS)
+    enable_testing()
+    add_subdirectory(capi/tests)
+endif()
+
 function(singularity_create_capi_plugin target)
     set(oneValueArgs
         PLUGIN_CLASS

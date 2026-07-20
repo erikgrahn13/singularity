@@ -22,12 +22,6 @@ if(SINGULARITY_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-option(SINGULARITY_BUILD_CAPI_TESTS "Build CAPI adapter tests" OFF)
-if(SINGULARITY_BUILD_CAPI_TESTS)
-    enable_testing()
-    add_subdirectory(capi/tests)
-endif()
-
 # TODO: this is an example of how i can compile javascript files and modules with qjsc
 # and then include the file in the in the cpp when building in release mode to embedd javascript
 # qjsc -D widgets/button.js -D widgets/slider.js -o hello_release.h hello.js

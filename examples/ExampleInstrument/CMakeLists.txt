@@ -5,15 +5,9 @@ project(ExampleInstrument
         DESCRIPTION "This is my example instrument plugin"
 )
 
-if(SINGULARITY_CAPI_SDK_DIR)
-    set(EXAMPLE_INSTRUMENT_FORMATS CAPI)
-else()
-    set(EXAMPLE_INSTRUMENT_FORMATS APP VST3)
-endif()
-
 singularity_create_plugin(
     ${PROJECT_NAME}
-    FORMATS ${EXAMPLE_INSTRUMENT_FORMATS}
+    FORMATS APP VST3
     PLUGIN_CLASS ExampleInstrument
     PLUGIN_CLASS_HEADER "ExampleInstrument.h"
 )
