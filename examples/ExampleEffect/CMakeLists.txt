@@ -5,10 +5,16 @@ project(ExampleEffect
         DESCRIPTION "This is my example effect plugin"
 )
 
+if(SINGULARITY_CAPI_SDK_DIR)
+    set(EXAMPLE_EFFECT_FORMATS CAPI)
+else()
+    set(EXAMPLE_EFFECT_FORMATS APP VST3)
+endif()
+
 singularity_create_plugin(
     ${PROJECT_NAME}
     PLUGIN_NAME "Example Effect"
-    FORMATS APP VST3
+    FORMATS ${EXAMPLE_EFFECT_FORMATS}
     PLUGIN_CLASS ExampleEffect
     PLUGIN_CLASS_HEADER "ExampleEffect.h"
     RESOURCES
@@ -18,4 +24,3 @@ singularity_create_plugin(
         data/logo_transparent2.png
 
 )
-

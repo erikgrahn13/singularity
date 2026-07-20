@@ -1,0 +1,27 @@
+#include "SingularityCapi.h"
+#include "@SINGULARITY_CAPI_PLUGIN_CLASS_HEADER@"
+
+#if defined(_WIN32)
+#define SINGULARITY_CAPI_EXPORT __declspec(dllexport)
+#else
+#define SINGULARITY_CAPI_EXPORT __attribute__((visibility("default")))
+#endif
+
+using SingularityCapiAdapter =
+    Singularity::Capi::Adapter<@SINGULARITY_CAPI_PLUGIN_CLASS@>;
+
+extern "C" SINGULARITY_CAPI_EXPORT capi_err_t
+@SINGULARITY_CAPI_TARGET_NAME@_get_static_properties(
+    capi_proplist_t* initProperties,
+    capi_proplist_t* staticProperties)
+{
+    return SingularityCapiAdapter::getStaticProperties(initProperties, staticProperties);
+}
+
+extern "C" SINGULARITY_CAPI_EXPORT capi_err_t
+@SINGULARITY_CAPI_TARGET_NAME@_init(
+    capi_t* capi,
+    capi_proplist_t* initProperties)
+{
+    return SingularityCapiAdapter::init(capi, initProperties);
+}

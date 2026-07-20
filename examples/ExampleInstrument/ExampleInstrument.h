@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SingularityPlugin.h"
+#include <algorithm>
 
 class ExampleInstrument {
 public:
@@ -19,16 +20,11 @@ public:
     template<typename SampleType>
     void process(std::span<SampleType* const> outputs,
                  int numSamples,
-                 std::span<const MidiEvent> events,
-                 ParamList params)
+                 std::span<const MidiEvent>,
+                 ParamList)
     {
-        double volume = params.get (13);
-
-        for (int s = 0; s < numSamples; ++s)
-            for (int ch = 0; ch < (int)outputs.size(); ++ch)
-            {
-                
-            }
+        for (auto* output : outputs)
+            std::fill_n(output, numSamples, SampleType{});
     }
 };
 

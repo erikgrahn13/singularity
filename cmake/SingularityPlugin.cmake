@@ -1,12 +1,50 @@
 include_guard(GLOBAL)
 cmake_minimum_required(VERSION 3.22)
 
-set(SINGULARITY_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
+cmake_path(GET CMAKE_CURRENT_LIST_DIR PARENT_PATH _singularity_root_dir)
+set(SINGULARITY_ROOT_DIR "${_singularity_root_dir}" CACHE INTERNAL "" FORCE)
+set(SINGULARITY_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "" FORCE)
+
+function(_singularity_enable_desktop_support)
+    get_property(_desktop_support_enabled GLOBAL PROPERTY SINGULARITY_DESKTOP_SUPPORT_ENABLED)
+    if(_desktop_support_enabled)
+        return()
+    endif()
+
+    # Must be set before dependency and plug-in targets are created. Skia uses
+    # the release static runtime on Windows, and VST3 shared objects need PIC.
+    if(WIN32)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+    elseif(UNIX AND NOT APPLE)
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+        find_package(X11 REQUIRED)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LIBPORTAL REQUIRED libportal)
+        set_target_properties(X11::X11 PROPERTIES IMPORTED_GLOBAL TRUE)
+        set_target_properties(X11::Xrandr PROPERTIES IMPORTED_GLOBAL TRUE)
+        set(SINGULARITY_LIBPORTAL_LIBRARIES "${LIBPORTAL_LIBRARIES}" CACHE INTERNAL "")
+        set(SINGULARITY_LIBPORTAL_INCLUDE_DIRS "${LIBPORTAL_INCLUDE_DIRS}" CACHE INTERNAL "")
+    endif()
+
+    list(APPEND CMAKE_MODULE_PATH "${SINGULARITY_CMAKE_DIR}")
+    include(FetchContent)
+    include(DMON)
+    include(SKIA)
+    include(CHOC)
+    include(QUICKJS)
+
+    set(SINGULARITY_SKIA_INCLUDE_DIR "${skia_SOURCE_DIR}/include" CACHE INTERNAL "")
+    set(SINGULARITY_QUICKJS_DIR "${quickjs_SOURCE_DIR}" CACHE INTERNAL "")
+    set(SINGULARITY_SKIA_LIB "${SKIA_LIB}" CACHE INTERNAL "")
+    set_property(GLOBAL PROPERTY SINGULARITY_DESKTOP_SUPPORT_ENABLED TRUE)
+endfunction()
 
 
 function(singularity_create_plugin target)
-    set(oneValueArgs VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER PLUGIN_NAME)
-    set(multiValueArgs SOURCES UI FORMATS RESOURCES DATA_RESOURCES)
+    set(oneValueArgs
+        VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER PLUGIN_NAME
+        CAPI_SDK_DIR CAPI_MAX_BLOCK_SIZE CAPI_STACK_SIZE)
+    set(multiValueArgs SOURCES UI FORMATS RESOURCES DATA_RESOURCES CAPI_INCLUDE_DIRS)
 
     # Parse the arguments
     cmake_parse_arguments(PARAMS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -21,6 +59,43 @@ function(singularity_create_plugin target)
     set(URL ${PARAMS_URL})
     set(EMAIL ${PARAMS_EMAIL})
     set(BUNDLE_ID ${PARAMS_BUNDLE_ID})
+
+    if(NOT SOURCES)
+        set(SOURCES ${PARAMS_UNPARSED_ARGUMENTS})
+    endif()
+
+    list(FIND FORMATS "CAPI" _capi_format_index)
+    list(FIND FORMATS "APP" _app_format_index)
+    list(FIND FORMATS "VST3" _vst3_format_index)
+
+    if(NOT _app_format_index EQUAL -1 OR NOT _vst3_format_index EQUAL -1)
+        _singularity_enable_desktop_support()
+    endif()
+
+    if(NOT _capi_format_index EQUAL -1)
+        include("${SINGULARITY_ROOT_DIR}/capi/SingularityCapi.cmake")
+        singularity_create_capi_plugin(${target}
+            PLUGIN_CLASS "${PARAMS_PLUGIN_CLASS}"
+            PLUGIN_CLASS_HEADER "${PARAMS_PLUGIN_CLASS_HEADER}"
+            SDK_DIR "${PARAMS_CAPI_SDK_DIR}"
+            MAX_BLOCK_SIZE "${PARAMS_CAPI_MAX_BLOCK_SIZE}"
+            STACK_SIZE "${PARAMS_CAPI_STACK_SIZE}"
+            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+            BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}"
+            SOURCES ${SOURCES}
+            INCLUDE_DIRS ${PARAMS_CAPI_INCLUDE_DIRS}
+        )
+    endif()
+
+    # CAPI is headless. A CAPI-only plug-in deliberately skips the UI library,
+    # App.js validation, qjsc generation, Skia, QuickJS, and platform windows.
+    if(_app_format_index EQUAL -1 AND _vst3_format_index EQUAL -1)
+        if(_capi_format_index EQUAL -1)
+            message(FATAL_ERROR "[singularity] Target '${target}' has no supported FORMATS.")
+        endif()
+        add_library(${target} ALIAS ${target}_CAPI)
+        return()
+    endif()
 
     if(NOT VENDOR)
         set(VENDOR "Singularity Plugins")
@@ -42,11 +117,7 @@ function(singularity_create_plugin target)
         message(FATAL_ERROR "No sources provided for target '${target}'. You must provide at least one source file.")
     endif()
 
-    if(NOT SOURCES)
-        set(SOURCES ${PARAMS_UNPARSED_ARGUMENTS})
-    endif()
-
-    add_library(${target} STATIC 
+    add_library(${target} STATIC
         ${SOURCES}
         ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         ${SINGULARITY_ROOT_DIR}/chocFileWatcher.cpp
@@ -100,9 +171,9 @@ function(singularity_create_plugin target)
         target_link_libraries(${target} PUBLIC
             X11::X11
             X11::Xrandr
-            ${LIBPORTAL_LIBRARIES}
+            ${SINGULARITY_LIBPORTAL_LIBRARIES}
         )
-        target_include_directories(${target} PRIVATE ${LIBPORTAL_INCLUDE_DIRS})
+        target_include_directories(${target} PRIVATE ${SINGULARITY_LIBPORTAL_INCLUDE_DIRS})
     endif()
 
 
@@ -258,167 +329,39 @@ function(singularity_create_plugin target)
         )
     endif()
 
-    foreach(type IN LISTS FORMATS)
-        # Standalone plugin
-        if(type STREQUAL "APP")
-            add_executable(${target}_APP 
-                ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
-                ${SINGULARITY_ROOT_DIR}/standalone/ISingularityAudio.cpp
-            )
-            if(WIN32)
-                target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/ASIO.cpp)
-                target_compile_definitions(${target}_APP PRIVATE NOMINMAX)
-                target_link_libraries(${target}_APP PRIVATE asio)
-            elseif(APPLE)
-                target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/coreAudio.cpp)
-                target_link_libraries(${target}_APP PRIVATE 
-                    "-framework CoreAudio"
-                    "-framework AudioToolbox"
-                )
-                set_target_properties(${target}_APP PROPERTIES MACOSX_BUNDLE TRUE)
-            elseif(UNIX AND NOT APPLE)
-                find_package(PkgConfig REQUIRED)
-                pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
-                target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/PipeWire.cpp)
-                target_include_directories(${target}_APP PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
-                target_link_libraries(${target}_APP PRIVATE ${PIPEWIRE_LIBRARIES})
-            endif()
+    if(NOT _app_format_index EQUAL -1)
+        include("${SINGULARITY_ROOT_DIR}/standalone/SingularityApp.cmake")
+        singularity_create_app_plugin(${target}
+            PLUGIN_CLASS "${PARAMS_PLUGIN_CLASS}"
+            PLUGIN_CLASS_HEADER "${PARAMS_PLUGIN_CLASS_HEADER}"
+            BASE_TARGET "${target}"
+            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+            BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}"
+            GENERATED_RESOURCES "${_generated_resources}"
+            GENERATED_DATA_RESOURCES "${_generated_data_resources}"
+            RESOURCES ${RESOURCES}
+            DATA_RESOURCES ${DATA_RESOURCES}
+        )
+    endif()
 
-            target_include_directories(${target}_APP PRIVATE
-                ${SINGULARITY_ROOT_DIR}
-                ${CMAKE_CURRENT_SOURCE_DIR}
-            )
-            target_compile_definitions(${target}_APP PRIVATE
-                SINGULARITY_STANDALONE=1
-                PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
-                PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
-            )
-            set_target_properties(${target}_APP PROPERTIES OUTPUT_NAME ${target})
-            target_link_libraries(${target}_APP PRIVATE ${target})
-
-            # APP uses embedded image resources
-            if(RESOURCES)
-                target_compile_definitions(${target}_APP PRIVATE SINGULARITY_HAS_EMBEDDED_RESOURCES=1)
-                target_sources(${target}_APP PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated_resources.h)
-                target_include_directories(${target}_APP PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-            endif()
-
-            # APP uses embedded data resources
-            if(DATA_RESOURCES)
-                target_compile_definitions(${target}_APP PRIVATE SINGULARITY_HAS_EMBEDDED_DATA_RESOURCES=1)
-                target_sources(${target}_APP PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated_data_resources.h)
-                target_include_directories(${target}_APP PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-            endif()
-            set_target_properties(${target}_APP PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/out/APP/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>)
-        elseif(type STREQUAL "VST3")
-            # Generate stable UIDs from plugin target name
-            set(_uid_seed "${target}")
-
-            string(MD5 _proc_hash "${_uid_seed}_processor")
-            string(MD5 _ctrl_hash "${_uid_seed}_controller")
-
-            string(SUBSTRING "${_proc_hash}" 0  8 PROC_UID_0)
-            string(SUBSTRING "${_proc_hash}" 8  8 PROC_UID_1)
-            string(SUBSTRING "${_proc_hash}" 16 8 PROC_UID_2)
-            string(SUBSTRING "${_proc_hash}" 24 8 PROC_UID_3)
-            string(SUBSTRING "${_ctrl_hash}" 0  8 CTRL_UID_0)
-            string(SUBSTRING "${_ctrl_hash}" 8  8 CTRL_UID_1)
-            string(SUBSTRING "${_ctrl_hash}" 16 8 CTRL_UID_2)
-            string(SUBSTRING "${_ctrl_hash}" 24 8 CTRL_UID_3)
-
-            string(TOUPPER "${PROC_UID_0}" PROC_UID_0)
-            string(TOUPPER "${PROC_UID_1}" PROC_UID_1)
-            string(TOUPPER "${PROC_UID_2}" PROC_UID_2)
-            string(TOUPPER "${PROC_UID_3}" PROC_UID_3)
-            string(TOUPPER "${CTRL_UID_0}" CTRL_UID_0)
-            string(TOUPPER "${CTRL_UID_1}" CTRL_UID_1)
-            string(TOUPPER "${CTRL_UID_2}" CTRL_UID_2)
-            string(TOUPPER "${CTRL_UID_3}" CTRL_UID_3)
-
-            configure_file(
-                "${SINGULARITY_ROOT_DIR}/vst3/vst3plugincids.h.in"
-                "${CMAKE_CURRENT_BINARY_DIR}/plugincids.h"
-            )
-            set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
-            set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
-
-            smtg_add_vst3plugin(${target}_VST3
-                PACKAGE_NAME "${_plugin_title}"
-                ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
-                ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.h
-                ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.h
-                ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
-                ${SINGULARITY_ROOT_DIR}/vst3/vst3entry.cpp
-                ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.h
-                ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
-            )
-
-            if(RESOURCES)
-                set(IMAGE_FILES)
-                set(FONT_FILES)
-                set(OTHER_FILES)
-                foreach(RESOURCE IN LISTS RESOURCES)
-                    get_filename_component(FILETYPE "${RESOURCE}" LAST_EXT)
-                    if(FILETYPE MATCHES "^(.png|.jpg|.jpeg|.gif|.bmp|.webp|.tga|.tif|.tiff|.svg)$")
-                        list(APPEND IMAGE_FILES "${RESOURCE}")
-                    elseif(FILETYPE MATCHES "^(.ttf|.otf)$")
-                        list(APPEND FONT_FILES "${RESOURCE}")
-                    else()
-                        list(APPEND OTHER_FILES "${RESOURCE}")
-                    endif()
-                endforeach()
-
-                if(IMAGE_FILES)
-                    smtg_target_add_plugin_resources(${target}_VST3 OUTPUT_SUBDIRECTORY "Images" RESOURCES ${IMAGE_FILES})
-                endif()
-                if(FONT_FILES)
-                    smtg_target_add_plugin_resources(${target}_VST3 OUTPUT_SUBDIRECTORY "Fonts" RESOURCES ${FONT_FILES})
-                endif()
-                if(OTHER_FILES)
-                    smtg_target_add_plugin_resources(${target}_VST3 RESOURCES ${OTHER_FILES})
-                endif()
-            endif()
-            # VST3 uses embedded data resources
-            if(DATA_RESOURCES)
-                target_compile_definitions(${target}_VST3 PRIVATE SINGULARITY_HAS_EMBEDDED_DATA_RESOURCES=1)
-                target_sources(${target}_VST3 PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated_data_resources.h)
-            endif()
-
-            target_compile_definitions(${target}_VST3 PRIVATE
-                VENDOR="${VENDOR}"
-                URL="${URL}"
-                EMAIL="${EMAIL}"
-                PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
-                PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
-            )
-
-            target_link_libraries(${target}_VST3
-                PRIVATE
-                    sdk
-                    ${target}
-            )
-
-            target_include_directories(${target}_VST3 PRIVATE
-                ${SINGULARITY_ROOT_DIR}/platform
-                ${SINGULARITY_ROOT_DIR}
-                ${CMAKE_CURRENT_BINARY_DIR}
-                ${CMAKE_CURRENT_SOURCE_DIR}
-            )
-
-            smtg_target_configure_version_file(${target}_VST3)
-
-            if(SMTG_MAC)
-                smtg_target_set_bundle(${target}_VST3
-                    BUNDLE_IDENTIFIER ${BUNDLE_ID}
-                    COMPANY_NAME ${VENDOR}
-                )
-            elseif(SMTG_WIN)
-                target_sources(${target}_VST3 PRIVATE 
-                    ${SINGULARITY_ROOT_DIR}/vst3/win32resource.rc
-                )
-            endif()
-        endif()
-    endforeach()
+    if(NOT _vst3_format_index EQUAL -1)
+        include("${SINGULARITY_ROOT_DIR}/vst3/SingularityVst3.cmake")
+        singularity_create_vst3_plugin(${target}
+            PLUGIN_TITLE "${_plugin_title}"
+            VENDOR "${VENDOR}"
+            URL "${URL}"
+            EMAIL "${EMAIL}"
+            BUNDLE_ID "${BUNDLE_ID}"
+            PLUGIN_CLASS "${PARAMS_PLUGIN_CLASS}"
+            PLUGIN_CLASS_HEADER "${PARAMS_PLUGIN_CLASS_HEADER}"
+            BASE_TARGET "${target}"
+            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+            BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}"
+            GENERATED_DATA_RESOURCES "${_generated_data_resources}"
+            RESOURCES ${RESOURCES}
+            DATA_RESOURCES ${DATA_RESOURCES}
+        )
+    endif()
 
 
 endfunction()
