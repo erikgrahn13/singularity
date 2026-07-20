@@ -6,6 +6,7 @@ The framework currently produces:
 
 - VST3 plug-ins
 - Standalone desktop applications
+- Headless Qualcomm AudioReach CAPI modules
 - Effect and instrument plug-ins
 - Debug builds with JavaScript hot reload
 - Release builds with JavaScript and data embedded into the binary
@@ -28,10 +29,11 @@ Important directories:
 
 - `examples/` — example effect and instrument projects
 - `widgets/` — reusable JavaScript UI components
-- `cmake/` — dependency setup and `singularity_create_plugin`
+- `cmake/` — shared dependency setup and `singularity_create_plugin` orchestration
 - `platform/` — native Linux, macOS, and Windows windows
-- `standalone/` — PipeWire, Core Audio, and ASIO audio backends
-- `vst3/` — VST3 processor, controller, and view integration
+- `standalone/` — standalone target creation plus PipeWire, Core Audio, and ASIO backends
+- `vst3/` — VST3 SDK setup, target creation, processor, controller, and view integration
+- `capi/` — headless Qualcomm AudioReach CAPI adapter, target creation, entry points, and tests
 
 ## Requirements
 
@@ -138,6 +140,72 @@ export default function App() {
 ```
 
 See `examples/ExampleEffect` for a working effect with parameter binding, resources, and an output level meter. `examples/ExampleInstrument` demonstrates the instrument processing signature and MIDI event input.
+
+## Export a Qualcomm CAPI Module
+
+CAPI exports are headless and use the same C++ plugin class as the other
+formats. Add `CAPI` to `FORMATS` and point the build at AudioReach Engine CAPI
+headers. The CMake target name becomes the entry-point tag registered with AMDB:
+
+```cmake
+singularity_create_plugin(MyEffect
+    FORMATS CAPI
+    PLUGIN_CLASS MyEffect
+    PLUGIN_CLASS_HEADER "MyEffect.h"
+)
+```
+
+Configure a separate CAPI build with the Hexagon toolchain. Supplying the CAPI
+SDK directory makes the bundled examples select `FORMATS CAPI`; the framework
+then skips the desktop UI and VST3 dependencies automatically:
+
+```sh
+cmake -S . -B build-capi -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE=/path/to/hexagon-toolchain.cmake \
+  -DSINGULARITY_BUILD_EXAMPLES=ON \
+  -DSINGULARITY_CAPI_SDK_DIR=/path/to/audioreach-engine
+cmake --build build-capi --target ExampleEffect_CAPI ExampleInstrument_CAPI
+```
+
+The CMake target name is also the AMDB entry-point tag. For the target above,
+the generated entry points are `MyEffect_get_static_properties` and
+`MyEffect_init`. The adapter supports effects as one-input/one-output
+modules and instruments as output-buffer-triggered zero-input/one-output source
+modules. Effects inherit their output format from `CAPI_INPUT_MEDIA_FORMAT_V2`;
+sources must receive `CAPI_OUTPUT_MEDIA_FORMAT_V2`. Audio uses 32-bit
+floating-point PCM with `CAPI_DEINTERLEAVED_UNPACKED` buffers. CAPI has no
+native MIDI transport, so instrument processing currently receives an empty
+MIDI event span. Fixed-point PCM, metadata, and CAPI framework/interface
+extensions are not yet bridged. The generic C++ plugin API also does not expose
+`CAPI_HEAP_ID`; plugins that allocate dynamically currently use the toolchain's
+default C++ allocator and are not island-heap-aware.
+
+CAPI parameter IDs and metadata come directly from `getParameters()`.
+`set_param` and `get_param` payloads contain one `float` in the parameter's
+plain units. `set_param` changes are queued and applied by the next `process()` call;
+read-only values travel back to `get_param` through a separate realtime-safe
+queue. Production module and parameter IDs still need to come from the GUID
+range allocated by Qualcomm, and AMDB/H2XML registration remains part of the
+target AudioReach integration rather than the Singularity binary export.
+`getParameters()` is internal C++ metadata; AudioReach clients still need the
+parameter IDs and scalar-float payload convention declared in their module API
+or generated H2XML configuration.
+
+The host-side adapter tests use the public AudioReach headers and exercise
+initialization, effect and source media formats, parameter queues, large-block
+chunking, runtime properties, and processing:
+
+```sh
+cmake -S . -B build-capi-tests -G Ninja \
+  -DSINGULARITY_BUILD_CAPI_TESTS=ON \
+  -DSINGULARITY_CAPI_SDK_DIR=/path/to/audioreach-engine
+cmake --build build-capi-tests --target SingularityCapiTests
+ctest --test-dir build-capi-tests --output-on-failure
+```
+
+`ExampleEffect_CAPI` and `ExampleInstrument_CAPI` reuse the same DSP classes as
+their APP and VST3 targets; their CAPI binaries do not include either UI.
 
 ## Development Status
 

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Core C++ interfaces and implementations live at the repository root, including `SingularityController`, `QuickJSEngine`, and `SkiaRenderer`. Platform-specific window code is under `platform/{linux,macos,windows}/`; standalone audio backends are in `standalone/`, and VST3 integration is in `vst3/`. Reusable QuickJS UI components belong in `widgets/`. CMake dependency and plugin helpers live in `cmake/`. Use `examples/ExampleEffect` and `examples/ExampleInstrument` as reference integrations; their `App.js` files are UI entry points, while `resources/` and `data/` hold packaged assets.
+Core C++ interfaces and implementations live at the repository root, including `SingularityController`, `QuickJSEngine`, and `SkiaRenderer`. Platform-specific window code is under `platform/{linux,macos,windows}/`. Standalone, VST3, and CAPI integrations and their format-specific build helpers live in `standalone/`, `vst3/`, and `capi/`, respectively; CAPI tests also live in `capi/tests/`. Reusable QuickJS UI components belong in `widgets/`, while shared CMake dependency and plugin orchestration lives in `cmake/`. Use `examples/ExampleEffect` and `examples/ExampleInstrument` as reference integrations; their `App.js` files are UI entry points, while `resources/` and `data/` hold packaged assets.
 
 ## Build, Test, and Development Commands
 

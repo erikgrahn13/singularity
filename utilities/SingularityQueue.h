@@ -9,10 +9,12 @@
 //   - Exactly ONE consumer thread calls pop()
 //   - Capacity must be a power of 2
 //   - No dynamic allocation after construction
-template<typename T, std::size_t Capacity>
+template<typename T, std::size_t Capacity, std::size_t IndexAlignment = 64>
 class SingularityQueue
 {
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of 2");
+    static_assert((IndexAlignment & (IndexAlignment - 1)) == 0,
+                  "Index alignment must be a power of 2");
     static constexpr std::size_t Mask = Capacity - 1;
 
 public:
@@ -49,7 +51,8 @@ public:
 private:
     std::array<T, Capacity> _buffer{};
 
-    // Each index on its own cache line to prevent false sharing between threads.
-    alignas(64) std::atomic<std::size_t> _head{0};
-    alignas(64) std::atomic<std::size_t> _tail{0};
+    // The default places each index on its own cache line. Callers embedded in
+    // externally allocated objects can request a smaller guaranteed alignment.
+    alignas(IndexAlignment) std::atomic<std::size_t> _head{0};
+    alignas(IndexAlignment) std::atomic<std::size_t> _tail{0};
 };

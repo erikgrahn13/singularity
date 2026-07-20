@@ -61,6 +61,7 @@ struct SendContext
     double sampleRate = 0.0;
 };
 
+#if !defined(SINGULARITY_CAPI)
 inline thread_local SendContext currentSendContext;
 
 class ScopedSendContext
@@ -83,16 +84,28 @@ public:
 private:
     SendContext previous_;
 };
+#else
+class ScopedSendContext
+{
+public:
+    ScopedSendContext(IDataSink*, double) {}
+};
+#endif
 
 template<typename SampleT>
 inline void sendAudioDataToUI(std::span<const SampleT* const> channels, int numSamples)
 {
+#if defined(SINGULARITY_CAPI)
+    static_cast<void>(channels);
+    static_cast<void>(numSamples);
+#else
     if (!currentSendContext.sink)
         return;
 
     AudioDataBlock block;
     appendInterleavedFloatData(block, currentSendContext.sampleRate, channels.data(), static_cast<int>(channels.size()), numSamples);
     currentSendContext.sink->pushAudioDataBlock(block);
+#endif
 }
 
 template<typename SampleT>

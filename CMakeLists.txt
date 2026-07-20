@@ -14,43 +14,18 @@ set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 
 project(Singularity LANGUAGES C CXX)
 
-# Must be set before ANY targets are created (including via FetchContent).
-# Skia is a prebuilt /MT (release static) library, so everything must use /MT
-# to avoid RuntimeLibrary and _ITERATOR_DEBUG_LEVEL mismatches on Windows.
-if(WIN32)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
-elseif(UNIX AND NOT APPLE)
-    # All static libs linked into VST3 .so must be compiled with -fPIC on Linux.
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    find_package(X11 REQUIRED)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(LIBPORTAL REQUIRED libportal)
-    set_target_properties(X11::X11 PROPERTIES IMPORTED_GLOBAL TRUE)
-    set_target_properties(X11::Xrandr PROPERTIES IMPORTED_GLOBAL TRUE)
-endif()
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-include(FetchContent)
-
-include(DMON)
-# include(VISAGE)
-include(SKIA)
-if(WIN32)
-    include(ASIO)
-endif()
-include(CHOC)
-include(QUICKJS)
-include(VST3)
-
-set(SINGULARITY_SKIA_INCLUDE_DIR "${skia_SOURCE_DIR}/include" CACHE INTERNAL "")
-set(SINGULARITY_QUICKJS_DIR "${quickjs_SOURCE_DIR}" CACHE INTERNAL "")
-set(SINGULARITY_SKIA_LIB "${SKIA_LIB}" CACHE INTERNAL "")
-
 include(SingularityPlugin)
 
 option(SINGULARITY_BUILD_EXAMPLES "Build the bundled example projects" OFF)
 if(SINGULARITY_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+option(SINGULARITY_BUILD_CAPI_TESTS "Build CAPI adapter tests" OFF)
+if(SINGULARITY_BUILD_CAPI_TESTS)
+    enable_testing()
+    add_subdirectory(capi/tests)
 endif()
 
 # TODO: this is an example of how i can compile javascript files and modules with qjsc
