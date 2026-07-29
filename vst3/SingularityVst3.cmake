@@ -106,6 +106,8 @@ function(singularity_create_vst3_plugin target)
         ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
     )
 
+    set_property(TARGET ${target}_VST3 PROPERTY SINGULARITY_VST3_PLUGIN TRUE)
+
     if(VST3_RESOURCES)
         set(_image_files)
         set(_font_files)
@@ -171,4 +173,64 @@ function(singularity_create_vst3_plugin target)
             ${SINGULARITY_ROOT_DIR}/vst3/win32resource.rc
         )
     endif()
+endfunction()
+
+function(singularity_configure_vst3 target)
+    set(multiValueArgs SUBCATEGORIES)
+    cmake_parse_arguments(VST3_CONFIG "" "" "${multiValueArgs}" ${ARGN})
+
+    if(VST3_CONFIG_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR
+            "[singularity] Unknown VST3 configuration for '${target}': "
+            "${VST3_CONFIG_UNPARSED_ARGUMENTS}")
+    endif()
+
+    if(VST3_CONFIG_KEYWORDS_MISSING_VALUES)
+        message(FATAL_ERROR
+            "[singularity] Missing value for VST3 configuration: "
+            "${VST3_CONFIG_KEYWORDS_MISSING_VALUES}")
+    endif()
+
+    if(NOT TARGET ${target}_VST3)
+        message(FATAL_ERROR
+            "[singularity] Target '${target}' was not created with FORMATS VST3.")
+    endif()
+
+    get_target_property(_is_singularity_vst3_plugin
+        ${target}_VST3 SINGULARITY_VST3_PLUGIN)
+    if(NOT _is_singularity_vst3_plugin)
+        message(FATAL_ERROR
+            "[singularity] Target '${target}_VST3' is not a Singularity VST3 target.")
+    endif()
+
+    if(NOT VST3_CONFIG_SUBCATEGORIES)
+        message(FATAL_ERROR
+            "[singularity] No VST3 configuration provided for '${target}'.")
+    endif()
+
+    foreach(_subcategory IN LISTS VST3_CONFIG_SUBCATEGORIES)
+        if(_subcategory MATCHES "\\|")
+            message(FATAL_ERROR
+                "[singularity] Pass VST3 SUBCATEGORIES as a CMake list, without '|'.")
+        endif()
+    endforeach()
+
+    list(JOIN VST3_CONFIG_SUBCATEGORIES "|" _subcategories)
+    string(LENGTH "${_subcategories}" _subcategories_length)
+    if(_subcategories_length GREATER 116)
+        message(FATAL_ERROR
+            "[singularity] VST3 SUBCATEGORIES for '${target}' are too long.")
+    endif()
+
+    get_target_property(_existing_subcategories
+        ${target}_VST3 SINGULARITY_VST3_SUBCATEGORIES)
+    if(_existing_subcategories)
+        message(FATAL_ERROR
+            "[singularity] VST3 SUBCATEGORIES for '${target}' were already configured.")
+    endif()
+
+    set_property(TARGET ${target}_VST3
+        PROPERTY SINGULARITY_VST3_SUBCATEGORIES "${_subcategories}")
+    target_compile_definitions(${target}_VST3 PRIVATE
+        "SINGULARITY_VST3_SUBCATEGORIES=\"${_subcategories}\"")
 endfunction()

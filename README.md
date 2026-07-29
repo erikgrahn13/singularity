@@ -92,7 +92,17 @@ singularity_create_plugin(MyEffect
     PLUGIN_CLASS_HEADER "MyEffect.h"
     RESOURCES resources/logo.png
 )
+
+singularity_configure_vst3(MyEffect
+    SUBCATEGORIES Dynamics
+)
 ```
+
+`singularity_configure_vst3` keeps VST3-only metadata out of the shared plug-in
+definition. Its first argument identifies the plug-in target, and `SUBCATEGORIES`
+are appended to the automatic `Fx` or `Instrument` category (`Fx|Dynamics`
+above). Multiple subcategories can be provided as a CMake list. Omit the
+configuration to use only the automatic category.
 
 An effect class declares parameters and provides `prepare` and templated `process` methods:
 
