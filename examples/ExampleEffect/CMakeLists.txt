@@ -18,3 +18,8 @@ singularity_create_plugin(
         data/logo_transparent2.png
 
 )
+
+singularity_configure_vst3(
+    ${PROJECT_NAME}
+    SUBCATEGORIES Tools
+)
