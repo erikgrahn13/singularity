@@ -95,6 +95,8 @@ singularity_create_plugin(MyEffect
 
 singularity_configure_vst3(MyEffect
     SUBCATEGORIES Dynamics
+    SNAPSHOT resources/snapshot.png
+    SNAPSHOT_2X resources/snapshot_2x.png
 )
 ```
 
@@ -102,7 +104,9 @@ singularity_configure_vst3(MyEffect
 definition. Its first argument identifies the plug-in target, and `SUBCATEGORIES`
 are appended to the automatic `Fx` or `Instrument` category (`Fx|Dynamics`
 above). Multiple subcategories can be provided as a CMake list. Omit the
-configuration to use only the automatic category.
+configuration to use only the automatic category. `SNAPSHOT` and the optional
+high-resolution `SNAPSHOT_2X` must be PNG files. Singularity copies them into the
+VST3 bundle using the processor class ID filenames required by hosts.
 
 An effect class declares parameters and provides `prepare` and templated `process` methods:
 

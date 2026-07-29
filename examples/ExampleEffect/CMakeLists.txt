@@ -22,4 +22,5 @@ singularity_create_plugin(
 singularity_configure_vst3(
     ${PROJECT_NAME}
     SUBCATEGORIES Tools
+    SNAPSHOT resources/logo_transparent.png
 )
