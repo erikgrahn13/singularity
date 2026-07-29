@@ -107,6 +107,8 @@ function(singularity_create_vst3_plugin target)
     )
 
     set_property(TARGET ${target}_VST3 PROPERTY SINGULARITY_VST3_PLUGIN TRUE)
+    set_property(TARGET ${target}_VST3 PROPERTY SINGULARITY_VST3_PROCESSOR_UID
+        "${PROC_UID_0}${PROC_UID_1}${PROC_UID_2}${PROC_UID_3}")
 
     if(VST3_RESOURCES)
         set(_image_files)
@@ -176,8 +178,10 @@ function(singularity_create_vst3_plugin target)
 endfunction()
 
 function(singularity_configure_vst3 target)
+    set(oneValueArgs SNAPSHOT SNAPSHOT_2X)
     set(multiValueArgs SUBCATEGORIES)
-    cmake_parse_arguments(VST3_CONFIG "" "" "${multiValueArgs}" ${ARGN})
+    cmake_parse_arguments(VST3_CONFIG
+        "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(VST3_CONFIG_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR
@@ -203,9 +207,38 @@ function(singularity_configure_vst3 target)
             "[singularity] Target '${target}_VST3' is not a Singularity VST3 target.")
     endif()
 
-    if(NOT VST3_CONFIG_SUBCATEGORIES)
+    if(NOT VST3_CONFIG_SUBCATEGORIES
+            AND NOT VST3_CONFIG_SNAPSHOT
+            AND NOT VST3_CONFIG_SNAPSHOT_2X)
         message(FATAL_ERROR
             "[singularity] No VST3 configuration provided for '${target}'.")
+    endif()
+
+    if(VST3_CONFIG_SNAPSHOT OR VST3_CONFIG_SNAPSHOT_2X)
+        get_target_property(_processor_uid
+            ${target}_VST3 SINGULARITY_VST3_PROCESSOR_UID)
+        set(_snapshot_files)
+
+        if(VST3_CONFIG_SNAPSHOT)
+            set(_snapshot
+                "${CMAKE_CURRENT_BINARY_DIR}/${_processor_uid}_snapshot.png")
+            configure_file("${VST3_CONFIG_SNAPSHOT}" "${_snapshot}" COPYONLY)
+            list(APPEND _snapshot_files "${_snapshot}")
+        endif()
+
+        if(VST3_CONFIG_SNAPSHOT_2X)
+            set(_snapshot_2x
+                "${CMAKE_CURRENT_BINARY_DIR}/${_processor_uid}_snapshot_2.0x.png")
+            configure_file("${VST3_CONFIG_SNAPSHOT_2X}" "${_snapshot_2x}" COPYONLY)
+            list(APPEND _snapshot_files "${_snapshot_2x}")
+        endif()
+
+        smtg_target_add_plugin_snapshots(${target}_VST3
+            RESOURCES ${_snapshot_files})
+    endif()
+
+    if(NOT VST3_CONFIG_SUBCATEGORIES)
+        return()
     endif()
 
     foreach(_subcategory IN LISTS VST3_CONFIG_SUBCATEGORIES)
