@@ -7,12 +7,18 @@
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "public.sdk/source/vst/vstparameters.h"
 #include "public.sdk/source/vst/utility/dataexchange.h"
+#include "public.sdk/source/vst/utility/stringconvert.h"
 #include "AudioDataExchange.h"
+#include "Vst3ParameterSupport.h"
+#include "Vst3ProgramData.h"
+#include "Vst3ProgramLayout.h"
+#include "Vst3ProgramModel.h"
 #include "IParameterProvider.h"
 #include "pluginterfaces/vst/vsttypes.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 
 namespace Steinberg {
 
@@ -53,28 +59,37 @@ public:
 	Steinberg::tresult PLUGIN_API getParamValueByString (Steinberg::Vst::ParamID tag,
                                                          Steinberg::Vst::TChar* string,
                                                          Steinberg::Vst::ParamValue& valueNormalized) SMTG_OVERRIDE;
+    Steinberg::tresult PLUGIN_API getUnitByBus (
+        Steinberg::Vst::MediaType type,
+        Steinberg::Vst::BusDirection direction,
+        Steinberg::int32 busIndex,
+        Steinberg::int32 channel,
+        Steinberg::Vst::UnitID& unitId) SMTG_OVERRIDE;
+    Steinberg::tresult PLUGIN_API setUnitProgramData (
+        Steinberg::int32 listOrUnitId,
+        Steinberg::int32 programIndex,
+        Steinberg::IBStream* data) SMTG_OVERRIDE;
 
  	//---Interface---------
 	DEFINE_INTERFACES
-		// Here you can add more supported VST3 interfaces
 		DEF_INTERFACE (Vst::IDataExchangeReceiver)
-	END_DEFINE_INTERFACES (EditController)
-    DELEGATE_REFCOUNT (EditController)
+	END_DEFINE_INTERFACES (EditControllerEx1)
+    DELEGATE_REFCOUNT (EditControllerEx1)
 
-    void addSingularityParameter(const ::Parameter& parameter)
+    void addSingularityParameter(
+        const ::Parameter& parameter,
+        Vst::UnitID unitId)
     {
         Vst::String128 title{};
         Vst::String128 shortTitle{};
         Vst::String128 units{};
-        copyAsciiToString128(parameter.name, title);
-        copyAsciiToString128(parameter.shortName, shortTitle);
-        copyAsciiToString128(parameter.units, units);
+        copyUtf8ToString128(parameter.name, title);
+        copyUtf8ToString128(parameter.shortName, shortTitle);
+        copyUtf8ToString128(parameter.units, units);
 
         auto* unitString = parameter.units.empty() ? nullptr : units;
         auto* shortTitleString = parameter.shortName.empty() ? nullptr : shortTitle;
         const auto flags = flagsFor(parameter);
-        const auto groupId = static_cast<Vst::UnitID>(parameter.groupId);
-
         if (parameter.type == ParamType::Float)
         {
             parameters.addParameter(new Vst::RangeParameter(
@@ -86,7 +101,7 @@ public:
                 parameter.defaultValue,
                 stepCountFor(parameter),
                 flags,
-                groupId,
+                unitId,
                 shortTitleString));
             return;
         }
@@ -103,7 +118,7 @@ public:
                 std::clamp(std::round(parameter.defaultValue), 0.0, maxIndex),
                 stepCountFor(parameter),
                 flags,
-                groupId,
+                unitId,
                 shortTitleString));
             return;
         }
@@ -120,14 +135,15 @@ public:
                 std::clamp(std::round(parameter.defaultValue), 0.0, maxStep),
                 stepCountFor(parameter),
                 flags,
-                groupId,
+                unitId,
                 shortTitleString));
             return;
         }
 
         parameters.addParameter(title, unitString, stepCountFor(parameter),
-            plainToNormalized(parameter, parameter.defaultValue),
-            flags, parameter.id, groupId, shortTitleString);
+            SingularityVst3::plainToNormalized(
+                parameter, parameter.defaultValue),
+            flags, parameter.id, unitId, shortTitleString);
     }
 
     void PLUGIN_API queueOpened (Steinberg::Vst::DataExchangeUserContextID userContextID, Steinberg::uint32 blockSize, Steinberg::TBool& dispatchOnBackgroundThread) SMTG_OVERRIDE;
@@ -156,16 +172,37 @@ public:
 
         const auto normalizedValue = parameter->toNormalized(value);
         beginEdit(id);
-        EditControllerEx1::setParamNormalized(id, normalizedValue);
+        setParamNormalized(id, normalizedValue);
         performEdit(id, normalizedValue);
         endEdit(id);
     }
 
 private:
-    static void copyAsciiToString128(const std::string& source, Vst::String128 target)
+    struct ControllerProgramBank
+        : SingularityVst3::ProgramModelBank
     {
-        for (int i = 0; i < 127 && i < static_cast<int>(source.size()); ++i)
-            target[i] = source[static_cast<std::size_t>(i)];
+        std::vector<std::optional<SingularityVst3::ProgramData>>
+            programOverrides;
+        int32 currentProgram = 0;
+    };
+
+    bool initializeProgramBanks();
+    bool applyProgram(
+        ControllerProgramBank& bank,
+        int32 programIndex,
+        bool notifyHost);
+    int32 programIndex(
+        const ControllerProgramBank& bank,
+        Vst::ParamValue normalizedValue) const;
+    ControllerProgramBank* findProgramBank(Vst::ProgramListID listId);
+    ControllerProgramBank* findProgramBankBySelector(Vst::ParamID selectorId);
+    Vst::UnitID unitIdForParameter(const ::Parameter& parameter) const;
+
+    static bool copyUtf8ToString128(
+        const std::string& source,
+        Vst::String128 target)
+    {
+        return Vst::StringConvert::convert(source, target);
     }
 
     static int32 stepCountFor(const ::Parameter& parameter)
@@ -199,34 +236,10 @@ private:
     }
 
 
-    static double plainToNormalized(const ::Parameter& parameter, double plainValue)
-    {
-        if (parameter.type == ParamType::Bool)
-            return plainValue >= 0.5 ? 1.0 : 0.0;
-
-        if (parameter.type == ParamType::Choice && !parameter.choices.empty())
-        {
-            const auto maxIndex = static_cast<double>(parameter.choices.size() - 1);
-            if (maxIndex <= 0.0)
-                return 0.0;
-            return std::clamp(std::round(plainValue) / maxIndex, 0.0, 1.0);
-        }
-
-        if (parameter.type == ParamType::Stepped && parameter.steps > 1)
-        {
-            const auto maxStep = static_cast<double>(parameter.steps - 1);
-            return std::clamp(std::round(plainValue) / maxStep, 0.0, 1.0);
-        }
-
-        if (parameter.maxValue == parameter.minValue)
-            return 0.0;
-
-        return std::clamp((plainValue - parameter.minValue) /
-            (parameter.maxValue - parameter.minValue), 0.0, 1.0);
-    }
-
     Vst::DataExchangeReceiverHandler dataExchange_ {this};
     Singularity::AudioDataExchange::AudioDataQueue audioDataQueue_;
+    std::vector<::Vst3ProgramUnit> programUnits_;
+    std::vector<ControllerProgramBank> programBanks_;
 
 protected:
 };

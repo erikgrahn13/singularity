@@ -52,11 +52,14 @@ jobs:
             deps-${{ runner.os }}-ninja-
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON -DSINGULARITY_BUILD_TESTS=ON
 
       - name: Build
         run: |
           cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Upload VST3 artifacts
         uses: actions/upload-artifact@v7
@@ -89,4 +92,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*.zip
-

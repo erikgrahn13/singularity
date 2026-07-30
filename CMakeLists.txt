@@ -18,6 +18,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(SingularityPlugin)
 
 option(SINGULARITY_BUILD_EXAMPLES "Build the bundled example projects" OFF)
+option(SINGULARITY_BUILD_TESTS "Build Singularity adapter tests" OFF)
+if(SINGULARITY_BUILD_TESTS)
+    include(CTest)
+    enable_testing()
+endif()
+
 if(SINGULARITY_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
