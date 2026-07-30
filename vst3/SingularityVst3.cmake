@@ -98,6 +98,11 @@ function(singularity_create_vst3_plugin target)
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
         ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
+        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ComponentState.h
+        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ParameterSupport.h
+        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramData.h
+        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramLayout.h
+        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramModel.h
         ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.h
         ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.h
         ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
@@ -162,6 +167,30 @@ function(singularity_create_vst3_plugin target)
         ${VST3_BINARY_DIR}
         ${VST3_SOURCE_DIR}
     )
+
+    if(SINGULARITY_BUILD_TESTS)
+        add_executable(${target}_VST3_ProgramDataTests
+            ${SINGULARITY_ROOT_DIR}/vst3/tests/Vst3ProgramDataTests.cpp
+            ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
+            ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
+            ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/common/memorystream.cpp)
+        target_compile_features(
+            ${target}_VST3_ProgramDataTests PRIVATE cxx_std_23)
+        target_compile_definitions(${target}_VST3_ProgramDataTests PRIVATE
+            PLUGIN_CLASS=${VST3_PLUGIN_CLASS}
+            PLUGIN_CLASS_HEADER="${VST3_PLUGIN_CLASS_HEADER}")
+        target_include_directories(${target}_VST3_ProgramDataTests PRIVATE
+            ${SINGULARITY_ROOT_DIR}/platform
+            ${SINGULARITY_ROOT_DIR}
+            ${SINGULARITY_ROOT_DIR}/vst3
+            ${VST3_BINARY_DIR}
+            ${VST3_SOURCE_DIR})
+        target_link_libraries(${target}_VST3_ProgramDataTests
+            PRIVATE sdk ${VST3_BASE_TARGET})
+        add_test(
+            NAME ${target}_VST3_ProgramDataTests
+            COMMAND ${target}_VST3_ProgramDataTests)
+    endif()
 
     smtg_target_configure_version_file(${target}_VST3)
 

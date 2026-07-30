@@ -135,6 +135,99 @@ public:
 static_assert(SingularityPlugin<MyEffect>);
 ```
 
+### VST3 Preset Files
+
+Singularity exposes component state so a VST3 host can save and restore normal
+`.vstpreset` files. Factory preset files should be authored in a host by the
+plug-in developer and copied to the standard VST3 factory-preset location by
+the product installer. The framework does not generate preset files.
+
+### Built-in Programs and VST3 Program Lists
+
+Use a program collection when the plug-in has persistent, numbered built-in
+programs—for example, a multitimbral instrument with a collection per MIDI
+part. Ordinary named presets should remain host-managed preset files.
+
+```cpp
+static auto getProgramCollections()
+{
+    return std::to_array<ProgramCollection>({
+        {
+            .id = "performance-bank",
+            .name = "Performance Bank",
+            .parameterIds = {13},
+            .programs = {
+                {
+                    .id = "soft",
+                    .name = "Soft",
+                    .category = "Synth",
+                    .parameters = {{13, 0.2}},
+                    .data = {std::byte {1}},
+                },
+            },
+        },
+    });
+}
+
+// VST3-only host layout. This is separate from the reusable program data.
+static auto getVst3ProgramUnits()
+{
+    return std::to_array<Vst3ProgramUnit>({
+        {
+            .id = 1,
+            .parentId = 0,
+            .name = "Instrument",
+            .eventBusIndex = 0,
+            .midiChannel = 0,
+        },
+    });
+}
+
+static auto getVst3ProgramListBindings()
+{
+    return std::to_array<Vst3ProgramListBinding>({
+        {.collectionId = "performance-bank", .unitId = 1},
+    });
+}
+
+void loadProgramData(
+    std::string_view collectionId,
+    std::string_view programId,
+    std::span<const std::byte> data)
+{
+    // Apply optional non-parameter program data.
+}
+```
+
+`ProgramCollection` and `BuiltInProgram` are adapter-neutral. The VST3-only
+`Vst3ProgramUnit` and `Vst3ProgramListBinding` types map collections to
+`IUnitInfo`, program-selector parameters, and `IProgramListData`. A unit can
+own one collection. Collection and program IDs must be non-empty and unique;
+collection IDs and program ordering must remain stable because hosts persist
+the resulting list ID and program index. Parameters listed in
+`ProgramCollection::parameterIds` are assigned to the collection's VST3 unit
+without requiring framework parameter groups to mirror VST3 unit IDs.
+For instrument plug-ins, `BuiltInProgram::category` is exposed as the VST3
+musical-instrument attribute. It is left unset for effect plug-ins.
+
+Program payloads are optional. If any program supplies `data`, the plug-in must
+implement `loadProgramData()`. The callback runs when the processor applies a
+program, including at a process-block boundary for host program changes, so it
+must be safe for the audio-processing thread. Plug-ins without
+`getVst3ProgramListBindings()` do not expose `IProgramListData`.
+
+The payload bytes are opaque to Singularity. `getProgramCollections()` can
+populate them from compiled resources, generated headers, JSON or another
+serialization, compressed data, or references to separately installed
+content. Singularity wraps the payload with the program's parameter snapshot
+for VST3 transport and returns the payload unchanged to `loadProgramData()`.
+Modified program slots are included in VST3 component state so project restore
+does not fall back to the original built-in payload. Program lists are fixed
+after initialization, and the current VST3 transport limits one program
+payload to 64 MiB and all modified payloads in component state to 256 MiB;
+large sample libraries should therefore store lightweight identifiers or paths
+rather than sample data in each slot.
+
 The UI exports a component from `App.js`:
 
 ```js
