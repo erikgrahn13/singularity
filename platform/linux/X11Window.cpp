@@ -1,8 +1,71 @@
 #include "X11Window.h"
+#include <cerrno>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
 #include <poll.h>
-#include <libportal/portal.h>
-#include <glib.h>
+#include <signal.h>
+#include <spawn.h>
+#include <string_view>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
+
+extern char** environ;
+
+namespace
+{
+bool executableAvailable(std::string_view executable)
+{
+    const auto* pathValue = std::getenv("PATH");
+    if (!pathValue)
+        return false;
+
+    std::string_view path{pathValue};
+    while (true)
+    {
+        const auto separator = path.find(':');
+        const auto directory = path.substr(0, separator);
+        std::string candidate = directory.empty() ? "." : std::string(directory);
+        candidate += '/';
+        candidate += executable;
+        if (::access(candidate.c_str(), X_OK) == 0)
+            return true;
+        if (separator == std::string_view::npos)
+            break;
+        path.remove_prefix(separator + 1);
+    }
+    return false;
+}
+
+bool isKdeSession()
+{
+    if (const auto* fullSession = std::getenv("KDE_FULL_SESSION"))
+        if (std::string_view(fullSession) == "true")
+            return true;
+    if (const auto* desktop = std::getenv("XDG_CURRENT_DESKTOP"))
+        return std::string_view(desktop).find("KDE") != std::string_view::npos;
+    return false;
+}
+
+std::vector<std::string> childEnvironment(Window parentWindow)
+{
+    std::vector<std::string> result;
+    for (auto entry = environ; entry && *entry; ++entry)
+    {
+        const std::string_view value{*entry};
+        // Bundled DAWs can override this with private libraries that external
+        // desktop helpers must not inherit.
+        if (value.starts_with("LD_LIBRARY_PATH=") ||
+            value.starts_with("WINDOWID="))
+            continue;
+        result.emplace_back(value);
+    }
+    result.emplace_back("WINDOWID=" + std::to_string(parentWindow));
+    return result;
+}
+}
 
 std::unique_ptr<IWindow> IWindow::createWindow(int width, int height)
 {
@@ -62,6 +125,7 @@ X11Window::X11Window(int width, int height, void* parentWindow) : width_(width),
 
 X11Window::~X11Window()
 {
+    cancelChooser();
     XDestroyWindow(display_, window_);
     // XFree(screen);
     XCloseDisplay(display_);
@@ -117,8 +181,7 @@ void X11Window::run()
         }
 
         if (onFrame_) onFrame_();
-
-        while (g_main_context_iteration(nullptr, FALSE)) {}
+        pollChooser();
     }
 }
 
@@ -148,8 +211,7 @@ void X11Window::setResizable(bool resizable) {
 
 void X11Window::processEvents()
 {
-    // Pump GLib main context for async portal callbacks
-    while (g_main_context_iteration(nullptr, FALSE)) {}
+    pollChooser();
 
     XEvent event;
     while (XPending(display_)) {
@@ -208,100 +270,174 @@ int X11Window::refreshRate() const {
 void X11Window::openFileDialog(const std::string& title,
                                 std::function<void(const std::string&)> callback)
 {
-    XdpPortal* portal = xdp_portal_new();
-    auto* cb = new std::function<void(const std::string&)>(std::move(callback));
-
-    // Build filter: "WAV Files" matching *.wav
-    GVariantBuilder patternBuilder;
-    g_variant_builder_init(&patternBuilder, G_VARIANT_TYPE("a(us)"));
-    g_variant_builder_add(&patternBuilder, "(us)", 0, "*.wav");
-
-    GVariantBuilder filterBuilder;
-    g_variant_builder_init(&filterBuilder, G_VARIANT_TYPE("a(sa(us))"));
-    g_variant_builder_add(&filterBuilder, "(sa(us))", "WAV Files", &patternBuilder);
-
-    GVariant* filters = g_variant_builder_end(&filterBuilder);
-
-    xdp_portal_open_file(
-        portal,
-        nullptr,                      // parent window
-        title.c_str(),                // title
-        filters,                      // filters
-        nullptr,                      // current_filter
-        nullptr,                      // current_folder
-        XDP_OPEN_FILE_FLAG_NONE,      // flags
-        nullptr,                      // GCancellable
-        [](GObject* obj, GAsyncResult* res, gpointer data) {
-            auto* userCb = static_cast<std::function<void(const std::string&)>*>(data);
-            GError* error = nullptr;
-            GVariant* result = xdp_portal_open_file_finish(XDP_PORTAL(obj), res, &error);
-
-            std::string selectedPath;
-            if (result) {
-                const char** uris = nullptr;
-                g_variant_lookup(result, "uris", "^a&s", &uris);
-                if (uris && uris[0]) {
-                    GFile* file = g_file_new_for_uri(uris[0]);
-                    char* path = g_file_get_path(file);
-                    if (path) {
-                        selectedPath = path;
-                        g_free(path);
-                    }
-                    g_object_unref(file);
-                }
-                g_variant_unref(result);
-            }
-            if (error) g_error_free(error);
-
-            if (*userCb) (*userCb)(selectedPath);
-            delete userCb;
-            g_object_unref(obj);
-        },
-        cb
-    );
+    launchChooser(title, false, std::move(callback));
 }
 
 void X11Window::openDirectoryDialog(const std::string& title,
                                     std::function<void(const std::string&)> callback)
 {
-    XdpPortal* portal = xdp_portal_new();
-    auto* cb = new std::function<void(const std::string&)>(std::move(callback));
+    launchChooser(title, true, std::move(callback));
+}
 
-    xdp_portal_open_file(
-        portal,
-        nullptr,
-        title.c_str(),
-        nullptr,
-        nullptr,
-        nullptr,
-        XDP_OPEN_FILE_FLAG_DIRECTORY,
-        nullptr,
-        [](GObject* obj, GAsyncResult* res, gpointer data) {
-            auto* userCb = static_cast<std::function<void(const std::string&)>*>(data);
-            GError* error = nullptr;
-            GVariant* result = xdp_portal_open_file_finish(XDP_PORTAL(obj), res, &error);
+void X11Window::launchChooser(
+    const std::string& title,
+    bool selectDirectory,
+    std::function<void(const std::string&)> callback)
+{
+    if (chooserProcess_)
+    {
+        std::cerr << "[Singularity] A Linux file chooser is already open\n";
+        if (callback)
+            callback({});
+        return;
+    }
 
-            std::string selectedPath;
-            if (result) {
-                const char** uris = nullptr;
-                g_variant_lookup(result, "uris", "^a&s", &uris);
-                if (uris && uris[0]) {
-                    GFile* file = g_file_new_for_uri(uris[0]);
-                    char* path = g_file_get_path(file);
-                    if (path) {
-                        selectedPath = path;
-                        g_free(path);
-                    }
-                    g_object_unref(file);
-                }
-                g_variant_unref(result);
-            }
-            if (error) g_error_free(error);
+    const bool hasZenity = executableAvailable("zenity");
+    const bool hasKDialog = executableAvailable("kdialog");
+    const bool useKDialog = hasKDialog && (isKdeSession() || !hasZenity);
 
-            if (*userCb) (*userCb)(selectedPath);
-            delete userCb;
-            g_object_unref(obj);
-        },
-        cb
-    );
+    std::vector<std::string> arguments;
+    if (useKDialog)
+    {
+        arguments = {
+            "kdialog",
+            "--title", title,
+            "--attach", std::to_string(window_),
+            selectDirectory ? "--getexistingdirectory" : "--getopenfilename",
+            "",
+        };
+        if (!selectDirectory)
+            arguments.emplace_back("*.wav|WAV Files");
+    }
+    else if (hasZenity)
+    {
+        arguments = {
+            "zenity",
+            "--file-selection",
+            "--title=" + title,
+        };
+        if (selectDirectory)
+            arguments.emplace_back("--directory");
+        else
+            arguments.emplace_back("--file-filter=WAV Files | *.wav");
+    }
+    else
+    {
+        std::cerr << "[Singularity] No Linux file chooser found. "
+                     "Install zenity or kdialog.\n";
+        if (callback)
+            callback({});
+        return;
+    }
+
+    int outputPipe[2] = {-1, -1};
+    if (::pipe(outputPipe) != 0)
+    {
+        std::cerr << "[Singularity] Could not create file chooser pipe: "
+                  << std::strerror(errno) << '\n';
+        if (callback)
+            callback({});
+        return;
+    }
+
+    posix_spawn_file_actions_t actions;
+    if (posix_spawn_file_actions_init(&actions) != 0)
+    {
+        ::close(outputPipe[0]);
+        ::close(outputPipe[1]);
+        if (callback)
+            callback({});
+        return;
+    }
+    posix_spawn_file_actions_adddup2(&actions, outputPipe[1], STDOUT_FILENO);
+    posix_spawn_file_actions_addclose(&actions, outputPipe[0]);
+    posix_spawn_file_actions_addclose(&actions, outputPipe[1]);
+
+    std::vector<char*> argv;
+    argv.reserve(arguments.size() + 1);
+    for (auto& argument : arguments)
+        argv.push_back(argument.data());
+    argv.push_back(nullptr);
+
+    auto environment = childEnvironment(window_);
+    std::vector<char*> envp;
+    envp.reserve(environment.size() + 1);
+    for (auto& entry : environment)
+        envp.push_back(entry.data());
+    envp.push_back(nullptr);
+
+    pid_t pid = -1;
+    const auto spawnResult = posix_spawnp(
+        &pid, argv.front(), &actions, nullptr, argv.data(), envp.data());
+    posix_spawn_file_actions_destroy(&actions);
+    ::close(outputPipe[1]);
+
+    if (spawnResult != 0)
+    {
+        ::close(outputPipe[0]);
+        std::cerr << "[Singularity] Could not launch Linux file chooser: "
+                  << std::strerror(spawnResult) << '\n';
+        if (callback)
+            callback({});
+        return;
+    }
+
+    const auto flags = ::fcntl(outputPipe[0], F_GETFL, 0);
+    if (flags >= 0)
+        ::fcntl(outputPipe[0], F_SETFL, flags | O_NONBLOCK);
+    chooserProcess_.emplace(ChooserProcess{
+        .pid = pid,
+        .outputFd = outputPipe[0],
+        .callback = std::move(callback),
+    });
+}
+
+void X11Window::pollChooser()
+{
+    if (!chooserProcess_)
+        return;
+
+    auto& chooser = *chooserProcess_;
+    char buffer[1024];
+    while (true)
+    {
+        const auto count = ::read(chooser.outputFd, buffer, sizeof(buffer));
+        if (count > 0)
+        {
+            chooser.output.append(buffer, static_cast<std::size_t>(count));
+            continue;
+        }
+        if (count < 0 && errno == EINTR)
+            continue;
+        break;
+    }
+
+    int status = 0;
+    const auto waitResult = ::waitpid(chooser.pid, &status, WNOHANG);
+    if (waitResult == 0 || (waitResult < 0 && errno == EINTR))
+        return;
+
+    while (!chooser.output.empty() &&
+           (chooser.output.back() == '\n' || chooser.output.back() == '\r'))
+        chooser.output.pop_back();
+    const bool succeeded = waitResult == chooser.pid && WIFEXITED(status) &&
+        WEXITSTATUS(status) == 0;
+    auto callback = std::move(chooser.callback);
+    auto selectedPath = succeeded ? std::move(chooser.output) : std::string{};
+    ::close(chooser.outputFd);
+    chooserProcess_.reset();
+    if (callback)
+        callback(selectedPath);
+}
+
+void X11Window::cancelChooser()
+{
+    if (!chooserProcess_)
+        return;
+    ::kill(chooserProcess_->pid, SIGTERM);
+    while (::waitpid(chooserProcess_->pid, nullptr, 0) < 0 && errno == EINTR)
+    {
+    }
+    ::close(chooserProcess_->outputFd);
+    chooserProcess_.reset();
 }

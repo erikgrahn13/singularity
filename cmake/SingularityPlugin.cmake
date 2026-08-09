@@ -18,12 +18,8 @@ function(_singularity_enable_desktop_support)
     elseif(UNIX AND NOT APPLE)
         set(CMAKE_POSITION_INDEPENDENT_CODE ON)
         find_package(X11 REQUIRED)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(LIBPORTAL REQUIRED libportal)
         set_target_properties(X11::X11 PROPERTIES IMPORTED_GLOBAL TRUE)
         set_target_properties(X11::Xrandr PROPERTIES IMPORTED_GLOBAL TRUE)
-        set(SINGULARITY_LIBPORTAL_LIBRARIES "${LIBPORTAL_LIBRARIES}" CACHE INTERNAL "")
-        set(SINGULARITY_LIBPORTAL_INCLUDE_DIRS "${LIBPORTAL_INCLUDE_DIRS}" CACHE INTERNAL "")
     endif()
 
     list(APPEND CMAKE_MODULE_PATH "${SINGULARITY_CMAKE_DIR}")
@@ -171,9 +167,7 @@ function(singularity_create_plugin target)
         target_link_libraries(${target} PUBLIC
             X11::X11
             X11::Xrandr
-            ${SINGULARITY_LIBPORTAL_LIBRARIES}
         )
-        target_include_directories(${target} PRIVATE ${SINGULARITY_LIBPORTAL_INCLUDE_DIRS})
     endif()
 
 

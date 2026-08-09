@@ -4,6 +4,9 @@
 #include <X11/extensions/Xrandr.h>
 #include <stdexcept>
 #include <iostream>
+#include <optional>
+#include <string>
+#include <sys/types.h>
 
 #include "../IWindow.h"
 
@@ -46,6 +49,19 @@ class X11Window : public IWindow {
                              std::function<void(const std::string&)> callback) override;
 
     private:
+    struct ChooserProcess
+    {
+        pid_t pid = -1;
+        int outputFd = -1;
+        std::string output;
+        std::function<void(const std::string&)> callback;
+    };
+
+    void launchChooser(const std::string& title, bool selectDirectory,
+                       std::function<void(const std::string&)> callback);
+    void pollChooser();
+    void cancelChooser();
+
     int      width_   = 0;
     int      height_  = 0;
     Display* display_{nullptr};
@@ -55,4 +71,5 @@ class X11Window : public IWindow {
     std::function<void(int, int)> onMouseUp_;
     std::function<void(int, int)> onMouseMove_;
     std::function<void(float, float)> onMouseWheel_;
+    std::optional<ChooserProcess> chooserProcess_;
 };
