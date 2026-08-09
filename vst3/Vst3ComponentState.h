@@ -15,7 +15,8 @@
 namespace Steinberg::SingularityVst3 {
 
 inline constexpr int32 kComponentStateMagic = 0x53475354; // "SGST"
-inline constexpr int32 kComponentStateVersion = 1;
+inline constexpr int32 kComponentStateVersion = 2;
+inline constexpr int32 kMaximumPluginStateBytes = 16 * 1024 * 1024;
 inline constexpr int32 kMaximumStateProgramEntries = 1024;
 inline constexpr int32 kMaximumStateProgramParameters = 65536;
 inline constexpr int32 kMaximumStateProgramPayloadBytes =
@@ -40,7 +41,44 @@ struct ComponentState
     std::vector<SerializedParameter> parameterValues;
     std::vector<ProgramSelection> programSelections;
     std::vector<ProgramSlotState> modifiedPrograms;
+    std::vector<std::byte> pluginPayload;
 };
+
+inline bool writePluginPayload(IBStream* stream, IBStreamer& streamer,
+    const std::vector<std::byte>& payload)
+{
+    if (payload.size() > static_cast<std::size_t>(kMaximumPluginStateBytes) ||
+        !streamer.writeInt32(static_cast<int32>(payload.size())))
+        return false;
+    if (payload.empty())
+        return true;
+
+    int32 bytesWritten = 0;
+    return stream->write(
+               const_cast<std::byte*>(payload.data()),
+               static_cast<int32>(payload.size()), &bytesWritten) == kResultTrue &&
+        bytesWritten == static_cast<int32>(payload.size());
+}
+
+inline bool readPluginPayload(IBStream* stream, IBStreamer& streamer,
+    std::vector<std::byte>& payload)
+{
+    int32 payloadSize = 0;
+    if (!streamer.readInt32(payloadSize) || payloadSize < 0 ||
+        payloadSize > kMaximumPluginStateBytes)
+        return false;
+
+    std::vector<std::byte> decoded(static_cast<std::size_t>(payloadSize));
+    if (payloadSize > 0)
+    {
+        int32 bytesRead = 0;
+        if (stream->read(decoded.data(), payloadSize, &bytesRead) != kResultTrue ||
+            bytesRead != payloadSize)
+            return false;
+    }
+    payload = std::move(decoded);
+    return true;
+}
 
 inline bool isWritableParameter(
     std::span<const ::Parameter> parameters,
@@ -199,7 +237,8 @@ inline bool writeComponentState(
             return false;
     }
 
-    return writeProgramState(stream, streamer, state);
+    return writeProgramState(stream, streamer, state) &&
+        writePluginPayload(stream, streamer, state.pluginPayload);
 }
 
 inline bool readVersionedComponentState(
@@ -212,7 +251,7 @@ inline bool readVersionedComponentState(
     int32 bypass = 0;
     int32 parameterCount = 0;
     if (!streamer.readInt32(version) ||
-        version != kComponentStateVersion ||
+        (version != 1 && version != kComponentStateVersion) ||
         !streamer.readInt32(bypass) ||
         (bypass != 0 && bypass != 1) ||
         !streamer.readInt32(parameterCount) ||
@@ -241,6 +280,9 @@ inline bool readVersionedComponentState(
     }
 
     if (!readProgramState(stream, streamer, decoded, true))
+        return false;
+    if (version >= 2 &&
+        !readPluginPayload(stream, streamer, decoded.pluginPayload))
         return false;
     state = std::move(decoded);
     return true;

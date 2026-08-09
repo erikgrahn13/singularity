@@ -6,6 +6,7 @@
 #include <utility>
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 struct ParameterChange
 {
@@ -80,5 +81,8 @@ class IParameterProvider {
 public:
     virtual double getParameter(int id) = 0;
     virtual void setParameter(int id, double value) = 0;
+    virtual double getSampleRate() const { return 0.0; }
+    virtual std::string getPluginState() const { return {}; }
+    virtual void sendMessage(std::string_view, std::string_view) {}
     virtual ~IParameterProvider() = default;
 };

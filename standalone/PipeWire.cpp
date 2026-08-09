@@ -2,7 +2,10 @@
 #include PLUGIN_CLASS_HEADER
 
 #include <iostream>
+#include <algorithm>
+#include <limits>
 #include <span>
+#include <spa/node/io.h>
 #include <spa/pod/builder.h>
 #include <spa/param/latency-utils.h>
  
@@ -11,9 +14,54 @@
  
 /* [on_process] */
 template<typename PluginType>
+void PipeWire<PluginType>::prepareFromPosition()
+{
+        const auto *position = data_.position;
+        if (position == nullptr || position->clock.rate.num == 0 ||
+            position->clock.rate.denom == 0 || position->clock.duration == 0)
+                return;
+
+        const double sample_rate =
+            static_cast<double>(position->clock.rate.denom) /
+            position->clock.rate.num;
+        const auto duration = std::min<std::uint64_t>(
+            position->clock.duration,
+            static_cast<std::uint64_t>(std::numeric_limits<int>::max()));
+        if (this->callPrepare(sample_rate, std::max(1, static_cast<int>(duration))))
+                std::cout << "[singularity] PipeWire negotiated " << sample_rate
+                          << " Hz, quantum " << duration << '\n';
+}
+
+template<typename PluginType>
+void PipeWire<PluginType>::on_state_changed(
+        void *userdata, enum pw_filter_state, enum pw_filter_state state,
+        const char *error)
+{
+        auto *instance = static_cast<PipeWire<PluginType>*>(userdata);
+        if (state == PW_FILTER_STATE_ERROR)
+                std::cerr << "[singularity] PipeWire filter error: "
+                          << (error ? error : "unknown error") << '\n';
+        instance->prepareFromPosition();
+}
+
+template<typename PluginType>
+void PipeWire<PluginType>::on_io_changed(
+        void *userdata, void *port_data, uint32_t id, void *area, uint32_t size)
+{
+        auto *instance = static_cast<PipeWire<PluginType>*>(userdata);
+        if (port_data == nullptr && id == SPA_IO_Position && area != nullptr &&
+            size >= sizeof(spa_io_position))
+        {
+                instance->data_.position = static_cast<spa_io_position*>(area);
+                instance->prepareFromPosition();
+        }
+}
+
+template<typename PluginType>
 void PipeWire<PluginType>::on_process(void *userdata, struct spa_io_position *position)
 {
         PipeWire<PluginType> *instance = static_cast<PipeWire<PluginType>*>(userdata);
+        instance->data_.position = position;
         uint32_t n_samples = position->clock.duration;
         double sample_rate = static_cast<double>(position->clock.rate.denom) / position->clock.rate.num;
         instance->callPrepare(sample_rate, static_cast<int>(n_samples));
@@ -71,6 +119,8 @@ PipeWire<PluginType>::PipeWire() : ISingularityAudio<PluginType>()
 
         static const struct pw_filter_events filter_events = {
                 .version = PW_VERSION_FILTER_EVENTS,
+                .state_changed = PipeWire<PluginType>::on_state_changed,
+                .io_changed = PipeWire<PluginType>::on_io_changed,
                 .process = PipeWire<PluginType>::on_process,
         };
  

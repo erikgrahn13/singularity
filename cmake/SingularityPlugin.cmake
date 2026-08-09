@@ -250,6 +250,9 @@ function(singularity_create_plugin target)
     file(GLOB _singularity_widget_sources CONFIGURE_DEPENDS
         "${SINGULARITY_ROOT_DIR}/widgets/*.js"
     )
+    file(GLOB _plugin_ui_sources CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/*.js"
+    )
 
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.h
@@ -258,7 +261,7 @@ function(singularity_create_plugin target)
             -o ${CMAKE_CURRENT_BINARY_DIR}/generated.h
             ${_qjsc_input}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS qjsc ${_qjsc_input} "${UI_MAIN_FILE}" ${_singularity_widget_sources}
+        DEPENDS qjsc ${_qjsc_input} "${UI_MAIN_FILE}" ${_singularity_widget_sources} ${_plugin_ui_sources}
         VERBATIM
     )
 

@@ -72,6 +72,9 @@ void testComponentStateSchema()
     ComponentState original;
     original.bypass = true;
     original.parameterValues = {{10, 0.25}, {20, 0.75}};
+    original.pluginPayload = {
+        std::byte{'I'}, std::byte{'R'}, std::byte{'1'},
+    };
 
     MemoryStream versionedStream;
     expect(
@@ -93,10 +96,35 @@ void testComponentStateSchema()
     expect(
         migrated.bypass &&
             migrated.parameterValues.size() == 2 &&
+            migrated.pluginPayload == original.pluginPayload &&
             approximatelyEqual(stateParameterValue(migrated, 10), 0.25) &&
             approximatelyEqual(stateParameterValue(migrated, 20), 0.75) &&
             stateParameterValue(migrated, 30) < 0.0,
         "versioned state did not map parameter values by stable ID");
+
+    MemoryStream versionOneStream;
+    IBStreamer versionOneWriter(&versionOneStream, kLittleEndian);
+    expect(
+        versionOneWriter.writeInt32(kComponentStateMagic) &&
+            versionOneWriter.writeInt32(1) &&
+            versionOneWriter.writeInt32(1) &&
+            versionOneWriter.writeInt32(2) &&
+            versionOneWriter.writeInt32(10) &&
+            versionOneWriter.writeDouble(0.25) &&
+            versionOneWriter.writeInt32(20) &&
+            versionOneWriter.writeDouble(0.75) &&
+            versionOneWriter.writeInt32(0) &&
+            versionOneWriter.writeInt32(0),
+        "could not create version 1 component state");
+    versionOneStream.seek(0, IBStream::kIBSeekSet, nullptr);
+    ComponentState versionOne;
+    expect(
+        readComponentState(
+            &versionOneStream, originalParameters, versionOne) &&
+            versionOne.pluginPayload.empty() &&
+            approximatelyEqual(stateParameterValue(versionOne, 10), 0.25) &&
+            approximatelyEqual(stateParameterValue(versionOne, 20), 0.75),
+        "version 1 component state is no longer readable");
 
     const auto reducedParameters = std::to_array<Parameter>({
         {.id = 20, .name = "Second"},

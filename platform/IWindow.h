@@ -28,6 +28,8 @@ public:
     virtual int refreshRate() const { return 60; }
     virtual void openFileDialog(const std::string& title,
                                 std::function<void(const std::string&)> callback) {}
+    virtual void openDirectoryDialog(const std::string& title,
+                                     std::function<void(const std::string&)> callback) {}
 
     static std::unique_ptr<IWindow> createWindow(int width, int height);
     static std::unique_ptr<IWindow> createWindow(int width, int height, void* parentWindow);

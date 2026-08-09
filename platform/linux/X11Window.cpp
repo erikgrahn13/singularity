@@ -260,3 +260,48 @@ void X11Window::openFileDialog(const std::string& title,
         cb
     );
 }
+
+void X11Window::openDirectoryDialog(const std::string& title,
+                                    std::function<void(const std::string&)> callback)
+{
+    XdpPortal* portal = xdp_portal_new();
+    auto* cb = new std::function<void(const std::string&)>(std::move(callback));
+
+    xdp_portal_open_file(
+        portal,
+        nullptr,
+        title.c_str(),
+        nullptr,
+        nullptr,
+        nullptr,
+        XDP_OPEN_FILE_FLAG_DIRECTORY,
+        nullptr,
+        [](GObject* obj, GAsyncResult* res, gpointer data) {
+            auto* userCb = static_cast<std::function<void(const std::string&)>*>(data);
+            GError* error = nullptr;
+            GVariant* result = xdp_portal_open_file_finish(XDP_PORTAL(obj), res, &error);
+
+            std::string selectedPath;
+            if (result) {
+                const char** uris = nullptr;
+                g_variant_lookup(result, "uris", "^a&s", &uris);
+                if (uris && uris[0]) {
+                    GFile* file = g_file_new_for_uri(uris[0]);
+                    char* path = g_file_get_path(file);
+                    if (path) {
+                        selectedPath = path;
+                        g_free(path);
+                    }
+                    g_object_unref(file);
+                }
+                g_variant_unref(result);
+            }
+            if (error) g_error_free(error);
+
+            if (*userCb) (*userCb)(selectedPath);
+            delete userCb;
+            g_object_unref(obj);
+        },
+        cb
+    );
+}

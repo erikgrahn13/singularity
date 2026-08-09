@@ -2,6 +2,7 @@
 #include "IJSEngine.h"
 #include "platform/IWindow.h"
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <filesystem>
 #include <vector>
@@ -101,6 +102,26 @@ static JSValue js_getAudioData(JSContext* ctx, JSValueConst this_val,
     return engine->getAudioData(ctx, this_val, argc, argv);
 }
 
+static JSValue js_getSampleRate(JSContext* ctx, JSValueConst this_val,
+                                int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+    return engine->getSampleRate(ctx, this_val, argc,
+        const_cast<JSValue*>(argv));
+}
+
+static JSValue js_getPluginState(JSContext* ctx, JSValueConst this_val,
+                                 int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+    return engine->getPluginState(ctx, this_val, argc,
+        const_cast<JSValue*>(argv));
+}
+
 static JSValue js_openFileDialog(JSContext* ctx, JSValueConst this_val,
                                   int argc, JSValueConst* argv)
 {
@@ -136,13 +157,111 @@ static JSValue js_openFileDialog(JSContext* ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+static JSValue js_openDirectoryDialog(JSContext* ctx, JSValueConst this_val,
+                                      int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+
+    if (!engine->window())
+        return JS_ThrowInternalError(ctx, "No window attached");
+
+    std::string title = "Select Directory";
+    if (argc > 0) {
+        const char* t = JS_ToCString(ctx, argv[0]);
+        if (t) { title = t; JS_FreeCString(ctx, t); }
+    }
+
+    JSValue callback = JS_UNDEFINED;
+    if (argc > 1 && JS_IsFunction(ctx, argv[1]))
+        callback = JS_DupValue(ctx, argv[1]);
+
+    engine->window()->openDirectoryDialog(title, [ctx, callback](const std::string& path) mutable {
+        if (!JS_IsUndefined(callback)) {
+            JSValue arg = JS_NewString(ctx, path.c_str());
+            JSValue ret = JS_Call(ctx, callback, JS_UNDEFINED, 1, &arg);
+            JS_FreeValue(ctx, ret);
+            JS_FreeValue(ctx, arg);
+            JS_FreeValue(ctx, callback);
+            callback = JS_UNDEFINED;
+        }
+    });
+
+    return JS_UNDEFINED;
+}
+
+static JSValue js_findFiles(JSContext* ctx, JSValueConst,
+                            int argc, JSValueConst* argv)
+{
+    if (argc < 1)
+        return JS_ThrowTypeError(ctx, "findFiles expects a directory path");
+
+    const char* rootText = JS_ToCString(ctx, argv[0]);
+    if (!rootText)
+        return JS_EXCEPTION;
+    const std::filesystem::path root(rootText);
+    JS_FreeCString(ctx, rootText);
+
+    std::string extension = ".wav";
+    if (argc > 1 && JS_IsString(argv[1])) {
+        const char* extensionText = JS_ToCString(ctx, argv[1]);
+        if (extensionText) {
+            extension = extensionText;
+            JS_FreeCString(ctx, extensionText);
+        }
+    }
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    JSValue files = JS_NewArray(ctx);
+    uint32_t index = 0;
+    try {
+        if (!std::filesystem::is_directory(root))
+            return files;
+
+        const auto options = std::filesystem::directory_options::skip_permission_denied;
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(root, options)) {
+            if (!entry.is_regular_file())
+                continue;
+            auto candidateExtension = entry.path().extension().string();
+            std::transform(candidateExtension.begin(), candidateExtension.end(), candidateExtension.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (!extension.empty() && candidateExtension != extension)
+                continue;
+            JS_SetPropertyUint32(ctx, files, index++,
+                JS_NewString(ctx, entry.path().string().c_str()));
+        }
+    } catch (const std::filesystem::filesystem_error& error) {
+        JS_FreeValue(ctx, files);
+        return JS_ThrowInternalError(ctx, "%s", error.what());
+    }
+
+    return files;
+}
+
+static JSValue js_sendMessage(JSContext* ctx, JSValueConst this_val,
+                              int argc, JSValueConst* argv)
+{
+    auto* engine = static_cast<QuickJSEngine*>(
+        JS_GetRuntimeOpaque(JS_GetRuntime(ctx))
+    );
+    return engine->sendMessage(ctx, this_val, argc,
+        const_cast<JSValue*>(argv));
+}
+
 static const JSCFunctionListEntry singularity_funcs[] = {
     JS_CFUNC_DEF("Component", 1, js_Component),
     JS_CFUNC_DEF("mount", 1, js_mount),
     JS_CFUNC_DEF("getParameter", 1, js_getParameter),
     JS_CFUNC_DEF("setParameter", 2, js_setParameter),
     JS_CFUNC_DEF("getAudioData", 0, js_getAudioData),
+    JS_CFUNC_DEF("getSampleRate", 0, js_getSampleRate),
+    JS_CFUNC_DEF("getPluginState", 0, js_getPluginState),
     JS_CFUNC_DEF("openFileDialog", 2, js_openFileDialog),
+    JS_CFUNC_DEF("openDirectoryDialog", 2, js_openDirectoryDialog),
+    JS_CFUNC_DEF("findFiles", 2, js_findFiles),
+    JS_CFUNC_DEF("sendMessage", 2, js_sendMessage),
     // JS_CFUNC_DEF("on", 2, js_on),
 };
 
@@ -865,6 +984,36 @@ JSValue QuickJSEngine::setParameter(JSContext *ctx, JSValue this_val, int argc, 
     // renderer_->redrawAll();
 
     return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::sendMessage(JSContext *ctx, JSValue, int argc, JSValue *argv)
+{
+    if (argc < 2)
+        return JS_ThrowTypeError(ctx, "sendMessage expects a name and payload");
+
+    const char* name = JS_ToCString(ctx, argv[0]);
+    const char* payload = JS_ToCString(ctx, argv[1]);
+    if (!name || !payload) {
+        if (name) JS_FreeCString(ctx, name);
+        if (payload) JS_FreeCString(ctx, payload);
+        return JS_EXCEPTION;
+    }
+
+    parameterStore_.sendMessage(name, payload);
+    JS_FreeCString(ctx, name);
+    JS_FreeCString(ctx, payload);
+    return JS_UNDEFINED;
+}
+
+JSValue QuickJSEngine::getSampleRate(JSContext *ctx, JSValue, int, JSValue *)
+{
+    return JS_NewFloat64(ctx, parameterStore_.getSampleRate());
+}
+
+JSValue QuickJSEngine::getPluginState(JSContext *ctx, JSValue, int, JSValue *)
+{
+    const auto state = parameterStore_.getPluginState();
+    return JS_NewStringLen(ctx, state.data(), state.size());
 }
 
 JSValue QuickJSEngine::getAudioData(JSContext *ctx, JSValue, int, JSValue *)

@@ -29,6 +29,7 @@
 #include <cstring>
 #include <type_traits>
 #include <memory>
+#include <string>
 
 namespace Steinberg {
 
@@ -104,6 +105,8 @@ public:
 			};
 			mDataExchange = std::make_unique<Vst::DataExchangeHandler>(this, configCallback);
 			mDataExchange->onConnect(other, getHostContext());
+			publishSampleRate();
+			publishPluginState();
 		}
 		return result;
 	}
@@ -118,6 +121,34 @@ public:
 		return AudioEffect::disconnect(other);
 	}
 
+	tresult PLUGIN_API notify (Vst::IMessage* message) SMTG_OVERRIDE
+	{
+		if (message && message->getMessageID () &&
+			std::strcmp(message->getMessageID (), "Singularity.UIMessage") == 0)
+		{
+			const void* nameData = nullptr;
+			const void* payloadData = nullptr;
+			uint32 nameSize = 0;
+			uint32 payloadSize = 0;
+			auto* attributes = message->getAttributes ();
+			if (attributes &&
+				attributes->getBinary("name", nameData, nameSize) == kResultTrue &&
+				attributes->getBinary("payload", payloadData, payloadSize) == kResultTrue)
+			{
+				if constexpr (requires(PluginType& plugin, std::string_view name,
+					std::string_view payload) { plugin.handleMessage(name, payload); })
+				{
+					mPlugin.handleMessage(
+						std::string_view(static_cast<const char*>(nameData), nameSize),
+						std::string_view(static_cast<const char*>(payloadData), payloadSize));
+					publishPluginState();
+				}
+				return kResultTrue;
+			}
+		}
+		return AudioEffect::notify(message);
+	}
+
 	tresult PLUGIN_API setActive (TBool state) SMTG_OVERRIDE
 	{
 		if (mDataExchange)
@@ -130,6 +161,8 @@ public:
 
 	tresult PLUGIN_API setupProcessing (Vst::ProcessSetup& newSetup) SMTG_OVERRIDE
 	{
+		mCurrentSampleRate = newSetup.sampleRate;
+		publishSampleRate();
 		mBypassProcessorFloat.setup  (*this, newSetup, getLatencySamples ());
 		mBypassProcessorDouble.setup (*this, newSetup, getLatencySamples ());
 		mPlugin.prepare (newSetup.sampleRate, newSetup.maxSamplesPerBlock);
@@ -158,6 +191,35 @@ public:
 			mSmoothSteps = 1;
 
 		return AudioEffect::setupProcessing (newSetup);
+	}
+
+	void publishSampleRate()
+	{
+		if (mCurrentSampleRate <= 0.0)
+			return;
+		auto message = owned(allocateMessage());
+		if (!message)
+			return;
+		message->setMessageID("Singularity.SampleRate");
+		message->getAttributes()->setFloat("value", mCurrentSampleRate);
+		ComponentBase::sendMessage(message);
+	}
+
+	void publishPluginState()
+	{
+		if constexpr (requires(const PluginType& plugin) {
+			{ plugin.saveState() } -> std::convertible_to<std::string>;
+		})
+		{
+			const std::string payload = mPlugin.saveState();
+			auto message = owned(allocateMessage());
+			if (!message)
+				return;
+			message->setMessageID("Singularity.PluginState");
+			message->getAttributes()->setBinary(
+				"payload", payload.data(), static_cast<uint32>(payload.size()));
+			ComponentBase::sendMessage(message);
+		}
 	}
 
 	tresult PLUGIN_API canProcessSampleSize (int32 symbolicSampleSize) SMTG_OVERRIDE
@@ -451,6 +513,18 @@ public:
 				state, pluginParameters, restored))
 			return kResultFalse;
 
+		if constexpr (requires(PluginType& plugin, std::string_view payload) {
+			plugin.restoreState(payload);
+		})
+		{
+			const auto payload = restored.pluginPayload.empty()
+				? std::string_view{}
+				: std::string_view(
+					reinterpret_cast<const char*>(restored.pluginPayload.data()),
+					restored.pluginPayload.size());
+			mPlugin.restoreState(payload);
+		}
+
 		for (auto& bank : mProgramBanks)
 		{
 			for (auto& program : bank->programs)
@@ -546,6 +620,15 @@ public:
 					*snapshot,
 				});
 			}
+		}
+		if constexpr (requires(const PluginType& plugin) {
+			{ plugin.saveState() } -> std::convertible_to<std::string>;
+		})
+		{
+			const std::string payload = mPlugin.saveState();
+			current.pluginPayload.assign(
+				reinterpret_cast<const std::byte*>(payload.data()),
+				reinterpret_cast<const std::byte*>(payload.data() + payload.size()));
 		}
 
 		const auto pluginParameters = PluginType::getParameters();
@@ -1067,6 +1150,7 @@ protected:
 		nullptr};
 	std::atomic_flag mPublishedProcessorStateLock = ATOMIC_FLAG_INIT;
 	PublishedProcessorState mPublishedProcessorState;
+	double mCurrentSampleRate = 0.0;
 	int mSmoothSteps = 0;
 };
 

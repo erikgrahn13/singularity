@@ -16,9 +16,13 @@
 #include "IParameterProvider.h"
 #include "pluginterfaces/vst/vsttypes.h"
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <mutex>
+#include <string>
+#include <string_view>
 
 namespace Steinberg {
 
@@ -176,6 +180,27 @@ public:
         performEdit(id, normalizedValue);
         endEdit(id);
     }
+    double getSampleRate() const override
+    {
+        return sampleRate_.load(std::memory_order_acquire);
+    }
+    std::string getPluginState() const override
+    {
+        std::scoped_lock lock(pluginStateMutex_);
+        return pluginState_;
+    }
+    void sendMessage(std::string_view name, std::string_view payload) override
+    {
+        auto message = owned(allocateMessage());
+        if (!message)
+            return;
+        message->setMessageID("Singularity.UIMessage");
+        message->getAttributes()->setBinary(
+            "name", name.data(), static_cast<uint32>(name.size()));
+        message->getAttributes()->setBinary(
+            "payload", payload.data(), static_cast<uint32>(payload.size()));
+        ComponentBase::sendMessage(message);
+    }
 
 private:
     struct ControllerProgramBank
@@ -238,6 +263,9 @@ private:
 
     Vst::DataExchangeReceiverHandler dataExchange_ {this};
     Singularity::AudioDataExchange::AudioDataQueue audioDataQueue_;
+    std::atomic<double> sampleRate_{0.0};
+    mutable std::mutex pluginStateMutex_;
+    std::string pluginState_;
     std::vector<::Vst3ProgramUnit> programUnits_;
     std::vector<ControllerProgramBank> programBanks_;
 

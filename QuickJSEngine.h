@@ -28,6 +28,9 @@ class QuickJSEngine : public IJSEngine {
 
     JSValue getParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
     JSValue setParameter(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
+    JSValue getSampleRate(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
+    JSValue getPluginState(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
+    JSValue sendMessage(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
     JSValue getAudioData(JSContext *ctx, JSValue this_val, int argc, JSValue *argv);
 
     void setWindow(IWindow* window) { window_ = window; }

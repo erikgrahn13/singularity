@@ -11,6 +11,7 @@
 #include "SingularityPlugin.h"
 #include PLUGIN_CLASS_HEADER
 #include <cmath>
+#include <cstring>
 
 namespace Steinberg {
 
@@ -62,6 +63,15 @@ tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 	if (!SingularityVst3::readComponentState(
 			state, pluginParameters, restored))
 		return kResultFalse;
+	{
+		std::scoped_lock lock(pluginStateMutex_);
+		if (restored.pluginPayload.empty())
+			pluginState_.clear();
+		else
+			pluginState_.assign(
+				reinterpret_cast<const char*>(restored.pluginPayload.data()),
+				restored.pluginPayload.size());
+	}
 
 	setParamNormalized(
 		Steinberg::Vst::kMaxParamId, restored.bypass ? 1.0 : 0.0);
@@ -195,6 +205,30 @@ tresult PLUGIN_API VST3Controller::getParamValueByString (Vst::ParamID tag, Vst:
 
 tresult PLUGIN_API VST3Controller::notify (Vst::IMessage* message)
 {
+    if (message && message->getMessageID() &&
+        std::strcmp(message->getMessageID(), "Singularity.PluginState") == 0)
+    {
+        const void* data = nullptr;
+        uint32 size = 0;
+        if (message->getAttributes() &&
+            message->getAttributes()->getBinary("payload", data, size) == kResultTrue)
+        {
+            std::scoped_lock lock(pluginStateMutex_);
+            pluginState_.assign(static_cast<const char*>(data), size);
+            return kResultTrue;
+        }
+    }
+    if (message && message->getMessageID() &&
+        std::strcmp(message->getMessageID(), "Singularity.SampleRate") == 0)
+    {
+        double sampleRate = 0.0;
+        if (message->getAttributes() &&
+            message->getAttributes()->getFloat("value", sampleRate) == kResultTrue)
+        {
+            sampleRate_.store(sampleRate, std::memory_order_release);
+            return kResultTrue;
+        }
+    }
     if (dataExchange_.onMessage(message))
         return kResultTrue;
     return EditControllerEx1::notify(message);

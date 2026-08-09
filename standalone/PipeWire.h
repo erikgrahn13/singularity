@@ -22,12 +22,17 @@ class PipeWire : public ISingularityAudio<PluginType>
             struct pw_filter *filter;
             struct port *in_port;
             struct port *out_port;
+            struct spa_io_position *position;
     };
 
-    
+    static void on_state_changed(void *userdata, enum pw_filter_state old,
+                                 enum pw_filter_state state, const char *error);
+    static void on_io_changed(void *userdata, void *port_data,
+                              uint32_t id, void *area, uint32_t size);
     static void on_process(void *userdata, struct spa_io_position *position);
     private:
-    PipeWire::data data_;
+    void prepareFromPosition();
+    PipeWire::data data_{};
 
 
 

@@ -1,11 +1,13 @@
 #pragma once
 #include <concepts>
+#include <atomic>
 #include <vector>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <limits>
 #include <functional>
+#include <string_view>
 #include "../utilities/SingularityQueue.h"
 #include "../IParameterProvider.h"
 #include "SingularityPlugin.h"
@@ -13,6 +15,8 @@
 
 IParameterProvider& getParameterContainer();
 void setOnParameterChanged(std::function<void(int, double)> cb);
+void setOnMessage(std::function<void(std::string_view, std::string_view)> cb);
+void setSampleRate(double sampleRate);
 void populateParameterContainer(std::span<const Parameter> params);
 void setOutputParameter(int id, double value);
 
@@ -34,7 +38,7 @@ template<::SingularityPlugin PluginType>
 class ISingularityAudio
 {
     public:
-    virtual ~ISingularityAudio() = default;
+    virtual ~ISingularityAudio() { setOnMessage({}); }
     virtual std::vector<AudioDevice> probeDevices() const = 0;
 
     // Called from GUI thread: queues a parameter change for the audio thread
@@ -48,6 +52,13 @@ class ISingularityAudio
     protected:
     ISingularityAudio()
     {
+        setOnMessage([this](std::string_view name, std::string_view payload) {
+            if constexpr (requires(PluginType& plugin, std::string_view messageName,
+                                   std::string_view messagePayload) {
+                plugin.handleMessage(messageName, messagePayload);
+            })
+                mPlugin.handleMessage(name, payload);
+        });
         auto params = PluginType::getParameters ();
         populateParameterContainer (params);
         for (auto& p : params)
@@ -80,12 +91,16 @@ class ISingularityAudio
 
     // Call once when sample rate and block size are first known.
     // Safe to call from a real-time thread on first process callback.
-    void callPrepare(double sampleRate, int maxBlockSize)
+    bool callPrepare(double sampleRate, int maxBlockSize)
     {
-        if (_prepared) return;
+        bool expected = false;
+        if (!_prepared.compare_exchange_strong(
+                expected, true, std::memory_order_acq_rel))
+            return false;
         _sampleRate = sampleRate;
-        _prepared = true;
+        setSampleRate(sampleRate);
         mPlugin.prepare(sampleRate, maxBlockSize);
+        return true;
     }
 
     void publishOutputParameters()
@@ -128,7 +143,7 @@ class ISingularityAudio
     PluginType mPlugin;
 
     private:
-    bool _prepared = false;
+    std::atomic<bool> _prepared{false};
     double _sampleRate = 0.0;
     Singularity::AudioDataExchange::AudioDataQueue _audioDataQueue;
     SingularityQueue<ParameterChange, 256> _paramChanges;

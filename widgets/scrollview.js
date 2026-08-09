@@ -7,6 +7,9 @@ export function ScrollView({
   height = 220,
   items = [],
   itemHeight = 26,
+  initialSelectedIndex = -1,
+  isItemSelectable = null,
+  isItemSelected = null,
   onItemClick = null,
   theme = {},
 }) {
@@ -24,13 +27,15 @@ export function ScrollView({
     fontSize: 14,
     cornerRadius: 8,
     textYOffset: 1,
+    centerContent: true,
+    itemTextColor: null,
     ...theme,
   };
 
   let scrollOffset = 0;
   let hoveredIndex = -1;
   let pressedIndex = -1;
-  let selectedIndex = -1;
+  let selectedIndex = initialSelectedIndex;
   let draggingThumb = false;
   let thumbDragOffsetY = 0;
 
@@ -39,8 +44,11 @@ export function ScrollView({
   const maxScroll = () => Math.max(0, contentHeight() - viewportHeight());
   const contentStartOffset = () => {
     const spare = viewportHeight() - contentHeight();
-    return spare > 0 ? spare * 0.5 : 0;
+    return t.centerContent && spare > 0 ? spare * 0.5 : 0;
   };
+
+  const canSelectItem = (index) => index >= 0 && index < items.length &&
+    (typeof isItemSelectable !== "function" || isItemSelectable(index, items[index]));
 
   function clampScroll(v) {
     const m = maxScroll();
@@ -66,7 +74,7 @@ export function ScrollView({
 
     const yInContent = localY - innerTop - contentStartOffset() + scrollOffset;
     const idx = Math.floor(yInContent / itemHeight);
-    return idx >= 0 && idx < items.length ? idx : -1;
+    return canSelectItem(idx) ? idx : -1;
   }
 
   function getScrollbarMetrics() {
@@ -187,6 +195,7 @@ export function ScrollView({
     },
 
     draw: (ctx) => {
+      scrollOffset = clampScroll(scrollOffset);
       const r = t.cornerRadius;
       const innerX = t.padding;
       const innerY = t.padding;
@@ -217,7 +226,9 @@ export function ScrollView({
         const y = innerY + contentOffsetY + i * itemHeight - scrollOffset;
         const isHovered = i === hoveredIndex;
         const isPressed = i === pressedIndex;
-        const isSelected = i === selectedIndex;
+        const isSelected = typeof isItemSelected === "function"
+          ? isItemSelected(i, items[i])
+          : i === selectedIndex;
 
         if (isSelected || isHovered || isPressed) {
           ctx.fillStyle = isSelected
@@ -228,7 +239,11 @@ export function ScrollView({
           ctx.fillRect(innerX, y, innerW - 10, itemHeight);
         }
 
-        ctx.fillStyle = isSelected ? t.itemSelectedTextColor : t.textColor;
+        const customTextColor = typeof t.itemTextColor === "function"
+          ? t.itemTextColor(i, items[i], isSelected)
+          : null;
+        ctx.fillStyle = customTextColor ||
+          (isSelected ? t.itemSelectedTextColor : t.textColor);
         ctx.font = `${t.fontSize}px sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";

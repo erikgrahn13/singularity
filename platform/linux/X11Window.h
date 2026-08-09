@@ -42,6 +42,8 @@ class X11Window : public IWindow {
     int refreshRate() const override;
     void openFileDialog(const std::string& title,
                         std::function<void(const std::string&)> callback) override;
+    void openDirectoryDialog(const std::string& title,
+                             std::function<void(const std::string&)> callback) override;
 
     private:
     int      width_   = 0;
@@ -54,4 +56,3 @@ class X11Window : public IWindow {
     std::function<void(int, int)> onMouseMove_;
     std::function<void(float, float)> onMouseWheel_;
 };
-
