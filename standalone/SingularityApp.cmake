@@ -44,9 +44,10 @@ function(singularity_create_app_plugin target)
 
     if(WIN32)
         target_sources(${target}_APP PRIVATE
-            ${SINGULARITY_ROOT_DIR}/standalone/ASIO.cpp)
+            ${SINGULARITY_ROOT_DIR}/standalone/ASIO.cpp
+            ${SINGULARITY_ROOT_DIR}/standalone/WASAPI.cpp)
         target_compile_definitions(${target}_APP PRIVATE NOMINMAX)
-        target_link_libraries(${target}_APP PRIVATE asio)
+        target_link_libraries(${target}_APP PRIVATE asio avrt ole32 uuid)
     elseif(APPLE)
         target_sources(${target}_APP PRIVATE
             ${SINGULARITY_ROOT_DIR}/standalone/coreAudio.cpp)
