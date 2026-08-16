@@ -647,25 +647,49 @@ void WASAPI<PluginType>::audioThreadMain(std::promise<void> startupPromise) noex
                 captureUsesAudioClient3 ? capturePeriodFrames : 0);
         }
 
+        auto disableCapture = [&](const char* operation, HRESULT result)
+        {
+            if (!captureAvailable)
+                return;
+
+            captureAvailable = false;
+            if (captureAudioClient)
+                captureAudioClient->Stop();
+            captureClient.Reset();
+            captureAudioClient.Reset();
+            capturedAudio.clear();
+
+            std::cerr << "WASAPI capture disabled after " << operation
+                      << " failed with HRESULT 0x" << std::hex
+                      << static_cast<unsigned long>(result) << std::dec
+                      << "; effect input will be silent" << std::endl;
+        };
+
         auto drainCapture = [&]()
         {
             if (!captureAvailable)
                 return;
 
             UINT32 packetFrames = 0;
-            throwIfFailed(
-                captureClient->GetNextPacketSize(&packetFrames),
-                "Getting the WASAPI capture packet size");
+            HRESULT result = captureClient->GetNextPacketSize(&packetFrames);
+            if (FAILED(result))
+            {
+                disableCapture("getting the capture packet size", result);
+                return;
+            }
 
             while (packetFrames > 0)
             {
                 BYTE* data = nullptr;
                 UINT32 frames = 0;
                 DWORD flags = 0;
-                throwIfFailed(
-                    captureClient->GetBuffer(
-                        &data, &frames, &flags, nullptr, nullptr),
-                    "Getting a WASAPI capture buffer");
+                result = captureClient->GetBuffer(
+                    &data, &frames, &flags, nullptr, nullptr);
+                if (FAILED(result))
+                {
+                    disableCapture("getting a capture buffer", result);
+                    return;
+                }
 
                 if ((flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0)
                     capturedAudio.clear();
@@ -674,12 +698,19 @@ void WASAPI<PluginType>::audioThreadMain(std::promise<void> startupPromise) noex
                 capturedAudio.push(
                     reinterpret_cast<const float*>(data), frames, silent);
 
-                throwIfFailed(
-                    captureClient->ReleaseBuffer(frames),
-                    "Releasing a WASAPI capture buffer");
-                throwIfFailed(
-                    captureClient->GetNextPacketSize(&packetFrames),
-                    "Getting the WASAPI capture packet size");
+                result = captureClient->ReleaseBuffer(frames);
+                if (FAILED(result))
+                {
+                    disableCapture("releasing a capture buffer", result);
+                    return;
+                }
+
+                result = captureClient->GetNextPacketSize(&packetFrames);
+                if (FAILED(result))
+                {
+                    disableCapture("getting the capture packet size", result);
+                    return;
+                }
             }
         };
 
