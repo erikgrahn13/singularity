@@ -18,13 +18,13 @@ using PlatformAudio = PipeWire<PLUGIN_CLASS>;
 using PlatformAudio = CoreAudio<PLUGIN_CLASS>;
 #elif defined(_WIN32)
 #include "ASIO.h"
-using PlatformAudio = ASIO<PLUGIN_CLASS>;
+#include "WASAPI.h"
+using PlatformAudio = WASAPI<PLUGIN_CLASS>;
 #endif
 
 
 int main()
 {
-    std::cout << "Hello main2" << std::endl;
     auto audio = std::make_unique<PlatformAudio>();
     setOnParameterChanged([&](int id, double value) {
         audio->pushParameterChange(id, value);

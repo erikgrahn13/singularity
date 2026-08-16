@@ -18,14 +18,15 @@ void setOutputParameter(int id, double value);
 
 class AudioDevice {
     public:
-    int id;
-    std::string name; 
-    int inputChannels;
-    int outputChannels;
-    int minBufferSize;
-    int maxBufferSize;
-    int preferredBufferSize;
-    double sampleRate;
+    int id{-1};
+    std::string name;
+    int inputChannels{0};
+    int outputChannels{0};
+    int minBufferSize{0};
+    int maxBufferSize{0};
+    int preferredBufferSize{0};
+    double sampleRate{0.0};
+    bool isDefault{false};
 
     std::vector<int> supportedSampleRates;
 };
