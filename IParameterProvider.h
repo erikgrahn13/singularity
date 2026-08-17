@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <string>
 #include <span>
@@ -53,28 +54,27 @@ struct ParamList
     // do not provide automation buffers leave this span empty.
     std::span<const std::span<const double>> sampleData {};
 
-    double get (unsigned int id, double fallback = 0.0) const
-    {
-        for (auto& [pid, val] : data)
-            if (pid == id) return val;
-        return fallback;
-    }
-
-    double getSample (unsigned int id, int sampleIndex,
-                      double fallback = 0.0) const
+    double getValueAtSample (unsigned int id, int sampleOffset) const
     {
         for (std::size_t index = 0; index < data.size(); ++index)
         {
             if (data[index].first != id)
                 continue;
 
-            if (index < sampleData.size() && sampleIndex >= 0 &&
-                static_cast<std::size_t>(sampleIndex) < sampleData[index].size())
-                return sampleData[index][static_cast<std::size_t>(sampleIndex)];
+            if (index < sampleData.size() && !sampleData[index].empty())
+            {
+                assert(sampleOffset >= 0 &&
+                    static_cast<std::size_t>(sampleOffset) < sampleData[index].size());
+                if (sampleOffset >= 0 &&
+                    static_cast<std::size_t>(sampleOffset) < sampleData[index].size())
+                    return sampleData[index][static_cast<std::size_t>(sampleOffset)];
+            }
 
             return data[index].second;
         }
-        return fallback;
+
+        assert(false && "requested parameter ID is not present in ParamList");
+        return 0.0;
     }
 
     void set (unsigned int id, double value)

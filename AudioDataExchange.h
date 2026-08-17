@@ -2,6 +2,7 @@
 
 #include "utilities/SingularityQueue.h"
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <span>
 
@@ -99,12 +100,32 @@ inline void sendAudioDataToUI(std::span<const SampleT* const> channels, int numS
     static_cast<void>(channels);
     static_cast<void>(numSamples);
 #else
-    if (!currentSendContext.sink)
+    if (!currentSendContext.sink || channels.empty() || numSamples <= 0)
         return;
 
-    AudioDataBlock block;
-    appendInterleavedFloatData(block, currentSendContext.sampleRate, channels.data(), static_cast<int>(channels.size()), numSamples);
-    currentSendContext.sink->pushAudioDataBlock(block);
+    std::array<const SampleT*, 32> offsetChannels {};
+    const auto numChannels = std::min(channels.size(), offsetChannels.size());
+    int frameOffset = 0;
+    while (frameOffset < numSamples)
+    {
+        for (std::size_t channel = 0; channel < numChannels; ++channel)
+            offsetChannels[channel] = channels[channel]
+                ? channels[channel] + frameOffset
+                : nullptr;
+
+        AudioDataBlock block;
+        appendInterleavedFloatData(
+            block,
+            currentSendContext.sampleRate,
+            offsetChannels.data(),
+            static_cast<int>(numChannels),
+            numSamples - frameOffset);
+        if (block.numChannels == 0 || block.numSamples == 0)
+            break;
+
+        currentSendContext.sink->pushAudioDataBlock(block);
+        frameOffset += static_cast<int>(block.numSamples / block.numChannels);
+    }
 #endif
 }
 

@@ -173,7 +173,8 @@ function(singularity_create_vst3_plugin target)
             ${SINGULARITY_ROOT_DIR}/vst3/tests/Vst3ProgramDataTests.cpp
             ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
             ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
-            ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/common/memorystream.cpp)
+            ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/common/memorystream.cpp
+            ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/vst/hosting/parameterchanges.cpp)
         target_compile_features(
             ${target}_VST3_ProgramDataTests PRIVATE cxx_std_23)
         target_compile_definitions(${target}_VST3_ProgramDataTests PRIVATE
