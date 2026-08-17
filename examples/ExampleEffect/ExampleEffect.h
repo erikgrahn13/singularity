@@ -54,17 +54,17 @@ public:
                  int numSamples,
                  ParamList params)
     {
-        double volume = params.get (13);
-        // The processor seeds output parameters once per block. Reading the
-        // current value preserves the maximum across its 16-sample slices.
-        double peak = params.get (15);
+        double peak = params.getValueAtSample (15, 0);
 
         for (int s = 0; s < numSamples; ++s)
+        {
+            const double volume = params.getValueAtSample (13, s);
             for (int ch = 0; ch < (int)outputs.size(); ++ch)
             {
                 outputs[ch][s] = static_cast<SampleType>(inputs[0][s] * volume);
                 peak = std::max(peak, std::abs(static_cast<double>(outputs[ch][s])));
             }
+        }
 
         params.set (15, std::clamp(peak, 0.0, 1.0));
 

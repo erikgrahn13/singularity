@@ -185,10 +185,8 @@ public:
 		publishProcessorState();
 
 		mMidiEvents.reserve (32);
-
-		mSmoothSteps = static_cast<int> (newSetup.sampleRate * 0.005);
-		if (mSmoothSteps < 1) 
-			mSmoothSteps = 1;
+		for (auto& values : mParameterSampleValues)
+			values.resize(static_cast<std::size_t>(newSetup.maxSamplesPerBlock));
 
 		return AudioEffect::setupProcessing (newSetup);
 	}
@@ -404,78 +402,72 @@ public:
 		
 		outputs->silenceFlags = 0;
 
-		auto doProcessing = [&] (Vst::ProcessData& slice)
+		constexpr auto parameterCount =
+			std::tuple_size_v<decltype(PluginType::getParameters())>;
+		std::array<std::pair<unsigned int, double>, parameterCount> params;
+		std::array<std::span<const double>, parameterCount> parameterSamples;
+		for (std::size_t i = 0; i < mParams.size(); ++i)
 		{
-			std::array<std::pair<unsigned int, double>, std::tuple_size_v<decltype(PluginType::getParameters())>> params;
-			for (int i = 0; i < mParams.size(); ++i)
+			auto& parameter = mParams[i];
+			if (parameter.metadata.readOnly)
 			{
-				if (mParams[i].metadata.readOnly)
-				{
-					params[i] = {mParams[i].metadata.id,
-						SingularityVst3::normalizedToPlain(
-							mParams[i].metadata, mParams[i].smoothed)};
-					continue;
-				}
-				double target = mParams[i].saParam.advance (slice.numSamples);
-				if (mParams[i].metadata.type != ParamType::Float)
-				{
-					mParams[i].smoothed = target;
-					params[i] = {
-						mParams[i].saParam.getParamID(),
-						SingularityVst3::normalizedToPlain(
-							mParams[i].metadata, mParams[i].smoothed)};
-					continue;
-				}
-				if (target != mParams[i].rampTarget)
-				{
-					mParams[i].rampPerStep = (target - mParams[i].smoothed) / (double)mSmoothSteps;
-					mParams[i].rampTarget  = target;
-				}
-				if (mParams[i].rampPerStep != 0.0)
-				{
-					mParams[i].smoothed += mParams[i].rampPerStep * slice.numSamples;
-					if ((mParams[i].rampPerStep > 0.0 && mParams[i].smoothed >= mParams[i].rampTarget) ||
-					    (mParams[i].rampPerStep < 0.0 && mParams[i].smoothed <= mParams[i].rampTarget))
-					{
-						mParams[i].smoothed    = mParams[i].rampTarget;
-						mParams[i].rampPerStep = 0.0;
-					}
-				}
-				params[i] = {
-					mParams[i].saParam.getParamID(),
+				params[i] = {parameter.metadata.id,
 					SingularityVst3::normalizedToPlain(
-						mParams[i].metadata, mParams[i].smoothed)};
+						parameter.metadata, parameter.smoothed)};
+				continue;
 			}
 
-			Vst::AudioBusBuffers* outputs = slice.outputs;
-			auto outputBuffers = Vst::getChannelBuffers<SampleSize> (*outputs);
-
-			auto outputSpan = std::span<SampleT* const>(outputBuffers, outputs->numChannels);
-			if constexpr (PluginType::isInstrument)
+			if (parameter.metadata.type == ParamType::Float)
 			{
-				auto midiSpan = std::span<const MidiEvent>(mMidiEvents);
-				processInstrumentPlugin<SampleT>(outputSpan, slice.numSamples, midiSpan, ParamList{params});
+				auto& values = mParameterSampleValues[i];
+				for (int sample = 0; sample < data.numSamples; ++sample)
+				{
+					values[static_cast<std::size_t>(sample)] =
+						SingularityVst3::normalizedToPlain(
+							parameter.metadata, parameter.saParam.getValue());
+					parameter.smoothed = parameter.saParam.advance(1);
+				}
+				parameterSamples[i] = {
+					values.data(), static_cast<std::size_t>(data.numSamples)};
 			}
 			else
 			{
-				Vst::AudioBusBuffers* inputs = slice.inputs;
-				auto inputBuffers = Vst::getChannelBuffers<SampleSize> (*inputs);
-				auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
-				processEffectPlugin<SampleT>(inputSpan, outputSpan, slice.numSamples, ParamList{params});
+				parameter.smoothed = parameter.saParam.advance(data.numSamples);
 			}
+			parameter.rampTarget = parameter.smoothed;
+			parameter.rampPerStep = 0.0;
+			params[i] = {
+				parameter.saParam.getParamID(),
+				SingularityVst3::normalizedToPlain(
+					parameter.metadata, parameter.smoothed)};
+		}
 
-			for (int i = 0; i < static_cast<int>(mParams.size()); ++i)
-			{
-				if (!mParams[i].metadata.readOnly) continue;
-				mParams[i].smoothed =
-					SingularityVst3::plainToNormalized(
-						mParams[i].metadata, params[i].second);
-				mParams[i].rampTarget = mParams[i].smoothed;
-			}
-		};
+		auto outputSpan =
+			std::span<SampleT* const>(outputBuffers, outputs->numChannels);
+		ParamList parameterList{params, parameterSamples};
+		if constexpr (PluginType::isInstrument)
+		{
+			auto midiSpan = std::span<const MidiEvent>(mMidiEvents);
+			processInstrumentPlugin<SampleT>(
+				outputSpan, data.numSamples, midiSpan, parameterList);
+		}
+		else
+		{
+			Vst::AudioBusBuffers* inputs = data.inputs;
+			auto inputBuffers = Vst::getChannelBuffers<SampleSize> (*inputs);
+			auto inputSpan =
+				std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
+			processEffectPlugin<SampleT>(
+				inputSpan, outputSpan, data.numSamples, parameterList);
+		}
 
-		Vst::ProcessDataSlicer slicer (16);
-		slicer.process<SampleSize> (data, doProcessing);
+		for (std::size_t i = 0; i < mParams.size(); ++i)
+		{
+			if (!mParams[i].metadata.readOnly) continue;
+			mParams[i].smoothed = SingularityVst3::plainToNormalized(
+				mParams[i].metadata, params[i].second);
+			mParams[i].rampTarget = mParams[i].smoothed;
+		}
 	}
 
 	template<typename SampleT>
@@ -1139,6 +1131,9 @@ protected:
 	}
 
 	std::vector<Param> mParams;
+	static constexpr auto kParameterCount =
+		std::tuple_size_v<decltype(PluginType::getParameters())>;
+	std::array<std::vector<double>, kParameterCount> mParameterSampleValues;
 	std::vector<std::unique_ptr<RuntimeProgramBank>> mProgramBanks;
 	std::vector<MidiEvent> mMidiEvents;
 	std::unique_ptr<Vst::DataExchangeHandler> mDataExchange;
@@ -1151,7 +1146,6 @@ protected:
 	std::atomic_flag mPublishedProcessorStateLock = ATOMIC_FLAG_INIT;
 	PublishedProcessorState mPublishedProcessorState;
 	double mCurrentSampleRate = 0.0;
-	int mSmoothSteps = 0;
 };
 
 } // namespace Steinberg

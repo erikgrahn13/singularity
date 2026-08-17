@@ -7,6 +7,7 @@
 #include "Vst3ProgramLayout.h"
 #include "plugincids.h"
 #include "public.sdk/source/common/memorystream.h"
+#include "public.sdk/source/vst/hosting/parameterchanges.h"
 #include "public.sdk/source/vst/vstpresetfile.h"
 #include "vst3controller.h"
 #include "vst3processor.h"
@@ -606,6 +607,185 @@ public:
     }
 };
 
+class AutomationCapturePlugin
+{
+public:
+    static constexpr bool isInstrument = false;
+    static inline int processCalls = 0;
+    static inline int processedSamples = 0;
+    static inline std::array<double, 8> parameterValues {};
+
+    static auto getParameters()
+    {
+        return std::to_array<Parameter>({
+            {
+                .id = 200,
+                .name = "Automated",
+                .type = ParamType::Float,
+                .minValue = 0.0,
+                .maxValue = 1.0,
+                .defaultValue = 0.0,
+            },
+        });
+    }
+
+    void prepare(double, int) {}
+
+    template<typename SampleType>
+    void process(
+        std::span<const SampleType* const> inputs,
+        std::span<SampleType* const> outputs,
+        int numSamples,
+        ParamList params)
+    {
+        ++processCalls;
+        processedSamples = numSamples;
+        for (int sample = 0; sample < numSamples; ++sample)
+        {
+            parameterValues[static_cast<std::size_t>(sample)] =
+                params.getValueAtSample(200, sample);
+            for (std::size_t channel = 0; channel < outputs.size(); ++channel)
+                outputs[channel][sample] = inputs[channel][sample];
+        }
+    }
+};
+
+static_assert(SingularityPlugin<AutomationCapturePlugin>);
+
+void testSampleAccurateParameterDelivery()
+{
+    AutomationCapturePlugin::processCalls = 0;
+    AutomationCapturePlugin::processedSamples = 0;
+    AutomationCapturePlugin::parameterValues.fill(0.0);
+
+    VST3Processor<AutomationCapturePlugin> processor;
+    expect(
+        processor.initialize(nullptr) == kResultOk,
+        "automation processor initialization failed");
+
+    Vst::ProcessSetup setup {};
+    setup.processMode = Vst::kRealtime;
+    setup.symbolicSampleSize = Vst::kSample32;
+    setup.maxSamplesPerBlock = 8;
+    setup.sampleRate = 48000.0;
+    expect(
+        processor.setupProcessing(setup) == kResultOk,
+        "automation processor setup failed");
+
+    std::array<float, 8> leftInput {};
+    std::array<float, 8> rightInput {};
+    std::array<float, 8> leftOutput {};
+    std::array<float, 8> rightOutput {};
+    std::array<float*, 2> inputChannels {
+        leftInput.data(), rightInput.data()};
+    std::array<float*, 2> outputChannels {
+        leftOutput.data(), rightOutput.data()};
+    Vst::AudioBusBuffers inputBus {};
+    inputBus.numChannels = static_cast<int32>(inputChannels.size());
+    inputBus.channelBuffers32 = inputChannels.data();
+    Vst::AudioBusBuffers outputBus {};
+    outputBus.numChannels = static_cast<int32>(outputChannels.size());
+    outputBus.channelBuffers32 = outputChannels.data();
+
+    Vst::ParameterChanges changes(1);
+    int32 queueIndex = 0;
+    auto* queue = changes.addParameterData(200, queueIndex);
+    int32 pointIndex = 0;
+    expect(
+        queue &&
+            queue->addPoint(0, 0.0, pointIndex) == kResultTrue &&
+            queue->addPoint(7, 1.0, pointIndex) == kResultTrue,
+        "could not create sample-accurate automation ramp");
+
+    Vst::ProcessData data {};
+    data.processMode = Vst::kRealtime;
+    data.symbolicSampleSize = Vst::kSample32;
+    data.numSamples = 8;
+    data.numInputs = 1;
+    data.numOutputs = 1;
+    data.inputs = &inputBus;
+    data.outputs = &outputBus;
+    data.inputParameterChanges = &changes;
+    expect(
+        processor.process(data) == kResultOk,
+        "automation block processing failed");
+    expect(
+        AutomationCapturePlugin::processCalls == 1 &&
+            AutomationCapturePlugin::processedSamples == 8,
+        "DSP was not called exactly once with the complete host block");
+    bool rampMatchesSampleOffsets = true;
+    for (std::size_t sample = 0;
+         sample < AutomationCapturePlugin::parameterValues.size();
+         ++sample)
+    {
+        rampMatchesSampleOffsets = rampMatchesSampleOffsets &&
+            approximatelyEqual(
+                AutomationCapturePlugin::parameterValues[sample],
+                static_cast<double>(sample) / 7.0);
+    }
+    expect(
+        rampMatchesSampleOffsets,
+        "DSP did not receive the complete per-sample parameter ramp");
+
+    expect(
+        processor.terminate() == kResultOk,
+        "automation processor termination failed");
+}
+
+void testAudioDataChunking()
+{
+    using namespace Singularity::AudioDataExchange;
+
+    constexpr int frameCount = 1500;
+    std::array<float, frameCount> left {};
+    std::array<float, frameCount> right {};
+    for (int frame = 0; frame < frameCount; ++frame)
+    {
+        left[static_cast<std::size_t>(frame)] = static_cast<float>(frame);
+        right[static_cast<std::size_t>(frame)] = static_cast<float>(-frame);
+    }
+    std::array<const float*, 2> channels {left.data(), right.data()};
+
+    struct CollectingSink final : IDataSink
+    {
+        void pushAudioDataBlock(const AudioDataBlock& block) override
+        {
+            if (count < blocks.size())
+                blocks[count] = block;
+            ++count;
+        }
+
+        std::array<AudioDataBlock, 3> blocks {};
+        std::size_t count = 0;
+    } sink;
+
+    {
+        ScopedSendContext context(&sink, 48000.0);
+        sendAudioDataToUI(
+            std::span<const float* const>(channels.data(), channels.size()),
+            frameCount);
+    }
+
+    expect(
+        sink.count == 2,
+        "large UI audio payload was not split into exactly two blocks");
+    const auto& first = sink.blocks[0];
+    const auto& second = sink.blocks[1];
+    expect(
+        first.numChannels == 2 && first.numSamples == kMaxFloatSamples &&
+            second.numChannels == 2 && second.numSamples == 952,
+        "chunked UI audio blocks have incorrect sizes");
+    expect(
+        first.samples[0] == 0.0f && first.samples[1] == 0.0f &&
+            first.samples[kMaxFloatSamples - 2] == 1023.0f &&
+            first.samples[kMaxFloatSamples - 1] == -1023.0f &&
+            second.samples[0] == 1024.0f &&
+            second.samples[1] == -1024.0f &&
+            second.samples[950] == 1499.0f &&
+            second.samples[951] == -1499.0f,
+        "chunked UI audio payload lost frame continuity");
+}
+
 void testProgramLifecycle()
 {
     LifecyclePlugin::prepareCalls = 0;
@@ -862,6 +1042,8 @@ int main()
     testProgramLists(processor, controller);
     testComponentStateSchema();
     testProgramLifecycle();
+    testSampleAccurateParameterDelivery();
+    testAudioDataChunking();
 
     expect(
         controller.terminate() == kResultOk,
