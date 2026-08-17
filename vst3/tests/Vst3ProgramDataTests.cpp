@@ -713,12 +713,18 @@ void testSampleAccurateParameterDelivery()
         AutomationCapturePlugin::processCalls == 1 &&
             AutomationCapturePlugin::processedSamples == 8,
         "DSP was not called exactly once with the complete host block");
-    expect(
-        AutomationCapturePlugin::parameterValues.front() > 0.0 &&
-            AutomationCapturePlugin::parameterValues.front() <
-                AutomationCapturePlugin::parameterValues.back() &&
+    bool rampMatchesSampleOffsets = true;
+    for (std::size_t sample = 0;
+         sample < AutomationCapturePlugin::parameterValues.size();
+         ++sample)
+    {
+        rampMatchesSampleOffsets = rampMatchesSampleOffsets &&
             approximatelyEqual(
-                AutomationCapturePlugin::parameterValues.back(), 1.0),
+                AutomationCapturePlugin::parameterValues[sample],
+                static_cast<double>(sample) / 7.0);
+    }
+    expect(
+        rampMatchesSampleOffsets,
         "DSP did not receive the complete per-sample parameter ramp");
 
     expect(
@@ -740,22 +746,31 @@ void testAudioDataChunking()
     }
     std::array<const float*, 2> channels {left.data(), right.data()};
 
-    AudioDataQueue queue;
+    struct CollectingSink final : IDataSink
     {
-        ScopedSendContext context(&queue, 48000.0);
+        void pushAudioDataBlock(const AudioDataBlock& block) override
+        {
+            if (count < blocks.size())
+                blocks[count] = block;
+            ++count;
+        }
+
+        std::array<AudioDataBlock, 3> blocks {};
+        std::size_t count = 0;
+    } sink;
+
+    {
+        ScopedSendContext context(&sink, 48000.0);
         sendAudioDataToUI(
             std::span<const float* const>(channels.data(), channels.size()),
             frameCount);
     }
 
-    AudioDataBlock first;
-    AudioDataBlock second;
-    AudioDataBlock extra;
     expect(
-        queue.popAudioDataBlock(first) &&
-            queue.popAudioDataBlock(second) &&
-            !queue.popAudioDataBlock(extra),
+        sink.count == 2,
         "large UI audio payload was not split into exactly two blocks");
+    const auto& first = sink.blocks[0];
+    const auto& second = sink.blocks[1];
     expect(
         first.numChannels == 2 && first.numSamples == kMaxFloatSamples &&
             second.numChannels == 2 && second.numSamples == 952,

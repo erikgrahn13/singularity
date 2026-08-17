@@ -422,10 +422,10 @@ public:
 				auto& values = mParameterSampleValues[i];
 				for (int sample = 0; sample < data.numSamples; ++sample)
 				{
-					parameter.smoothed = parameter.saParam.advance(1);
 					values[static_cast<std::size_t>(sample)] =
 						SingularityVst3::normalizedToPlain(
-							parameter.metadata, parameter.smoothed);
+							parameter.metadata, parameter.saParam.getValue());
+					parameter.smoothed = parameter.saParam.advance(1);
 				}
 				parameterSamples[i] = {
 					values.data(), static_cast<std::size_t>(data.numSamples)};
