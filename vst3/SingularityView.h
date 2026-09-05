@@ -2,9 +2,9 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "SingularityController.h"
-#include "../platform/IWindow.h"
 #include PLUGIN_CLASS_HEADER
 #include <memory>
+#include <QQuickView>
 
 namespace Steinberg {
 
@@ -37,7 +37,7 @@ protected:
 #if defined(__linux__)
     // Linux::IEventHandler
     void PLUGIN_API onFDIsSet(Linux::FileDescriptor fd) override {
-        window_->processEvents();
+        // window_->processEvents();
     }
     // Linux::ITimerHandler
     void PLUGIN_API onTimer() override {
@@ -47,7 +47,8 @@ protected:
 
 private:
     // std::unique_ptr<visage::ApplicationWindow> app_;
-    std::unique_ptr<IWindow> window_;
+    std::unique_ptr<QQuickView> view_;
+    std::unique_ptr<QWindow> parentWindow_;
     std::unique_ptr<SingularityController>     controller_;
     // visage::EventTimer                         hotReloadtimer;
 };

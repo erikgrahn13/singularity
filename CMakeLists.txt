@@ -15,7 +15,7 @@ set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
 project(Singularity LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-include(SingularityPlugin)
+include(SingularityPlugin2)
 
 option(SINGULARITY_BUILD_EXAMPLES "Build the bundled example projects" OFF)
 option(SINGULARITY_BUILD_TESTS "Build Singularity adapter tests" OFF)

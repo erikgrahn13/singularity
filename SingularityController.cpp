@@ -1,72 +1,116 @@
 #include "SingularityController.h"
+
 #include <iostream>
 
-SingularityController::SingularityController(IParameterProvider &parameterProvider, std::string_view resourcePath, Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
-: parameterProvider_(parameterProvider)
-{
-    renderer_ = IRenderer::createRenderer(resourcePath);
-    jsEngine_ = IJSEngine::createJSEngine(parameterProvider_, audioDataQueue);
+#include <QCoreApplication>
+#include <QDebug>
+#include <QEventLoop>
+#include <QFileInfo>
+#include <QQmlEngine>
+#include <QUrl>
 
-#ifndef NDEBUG
-    fileWatcher_ = IFileWatcher::createFileWatcher(UI_DIR);
-    widgetsWatcher_ = IFileWatcher::createFileWatcher(SINGULARITY_WIDGETS_DIR);
-    fprintf(stderr, "[singularity] Watching: %s\n", UI_DIR);
+SingularityController::SingularityController(
+    IParameterProvider& parameterProvider,
+    std::string_view resourcePath,
+    Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
+    : parameterProvider_(parameterProvider)
+{
+#if defined(SINGULARITY_QML_SOURCE_FILE)
+    qmlFile_ = QFileInfo(
+        QStringLiteral(SINGULARITY_QML_SOURCE_FILE)).absoluteFilePath();
+    qmlWatcher_.addPath(qmlFile_);
+    qmlWatcher_.addPath(QFileInfo(qmlFile_).absolutePath());
+
+    reloadTimer_.setInterval(100);
+    reloadTimer_.setSingleShot(true);
+
+    QObject::connect(
+        &qmlWatcher_,
+        &QFileSystemWatcher::fileChanged,
+        &reloadTimer_,
+        [this](const QString&) { reloadTimer_.start(); });
+    QObject::connect(
+        &qmlWatcher_,
+        &QFileSystemWatcher::directoryChanged,
+        &reloadTimer_,
+        [this](const QString&) { reloadTimer_.start(); });
+    QObject::connect(
+        &reloadTimer_,
+        &QTimer::timeout,
+        &qmlWatcher_,
+        [this]()
+        {
+            if (QFileInfo::exists(qmlFile_) &&
+                !qmlWatcher_.files().contains(qmlFile_))
+                qmlWatcher_.addPath(qmlFile_);
+
+            if (!view_)
+                return;
+
+            const auto qmlUrl = QUrl::fromLocalFile(qmlFile_);
+            view_->setSource({});
+            view_->engine()->clearComponentCache();
+            view_->setSource(qmlUrl);
+
+            if (logger_)
+                logger_("Loaded " + qmlUrl.toString().toStdString());
+        });
 #endif
 }
 
-void SingularityController::setLogger(IJSEngine::LogCallback cb)
+SingularityController::~SingularityController()
 {
-    jsEngine_->setLogger(std::move(cb));
+    detachView();
 }
 
-void SingularityController::initialize()
+void SingularityController::setLogger(LogCallback callback)
 {
-#ifndef NDEBUG
-    fileWatcher_->setCallback([this](const std::string& filePath) {
-        std::cout << "File changed" << std::endl;
-        reloadPending_ = true;
-    });
-    widgetsWatcher_->setCallback([this](const std::string& filePath) {
-        std::cout << "Widget changed: " << filePath << std::endl;
-        reloadPending_ = true;
-    });
-#endif
-    jsEngine_->load(UI_MAIN, renderer_.get());
+    logger_ = std::move(callback);
 }
 
 void SingularityController::tick()
 {
-#ifndef NDEBUG
-    if (reloadPending_.exchange(false)) {
-        reload();
-        dirty_ = true;
-    }
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+}
+
+void SingularityController::registerImage(
+    const std::string& name,
+    const uint8_t* data,
+    int size)
+{
+}
+
+void SingularityController::attachToView(QQuickView& view)
+{
+    detachView();
+    view_ = &view;
+
+    view.setResizeMode(QQuickView::SizeViewToRootObject);
+    view.setTitle(QStringLiteral("Hello World"));
+
+    statusConnection_ = QObject::connect(
+        &view,
+        &QQuickView::statusChanged,
+        &view,
+        [&view](QQuickView::Status status)
+        {
+            if (status != QQuickView::Error)
+                return;
+
+            for (const auto& error : view.errors())
+                qWarning().noquote() << error.toString();
+        });
+
+#if defined(SINGULARITY_QML_SOURCE_FILE)
+    view.setSource(QUrl::fromLocalFile(qmlFile_));
+#else
+    view.loadFromModule(SINGULARITY_QML_MODULE_URI, "Main");
 #endif
-
-    // Periodic redraw to pick up host-automated parameter changes.
-    // Every ~20 frames (~3Hz at 60fps) we force a redraw.
-    if (++frameCounter_ >= 20) {
-        frameCounter_ = 0;
-        dirty_ = true;
-    }
-
-    bool shouldDraw = dirty_.exchange(false) || jsEngine_->wantsAnimatedRedraw();
-    if (!shouldDraw) return;
-
-    renderer_->beginFrame();
-    if (!renderer_->currentCanvas()) return;
-    jsEngine_->draw();
-    renderer_->present();
 }
 
-void SingularityController::reload()
+void SingularityController::detachView()
 {
-    std::cout << "Reload called" << std::endl;
-    renderer_->clearImageCache();
-    jsEngine_->load(UI_MAIN, renderer_.get());
-}
-
-void SingularityController::registerImage(const std::string& name, const uint8_t* data, int size)
-{
-    renderer_->registerImage(name, data, size);
+    QObject::disconnect(statusConnection_);
+    statusConnection_ = {};
+    view_.clear();
 }

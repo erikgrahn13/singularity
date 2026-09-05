@@ -5,8 +5,8 @@ include_guard(GLOBAL)
 option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
 option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" OFF)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
-option(JS_HOT_RELOAD "Watch and hot-reload JS scripts at runtime" ON)
-option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
+# option(JS_HOT_RELOAD "Watch and hot-reload JS scripts at runtime" ON)
+# option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
 
 FetchContent_Declare(
     vst3sdk
@@ -26,31 +26,31 @@ smtg_enable_vst3_sdk()
 # smtg_configure_cmake_generator() sets CMAKE_CONFIGURATION_TYPES in its own
 # directory scope. Promote it so consumers using Singularity via FetchContent
 # can also create correctly structured Windows VST3 bundles.
-if(WIN32)
-    set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
-endif()
+# if(WIN32)
+#     set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
+# endif()
 
 # The SDK's threadchecker_mac.mm uses std::terminate() without including
 # <exception>. Newer Xcode/macOS SDKs no longer provide it transitively.
-if(APPLE AND TARGET sdk_common)
-    target_compile_options(sdk_common PRIVATE "-include" "exception")
-endif()
+# if(APPLE AND TARGET sdk_common)
+#     target_compile_options(sdk_common PRIVATE "-include" "exception")
+# endif()
 
-set(SINGULARITY_VST3SDK_SOURCE_DIR "${vst3sdk_SOURCE_DIR}" CACHE INTERNAL "" FORCE)
-set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
+# set(SINGULARITY_VST3SDK_SOURCE_DIR "${vst3sdk_SOURCE_DIR}" CACHE INTERNAL "" FORCE)
+# set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
 
-if(WIN32 AND MSVC)
-    # SMTG_PlatformToolset adds /MTd in Debug. Override it to match the
-    # prebuilt Skia library, which always uses the static release runtime.
-    foreach(_target IN ITEMS
-            sdk base pluginterfaces sdk_common sdk_hosting moduleinfotool
-            validator editorhost audiohost)
-        if(TARGET ${_target})
-            target_compile_options(${_target} PRIVATE $<$<CONFIG:Debug>:/MT>)
-        endif()
-    endforeach()
-    add_compile_options($<$<CONFIG:Debug>:/MT>)
-endif()
+# if(WIN32 AND MSVC)
+#     # SMTG_PlatformToolset adds /MTd in Debug. Override it to match the
+#     # prebuilt Skia library, which always uses the static release runtime.
+#     foreach(_target IN ITEMS
+#             sdk base pluginterfaces sdk_common sdk_hosting moduleinfotool
+#             validator editorhost audiohost)
+#         if(TARGET ${_target})
+#             target_compile_options(${_target} PRIVATE $<$<CONFIG:Debug>:/MT>)
+#         endif()
+#     endforeach()
+#     add_compile_options($<$<CONFIG:Debug>:/MT>)
+# endif()
 
 function(singularity_create_vst3_plugin target)
     set(oneValueArgs
@@ -89,11 +89,11 @@ function(singularity_create_vst3_plugin target)
 
     configure_file(
         "${SINGULARITY_ROOT_DIR}/vst3/vst3plugincids.h.in"
-        "${VST3_BINARY_DIR}/plugincids.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/plugincids.h"
     )
 
-    set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
-    set(SMTG_CUSTOM_BINARY_LOCATION ${VST3_BINARY_DIR}/out)
+    # set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
+    # set(SMTG_CUSTOM_BINARY_LOCATION ${VST3_BINARY_DIR}/out)
 
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
@@ -155,43 +155,45 @@ function(singularity_create_vst3_plugin target)
         VENDOR="${VST3_VENDOR}"
         URL="${VST3_URL}"
         EMAIL="${VST3_EMAIL}"
-        PLUGIN_CLASS=${VST3_PLUGIN_CLASS}
-        PLUGIN_CLASS_HEADER="${VST3_PLUGIN_CLASS_HEADER}"
+        PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
+        PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
+        PLUGIN_NAME="${VST3_PLUGIN_TITLE}"
     )
 
-    target_link_libraries(${target}_VST3 PRIVATE sdk ${VST3_BASE_TARGET})
+    target_link_libraries(${target}_VST3 PRIVATE sdk ${target})
 
     target_include_directories(${target}_VST3 PRIVATE
-        ${SINGULARITY_ROOT_DIR}/platform
+        # ${SINGULARITY_ROOT_DIR}/platform
         ${SINGULARITY_ROOT_DIR}
-        ${VST3_BINARY_DIR}
-        ${VST3_SOURCE_DIR}
+        # ${VST3_BINARY_DIR}
+        # ${VST3_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    if(SINGULARITY_BUILD_TESTS)
-        add_executable(${target}_VST3_ProgramDataTests
-            ${SINGULARITY_ROOT_DIR}/vst3/tests/Vst3ProgramDataTests.cpp
-            ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
-            ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
-            ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/common/memorystream.cpp
-            ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/vst/hosting/parameterchanges.cpp)
-        target_compile_features(
-            ${target}_VST3_ProgramDataTests PRIVATE cxx_std_23)
-        target_compile_definitions(${target}_VST3_ProgramDataTests PRIVATE
-            PLUGIN_CLASS=${VST3_PLUGIN_CLASS}
-            PLUGIN_CLASS_HEADER="${VST3_PLUGIN_CLASS_HEADER}")
-        target_include_directories(${target}_VST3_ProgramDataTests PRIVATE
-            ${SINGULARITY_ROOT_DIR}/platform
-            ${SINGULARITY_ROOT_DIR}
-            ${SINGULARITY_ROOT_DIR}/vst3
-            ${VST3_BINARY_DIR}
-            ${VST3_SOURCE_DIR})
-        target_link_libraries(${target}_VST3_ProgramDataTests
-            PRIVATE sdk ${VST3_BASE_TARGET})
-        add_test(
-            NAME ${target}_VST3_ProgramDataTests
-            COMMAND ${target}_VST3_ProgramDataTests)
-    endif()
+    # if(SINGULARITY_BUILD_TESTS)
+    #     add_executable(${target}_VST3_ProgramDataTests
+    #         ${SINGULARITY_ROOT_DIR}/vst3/tests/Vst3ProgramDataTests.cpp
+    #         ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
+    #         ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
+    #         ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/common/memorystream.cpp
+    #         ${SINGULARITY_VST3_PUBLIC_SDK_DIR}/source/vst/hosting/parameterchanges.cpp)
+    #     target_compile_features(
+    #         ${target}_VST3_ProgramDataTests PRIVATE cxx_std_23)
+    #     target_compile_definitions(${target}_VST3_ProgramDataTests PRIVATE
+    #         PLUGIN_CLASS=${VST3_PLUGIN_CLASS}
+    #         PLUGIN_CLASS_HEADER="${VST3_PLUGIN_CLASS_HEADER}")
+    #     target_include_directories(${target}_VST3_ProgramDataTests PRIVATE
+    #         ${SINGULARITY_ROOT_DIR}/platform
+    #         ${SINGULARITY_ROOT_DIR}
+    #         ${SINGULARITY_ROOT_DIR}/vst3
+    #         ${VST3_BINARY_DIR}
+    #         ${VST3_SOURCE_DIR})
+    #     target_link_libraries(${target}_VST3_ProgramDataTests
+    #         PRIVATE sdk ${VST3_BASE_TARGET})
+    #     add_test(
+    #         NAME ${target}_VST3_ProgramDataTests
+    #         COMMAND ${target}_VST3_ProgramDataTests)
+    # endif()
 
     smtg_target_configure_version_file(${target}_VST3)
 
@@ -207,93 +209,93 @@ function(singularity_create_vst3_plugin target)
     endif()
 endfunction()
 
-function(singularity_configure_vst3 target)
-    set(oneValueArgs SNAPSHOT SNAPSHOT_2X)
-    set(multiValueArgs SUBCATEGORIES)
-    cmake_parse_arguments(VST3_CONFIG
-        "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+# function(singularity_configure_vst3 target)
+#     set(oneValueArgs SNAPSHOT SNAPSHOT_2X)
+#     set(multiValueArgs SUBCATEGORIES)
+#     cmake_parse_arguments(VST3_CONFIG
+#         "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(VST3_CONFIG_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR
-            "[singularity] Unknown VST3 configuration for '${target}': "
-            "${VST3_CONFIG_UNPARSED_ARGUMENTS}")
-    endif()
+#     if(VST3_CONFIG_UNPARSED_ARGUMENTS)
+#         message(FATAL_ERROR
+#             "[singularity] Unknown VST3 configuration for '${target}': "
+#             "${VST3_CONFIG_UNPARSED_ARGUMENTS}")
+#     endif()
 
-    if(VST3_CONFIG_KEYWORDS_MISSING_VALUES)
-        message(FATAL_ERROR
-            "[singularity] Missing value for VST3 configuration: "
-            "${VST3_CONFIG_KEYWORDS_MISSING_VALUES}")
-    endif()
+#     if(VST3_CONFIG_KEYWORDS_MISSING_VALUES)
+#         message(FATAL_ERROR
+#             "[singularity] Missing value for VST3 configuration: "
+#             "${VST3_CONFIG_KEYWORDS_MISSING_VALUES}")
+#     endif()
 
-    if(NOT TARGET ${target}_VST3)
-        message(FATAL_ERROR
-            "[singularity] Target '${target}' was not created with FORMATS VST3.")
-    endif()
+#     if(NOT TARGET ${target}_VST3)
+#         message(FATAL_ERROR
+#             "[singularity] Target '${target}' was not created with FORMATS VST3.")
+#     endif()
 
-    get_target_property(_is_singularity_vst3_plugin
-        ${target}_VST3 SINGULARITY_VST3_PLUGIN)
-    if(NOT _is_singularity_vst3_plugin)
-        message(FATAL_ERROR
-            "[singularity] Target '${target}_VST3' is not a Singularity VST3 target.")
-    endif()
+#     get_target_property(_is_singularity_vst3_plugin
+#         ${target}_VST3 SINGULARITY_VST3_PLUGIN)
+#     if(NOT _is_singularity_vst3_plugin)
+#         message(FATAL_ERROR
+#             "[singularity] Target '${target}_VST3' is not a Singularity VST3 target.")
+#     endif()
 
-    if(NOT VST3_CONFIG_SUBCATEGORIES
-            AND NOT VST3_CONFIG_SNAPSHOT
-            AND NOT VST3_CONFIG_SNAPSHOT_2X)
-        message(FATAL_ERROR
-            "[singularity] No VST3 configuration provided for '${target}'.")
-    endif()
+#     if(NOT VST3_CONFIG_SUBCATEGORIES
+#             AND NOT VST3_CONFIG_SNAPSHOT
+#             AND NOT VST3_CONFIG_SNAPSHOT_2X)
+#         message(FATAL_ERROR
+#             "[singularity] No VST3 configuration provided for '${target}'.")
+#     endif()
 
-    if(VST3_CONFIG_SNAPSHOT OR VST3_CONFIG_SNAPSHOT_2X)
-        get_target_property(_processor_uid
-            ${target}_VST3 SINGULARITY_VST3_PROCESSOR_UID)
-        set(_snapshot_files)
+#     if(VST3_CONFIG_SNAPSHOT OR VST3_CONFIG_SNAPSHOT_2X)
+#         get_target_property(_processor_uid
+#             ${target}_VST3 SINGULARITY_VST3_PROCESSOR_UID)
+#         set(_snapshot_files)
 
-        if(VST3_CONFIG_SNAPSHOT)
-            set(_snapshot
-                "${CMAKE_CURRENT_BINARY_DIR}/${_processor_uid}_snapshot.png")
-            configure_file("${VST3_CONFIG_SNAPSHOT}" "${_snapshot}" COPYONLY)
-            list(APPEND _snapshot_files "${_snapshot}")
-        endif()
+#         if(VST3_CONFIG_SNAPSHOT)
+#             set(_snapshot
+#                 "${CMAKE_CURRENT_BINARY_DIR}/${_processor_uid}_snapshot.png")
+#             configure_file("${VST3_CONFIG_SNAPSHOT}" "${_snapshot}" COPYONLY)
+#             list(APPEND _snapshot_files "${_snapshot}")
+#         endif()
 
-        if(VST3_CONFIG_SNAPSHOT_2X)
-            set(_snapshot_2x
-                "${CMAKE_CURRENT_BINARY_DIR}/${_processor_uid}_snapshot_2.0x.png")
-            configure_file("${VST3_CONFIG_SNAPSHOT_2X}" "${_snapshot_2x}" COPYONLY)
-            list(APPEND _snapshot_files "${_snapshot_2x}")
-        endif()
+#         if(VST3_CONFIG_SNAPSHOT_2X)
+#             set(_snapshot_2x
+#                 "${CMAKE_CURRENT_BINARY_DIR}/${_processor_uid}_snapshot_2.0x.png")
+#             configure_file("${VST3_CONFIG_SNAPSHOT_2X}" "${_snapshot_2x}" COPYONLY)
+#             list(APPEND _snapshot_files "${_snapshot_2x}")
+#         endif()
 
-        smtg_target_add_plugin_snapshots(${target}_VST3
-            RESOURCES ${_snapshot_files})
-    endif()
+#         smtg_target_add_plugin_snapshots(${target}_VST3
+#             RESOURCES ${_snapshot_files})
+#     endif()
 
-    if(NOT VST3_CONFIG_SUBCATEGORIES)
-        return()
-    endif()
+#     if(NOT VST3_CONFIG_SUBCATEGORIES)
+#         return()
+#     endif()
 
-    foreach(_subcategory IN LISTS VST3_CONFIG_SUBCATEGORIES)
-        if(_subcategory MATCHES "\\|")
-            message(FATAL_ERROR
-                "[singularity] Pass VST3 SUBCATEGORIES as a CMake list, without '|'.")
-        endif()
-    endforeach()
+#     foreach(_subcategory IN LISTS VST3_CONFIG_SUBCATEGORIES)
+#         if(_subcategory MATCHES "\\|")
+#             message(FATAL_ERROR
+#                 "[singularity] Pass VST3 SUBCATEGORIES as a CMake list, without '|'.")
+#         endif()
+#     endforeach()
 
-    list(JOIN VST3_CONFIG_SUBCATEGORIES "|" _subcategories)
-    string(LENGTH "${_subcategories}" _subcategories_length)
-    if(_subcategories_length GREATER 116)
-        message(FATAL_ERROR
-            "[singularity] VST3 SUBCATEGORIES for '${target}' are too long.")
-    endif()
+#     list(JOIN VST3_CONFIG_SUBCATEGORIES "|" _subcategories)
+#     string(LENGTH "${_subcategories}" _subcategories_length)
+#     if(_subcategories_length GREATER 116)
+#         message(FATAL_ERROR
+#             "[singularity] VST3 SUBCATEGORIES for '${target}' are too long.")
+#     endif()
 
-    get_target_property(_existing_subcategories
-        ${target}_VST3 SINGULARITY_VST3_SUBCATEGORIES)
-    if(_existing_subcategories)
-        message(FATAL_ERROR
-            "[singularity] VST3 SUBCATEGORIES for '${target}' were already configured.")
-    endif()
+#     get_target_property(_existing_subcategories
+#         ${target}_VST3 SINGULARITY_VST3_SUBCATEGORIES)
+#     if(_existing_subcategories)
+#         message(FATAL_ERROR
+#             "[singularity] VST3 SUBCATEGORIES for '${target}' were already configured.")
+#     endif()
 
-    set_property(TARGET ${target}_VST3
-        PROPERTY SINGULARITY_VST3_SUBCATEGORIES "${_subcategories}")
-    target_compile_definitions(${target}_VST3 PRIVATE
-        "SINGULARITY_VST3_SUBCATEGORIES=\"${_subcategories}\"")
-endfunction()
+#     set_property(TARGET ${target}_VST3
+#         PROPERTY SINGULARITY_VST3_SUBCATEGORIES "${_subcategories}")
+#     target_compile_definitions(${target}_VST3 PRIVATE
+#         "SINGULARITY_VST3_SUBCATEGORIES=\"${_subcategories}\"")
+# endfunction()
