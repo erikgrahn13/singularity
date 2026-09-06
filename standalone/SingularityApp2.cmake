@@ -58,6 +58,8 @@ function(singularity_create_app_plugin target)
             ${SINGULARITY_ROOT_DIR}/standalone/ASIO.cpp
             ${SINGULARITY_ROOT_DIR}/standalone/WASAPI.cpp
         )
+        
+        target_compile_definitions(${target}_APP PRIVATE NOMINMAX)
         target_link_libraries(${target}_APP PRIVATE asio)
     endif()
 endfunction()
