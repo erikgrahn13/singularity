@@ -60,6 +60,6 @@ function(singularity_create_app_plugin target)
         )
         
         target_compile_definitions(${target}_APP PRIVATE NOMINMAX)
-        target_link_libraries(${target}_APP PRIVATE asio)
+        target_link_libraries(${target}_APP PRIVATE asio avrt ole32 uuid)
     endif()
 endfunction()
