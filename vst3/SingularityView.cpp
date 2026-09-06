@@ -1,64 +1,61 @@
 #include "SingularityView.h"
 #include "vst3controller.h"
-#include "base/source/fdebug.h"
-#include <filesystem>
+
+#include <QCoreApplication>
+#include <QEventLoop>
 #include <QGuiApplication>
 
-#if defined(_WIN32)
-#  include <windows.h>
-#else
-#  include <dlfcn.h>
+#if defined(__linux__)
+#  include <xcb/xcb.h>
 #endif
+
+namespace {
+
+void ensureQtApplication()
+{
+    if (QCoreApplication::instance())
+        return;
+
+    QCoreApplication::setAttribute(Qt::AA_PluginApplication);
+
+#if defined(__linux__)
+    static int argc = 3;
+    static char applicationName[] = "singularity-vst3";
+    static char platformOption[] = "-platform";
+    static char platformName[] = "xcb";
+    static char* argv[] = {
+        applicationName,
+        platformOption,
+        platformName,
+        nullptr
+    };
+#else
+    static int argc = 1;
+    static char applicationName[] = "singularity-vst3";
+    static char* argv[] = {applicationName, nullptr};
+#endif
+
+    static QGuiApplication application(argc, argv);
+    application.setQuitOnLastWindowClosed(false);
+}
+
+} // namespace
 
 namespace Steinberg {
 
 SingularityView::SingularityView(Vst::EditController* editController)
     : Vst::EditorView(editController)
 {
-//     static int anchor;
-
-// #if defined(_WIN32)
-//     HMODULE hModule = NULL;
-//     GetModuleHandleExW(
-//         GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-//         reinterpret_cast<LPCWSTR>(&anchor),
-//         &hModule);
-//     wchar_t modulePath[MAX_PATH];
-//     GetModuleFileNameW(hModule, modulePath, MAX_PATH);
-//     std::filesystem::path dllPath(modulePath);
-// #else
-//     Dl_info info;
-//     dladdr(&anchor, &info);
-//     std::filesystem::path dllPath(info.dli_fname);
-// #endif
-
-//     std::filesystem::path resourcePath = dllPath.parent_path().parent_path() / "Resources";
-
-    if (!QCoreApplication::instance())
-    {
-        static int argc = 1;
-        static char name[] = "";
-        static char* argv[] = {name, nullptr};
-
-        QCoreApplication::setAttribute(Qt::AA_PluginApplication);
-
-        static QGuiApplication application(argc, argv);
-        application.setQuitOnLastWindowClosed(false);
-    }
+    ensureQtApplication();
 
     auto* vstController = static_cast<VST3Controller*>(editController);
     auto& params = static_cast<IParameterProvider&>(*vstController);
-    controller_ = std::make_unique<SingularityController>(params, "", &vstController->audioDataQueue());
-
-    controller_->setLogger([](const std::string& msg) {
-        SMTG_DBPRT1("%s\n", msg.c_str());
-        fprintf(stderr, "[singularity] %s\n", msg.c_str());
-        fflush(stderr);
-    });
+    controller_ = std::make_unique<SingularityController>(
+        params,
+        "",
+        &vstController->audioDataQueue());
 
     view_ = std::make_unique<QQuickView>();
-    view_->setResizeMode(QQuickView::SizeRootObjectToView);
-
     QObject::connect(
         view_.get(),
         &QQuickView::statusChanged,
@@ -73,98 +70,143 @@ SingularityView::SingularityView(Vst::EditController* editController)
                 return;
 
             ViewRect requested {
-                0, 0,
+                0,
+                0,
                 static_cast<int32>(size.width()),
                 static_cast<int32>(size.height())
             };
-
             plugFrame->resizeView(this, &requested);
         });
 
     controller_->attachToView(*view_);
 
     const QSize size = view_->initialSize();
-    setRect({0, 0, static_cast<int32>(size.width()), static_cast<int32>(size.height())});
-}
-
-SingularityView::~SingularityView()
-{
-    controller_.reset();
+    setRect({
+        0,
+        0,
+        static_cast<int32>(size.width()),
+        static_cast<int32>(size.height())
+    });
 }
 
 tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)
 {
-#if _WIN32
-    if (strcmp(type, kPlatformTypeHWND) == 0) return kResultTrue;
-#elif __APPLE__
-    if (strcmp(type, kPlatformTypeNSView) == 0) return kResultTrue;
+#if defined(_WIN32)
+    if (strcmp(type, kPlatformTypeHWND) == 0)
+        return kResultTrue;
+#elif defined(__APPLE__)
+    if (strcmp(type, kPlatformTypeNSView) == 0)
+        return kResultTrue;
 #else
-    if (strcmp(type, kPlatformTypeX11EmbedWindowID) == 0) return kResultTrue;
+    if (strcmp(type, kPlatformTypeX11EmbedWindowID) == 0)
+        return kResultTrue;
 #endif
     return kResultFalse;
 }
 
 void SingularityView::attachedToParent()
 {
-//     auto width = controller_->width();
-//     auto height = controller_->height();
-//     // window_ = IWindow::createWindow(width, height, systemWindow);
-//     controller_->attachToWindow(*window_);
-//     // Set up the frame callback. On macOS in embedded mode, setting onFrame
-//     // automatically starts a CADisplayLink. On Linux, the host's IRunLoop
-//     // timer drives tick() via onTimer().
-//     window_->setOnFrame([this]() { controller_->tick(); });
+#if defined(__linux__)
+    if (plugFrame)
+    {
+        Linux::IRunLoop* runLoop = nullptr;
+        if (plugFrame->queryInterface(
+                Linux::IRunLoop::iid,
+                reinterpret_cast<void**>(&runLoop)) == kResultOk &&
+            runLoop)
+        {
+            if (auto* x11Application =
+                    qGuiApp->nativeInterface<QNativeInterface::QX11Application>())
+            {
+                qtXcbFd_ = xcb_get_file_descriptor(x11Application->connection());
+                if (qtXcbFd_ >= 0)
+                {
+                    eventHandlerRegistered_ =
+                        runLoop->registerEventHandler(this, qtXcbFd_) == kResultOk;
+                }
+            }
 
-// #if defined(__linux__)
-//     if (plugFrame && window_) {
-//         Linux::IRunLoop* runLoop = nullptr;
-//         if (plugFrame->queryInterface(Linux::IRunLoop::iid, (void**)&runLoop) == kResultOk && runLoop) {
-//             runLoop->registerEventHandler(this, window_->fd());
-//             runLoop->registerTimer(this, 1000 / window_->refreshRate());
-//             runLoop->release();
-//         }
-//     }
-// #endif
+            timerRegistered_ = runLoop->registerTimer(this, 16) == kResultOk;
+            runLoop->release();
+        }
+    }
+#endif
 
     parentWindow_.reset(
         QWindow::fromWinId(reinterpret_cast<WId>(systemWindow)));
+    if (!parentWindow_)
+        return;
 
     view_->setParent(parentWindow_.get());
+    view_->setGeometry(
+        0,
+        0,
+        rect.right - rect.left,
+        rect.bottom - rect.top);
     view_->show();
 
-    Vst::EditorView::attachedToParent(); // notifies EditController
+    Vst::EditorView::attachedToParent();
 }
 
 void SingularityView::removedFromParent()
 {
-// #if defined(__linux__)
-//     if (plugFrame && window_) {
-//         Linux::IRunLoop* runLoop = nullptr;
-//         if (plugFrame->queryInterface(Linux::IRunLoop::iid, (void**)&runLoop) == kResultOk && runLoop) {
-//             runLoop->unregisterTimer(this);
-//             runLoop->unregisterEventHandler(this);
-//             runLoop->release();
-//         }
-//     }
-// #endif
+#if defined(__linux__)
+    if (plugFrame)
+    {
+        Linux::IRunLoop* runLoop = nullptr;
+        if (plugFrame->queryInterface(
+                Linux::IRunLoop::iid,
+                reinterpret_cast<void**>(&runLoop)) == kResultOk &&
+            runLoop)
+        {
+            if (eventHandlerRegistered_)
+                runLoop->unregisterEventHandler(this);
+            if (timerRegistered_)
+                runLoop->unregisterTimer(this);
+            runLoop->release();
+        }
+    }
+
+    eventHandlerRegistered_ = false;
+    timerRegistered_ = false;
+    qtXcbFd_ = -1;
+#endif
 
     view_->hide();
     view_->setParent(nullptr);
     parentWindow_.reset();
 
-    Vst::EditorView::removedFromParent(); // notifies EditController
+    Vst::EditorView::removedFromParent();
 }
+
+#if defined(__linux__)
+void PLUGIN_API SingularityView::onFDIsSet(Linux::FileDescriptor fd)
+{
+    if (fd == qtXcbFd_)
+        QCoreApplication::processEvents(QEventLoop::AllEvents);
+}
+
+void PLUGIN_API SingularityView::onTimer()
+{
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+}
+#endif
 
 tresult PLUGIN_API SingularityView::onSize(ViewRect* newSize)
 {
-    tresult res = CPluginView::onSize(newSize);
-    if (res == kResultTrue && view_)
+    if (!newSize)
+        return kInvalidArgument;
+
+    const tresult result = CPluginView::onSize(newSize);
+    if (result == kResultTrue && view_)
     {
-        view_->resize(
+        view_->setGeometry(
+            0,
+            0,
             newSize->right - newSize->left,
             newSize->bottom - newSize->top);
     }
-    return res;
+    return result;
 }
 
 } // namespace Steinberg

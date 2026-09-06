@@ -162,6 +162,12 @@ function(singularity_create_vst3_plugin target)
 
     target_link_libraries(${target}_VST3 PRIVATE sdk ${target})
 
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
+        target_link_libraries(${target}_VST3 PRIVATE PkgConfig::XCB)
+    endif()
+
     target_include_directories(${target}_VST3 PRIVATE
         # ${SINGULARITY_ROOT_DIR}/platform
         ${SINGULARITY_ROOT_DIR}
