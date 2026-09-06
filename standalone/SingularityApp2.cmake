@@ -13,7 +13,6 @@ function(singularity_create_app_plugin target)
 
     target_include_directories(${target}_APP PRIVATE
         ${SINGULARITY_ROOT_DIR}
-        ${SINGULARITY_ROOT_DIR}/standalone
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
