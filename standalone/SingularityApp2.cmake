@@ -35,6 +35,30 @@ function(singularity_create_app_plugin target)
             "-framework AudioToolbox"
         )
         set_target_properties(${target}_APP PROPERTIES MACOSX_BUNDLE TRUE)
+    elseif(WIN32)
+        FetchContent_Declare(
+            asiosdk
+            URL https://www.steinberg.net/asiosdk
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
 
+        FetchContent_MakeAvailable(asiosdk)
+
+        add_library(asio STATIC
+            ${asiosdk_SOURCE_DIR}/common/asio.cpp
+            ${asiosdk_SOURCE_DIR}/host/asiodrivers.cpp
+            ${asiosdk_SOURCE_DIR}/host/pc/asiolist.cpp
+        )
+        target_include_directories(asio PUBLIC
+            ${asiosdk_SOURCE_DIR}/common
+            ${asiosdk_SOURCE_DIR}/host
+            ${asiosdk_SOURCE_DIR}/host/pc
+        )
+
+        target_sources(${target}_APP PRIVATE
+            ${SINGULARITY_ROOT_DIR}/standalone/ASIO.cpp
+            ${SINGULARITY_ROOT_DIR}/standalone/WASAPI.cpp
+        )
+        target_link_libraries(${target}_APP PRIVATE asio)
     endif()
 endfunction()
