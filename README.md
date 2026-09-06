@@ -40,7 +40,16 @@ Important directories:
 - CMake 3.22 or newer
 - A C++23-capable compiler
 - Ninja (recommended)
+- Qt 6.7 or newer with QML and Qt Quick
 - Network access during the first configure to fetch QuickJS, Skia, CHOC, dmon, and the VST3 SDK
+
+On macOS, install the Qt and QML dependencies with Homebrew:
+
+```sh
+brew install qtdeclarative
+```
+
+This provides QML, Qt Quick, Controls, and Layouts, and installs Qt Base automatically.
 
 Linux also requires X11, libportal, PipeWire, FreeType, and Fontconfig development packages. On Ubuntu/Debian:
 

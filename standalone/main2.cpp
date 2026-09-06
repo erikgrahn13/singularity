@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
     });
 
     QQuickView view;
+    view.setResizeMode(QQuickView::SizeViewToRootObject);
     controller->attachToView(view);
     view.show();
     view.requestActivate();

@@ -93,7 +93,7 @@ function(singularity_create_vst3_plugin target)
     )
 
     # set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
-    # set(SMTG_CUSTOM_BINARY_LOCATION ${VST3_BINARY_DIR}/out)
+    set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
 
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"

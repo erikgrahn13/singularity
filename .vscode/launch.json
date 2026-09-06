@@ -21,12 +21,16 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost.app/Contents/MacOS/editorhost",
-            "args": ["${command:cmake.buildDirectory}/VST3/Debug/ExamplePlugin.vst3"],
+            "args": ["${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/Debug/Example Effect.vst3"],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/Example",
+            "cwd": "${workspaceFolder}",
             "preLaunchTask": "CMake: build",
             "externalConsole": false,
-            "MIMode": "lldb"
+            "MIMode": "lldb",
+            "environment": [
+                { "name": "QSG_INFO", "value": "1" },
+                { "name": "QSG_RHI_BACKEND", "value": "metal" }
+            ],
         },
         {
             "name": "EditorHost Linux ExampleEffect",

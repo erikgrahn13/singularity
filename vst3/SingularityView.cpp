@@ -2,6 +2,7 @@
 #include "vst3controller.h"
 #include "base/source/fdebug.h"
 #include <filesystem>
+#include <QGuiApplication>
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -33,6 +34,18 @@ SingularityView::SingularityView(Vst::EditController* editController)
 
 //     std::filesystem::path resourcePath = dllPath.parent_path().parent_path() / "Resources";
 
+    if (!QCoreApplication::instance())
+    {
+        static int argc = 1;
+        static char name[] = "";
+        static char* argv[] = {name, nullptr};
+
+        QCoreApplication::setAttribute(Qt::AA_PluginApplication);
+
+        static QGuiApplication application(argc, argv);
+        application.setQuitOnLastWindowClosed(false);
+    }
+
     auto* vstController = static_cast<VST3Controller*>(editController);
     auto& params = static_cast<IParameterProvider&>(*vstController);
     controller_ = std::make_unique<SingularityController>(params, "", &vstController->audioDataQueue());
@@ -44,6 +57,30 @@ SingularityView::SingularityView(Vst::EditController* editController)
     });
 
     view_ = std::make_unique<QQuickView>();
+    view_->setResizeMode(QQuickView::SizeRootObjectToView);
+
+    QObject::connect(
+        view_.get(),
+        &QQuickView::statusChanged,
+        view_.get(),
+        [this](QQuickView::Status status)
+        {
+            if (status != QQuickView::Ready || !plugFrame)
+                return;
+
+            const QSize size = view_->initialSize();
+            if (size.width() <= 0 || size.height() <= 0)
+                return;
+
+            ViewRect requested {
+                0, 0,
+                static_cast<int32>(size.width()),
+                static_cast<int32>(size.height())
+            };
+
+            plugFrame->resizeView(this, &requested);
+        });
+
     controller_->attachToView(*view_);
 
     const QSize size = view_->initialSize();
@@ -114,8 +151,6 @@ void SingularityView::removedFromParent()
     view_->hide();
     view_->setParent(nullptr);
     parentWindow_.reset();
-
-    Vst::EditorView::removedFromParent();
 
     Vst::EditorView::removedFromParent(); // notifies EditController
 }

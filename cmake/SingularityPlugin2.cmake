@@ -41,6 +41,8 @@ function(singularity_create_plugin target)
         $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )
 
+    target_compile_features(${target} PUBLIC cxx_std_23)
+
     include(FetchContent)
 
     foreach(FORMAT IN LISTS PARAMS_FORMATS)

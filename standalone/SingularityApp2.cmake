@@ -22,9 +22,19 @@ function(singularity_create_app_plugin target)
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
     )
 
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
-    target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/PipeWire.cpp)
-    target_include_directories(${target}_APP PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
-    target_link_libraries(${target}_APP PRIVATE ${PIPEWIRE_LIBRARIES})
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
+        target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/PipeWire.cpp)
+        target_include_directories(${target}_APP PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
+        target_link_libraries(${target}_APP PRIVATE ${PIPEWIRE_LIBRARIES})
+    elseif(APPLE)
+        target_sources(${target}_APP PRIVATE ${SINGULARITY_ROOT_DIR}/standalone/coreAudio.cpp)
+        target_link_libraries(${target}_APP PRIVATE
+            "-framework CoreAudio"
+            "-framework AudioToolbox"
+        )
+        set_target_properties(${target}_APP PROPERTIES MACOSX_BUNDLE TRUE)
+
+    endif()
 endfunction()
