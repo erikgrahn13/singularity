@@ -1,0 +1,33 @@
+name: Build Qt
+
+on:
+  push:
+    branches: [qt]
+  pull_request:
+    branches: [qt]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          archives: "qtbase qtdeclarative"
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
+
+      - name: Build
+        run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3
+
