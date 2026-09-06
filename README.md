@@ -51,6 +51,16 @@ brew install qtdeclarative
 
 This provides QML, Qt Quick, Controls, and Layouts, and installs Qt Base automatically.
 
+On Fedora, install the minimum Qt development package and the XCB development
+dependency used by the Linux VST3 integration:
+
+```sh
+sudo dnf install qt6-qtdeclarative-devel libxcb-devel
+```
+
+`qt6-qtdeclarative-devel` provides QML, Qt Quick, Controls, Layouts, and Shapes,
+and installs the required Qt Base packages automatically.
+
 Linux also requires X11, libportal, PipeWire, FreeType, and Fontconfig development packages. On Ubuntu/Debian:
 
 ```sh
