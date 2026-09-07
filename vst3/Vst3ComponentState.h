@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IParameterProvider.h"
+// #include "IParameterProvider.h"
 #include "Vst3ProgramData.h"
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ibstream.h"

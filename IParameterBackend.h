@@ -6,6 +6,7 @@
 #include <array>
 #include <utility>
 #include <vector>
+#include <cstdint>
 
 
 enum class ParamType { Float, Bool, Stepped, Choice };
@@ -96,6 +97,6 @@ class IParameterBackend
     virtual ~IParameterBackend() = default;
 
     virtual std::span<const Parameter> parameterDefinitions() const = 0;
-    virtual double getParameter(int id) const = 0;
+    virtual double getParameter(int id) = 0;
     virtual void setParameter(int id, double value) = 0;
 };

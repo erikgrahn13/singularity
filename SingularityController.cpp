@@ -34,8 +34,6 @@ void QmlParameter::notifyChanged()
     emit valueChanged();
 }
 
-// SingularityController::SingularityController(IParameterProvider& parameterProvider, std::span<const Parameter> definitions)
-//     : parameterProvider_(parameterProvider)
 SingularityController::SingularityController(IParameterBackend& parameterBackend)
     : parameterBackend_(parameterBackend)
 {

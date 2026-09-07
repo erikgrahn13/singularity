@@ -13,7 +13,7 @@
 #include "Vst3ProgramData.h"
 #include "Vst3ProgramLayout.h"
 #include "Vst3ProgramModel.h"
-#include "IParameterProvider.h"
+#include "IParameterBackend.h"
 #include "pluginterfaces/vst/vsttypes.h"
 #include <algorithm>
 #include <atomic>
@@ -31,7 +31,7 @@ namespace Steinberg {
 //------------------------------------------------------------------------
 class VST3Controller : public Steinberg::Vst::EditControllerEx1,
                        public Steinberg::Vst::IDataExchangeReceiver,
-                       public IParameterProvider,
+                       public IParameterBackend,
                        public Singularity::AudioDataExchange::IDataSink
 {
 public:
@@ -157,7 +157,10 @@ public:
     Singularity::AudioDataExchange::AudioDataQueue& audioDataQueue() { return audioDataQueue_; }
     void pushAudioDataBlock(const Singularity::AudioDataExchange::AudioDataBlock& block) override { audioDataQueue_.pushAudioDataBlock(block); }
 
-    // IParameterProvider
+    // IParameterBackend
+
+    std::span<const ::Parameter> parameterDefinitions() const override;
+
     double getParameter(int id) override
     {
         auto* parameter = getParameterObject(id);
@@ -180,27 +183,19 @@ public:
         performEdit(id, normalizedValue);
         endEdit(id);
     }
-    double getSampleRate() const override
-    {
-        return sampleRate_.load(std::memory_order_acquire);
-    }
-    std::string getPluginState() const override
-    {
-        std::scoped_lock lock(pluginStateMutex_);
-        return pluginState_;
-    }
-    void sendMessage(std::string_view name, std::string_view payload) override
-    {
-        auto message = owned(allocateMessage());
-        if (!message)
-            return;
-        message->setMessageID("Singularity.UIMessage");
-        message->getAttributes()->setBinary(
-            "name", name.data(), static_cast<uint32>(name.size()));
-        message->getAttributes()->setBinary(
-            "payload", payload.data(), static_cast<uint32>(payload.size()));
-        ComponentBase::sendMessage(message);
-    }
+
+    // void sendMessage(std::string_view name, std::string_view payload) override
+    // {
+    //     auto message = owned(allocateMessage());
+    //     if (!message)
+    //         return;
+    //     message->setMessageID("Singularity.UIMessage");
+    //     message->getAttributes()->setBinary(
+    //         "name", name.data(), static_cast<uint32>(name.size()));
+    //     message->getAttributes()->setBinary(
+    //         "payload", payload.data(), static_cast<uint32>(payload.size()));
+    //     ComponentBase::sendMessage(message);
+    // }
 
 private:
     struct ControllerProgramBank
@@ -263,9 +258,9 @@ private:
 
     Vst::DataExchangeReceiverHandler dataExchange_ {this};
     Singularity::AudioDataExchange::AudioDataQueue audioDataQueue_;
-    std::atomic<double> sampleRate_{0.0};
-    mutable std::mutex pluginStateMutex_;
-    std::string pluginState_;
+    // std::atomic<double> sampleRate_{0.0};
+    // mutable std::mutex pluginStateMutex_;
+    // std::string pluginState_;
     std::vector<::Vst3ProgramUnit> programUnits_;
     std::vector<ControllerProgramBank> programBanks_;
 

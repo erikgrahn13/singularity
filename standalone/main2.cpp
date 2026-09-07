@@ -11,25 +11,11 @@
 #include <array>
 #include <iostream>
 
-
-// #include "ISingularityAudio.h"
 #include "../SingularityController.h"
 #include "APPController.h"
 #include "RtAudio.h"
 
 #include PLUGIN_CLASS_HEADER
-
-// #if defined(__linux__)
-// #include "PipeWire.h"
-// using PlatformAudio = PipeWire<PLUGIN_CLASS>;
-// #elif defined(__APPLE__)
-// #include "coreAudio.h"
-// using PlatformAudio = CoreAudio<PLUGIN_CLASS>;
-// #elif defined(_WIN32)
-// #include "ASIO.h"
-// #include "WASAPI.h"
-// using PlatformAudio = WASAPI<PLUGIN_CLASS>;
-// #endif
 
 struct AudioContext
 {
@@ -90,17 +76,6 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // auto audio = std::make_unique<PlatformAudio>();
-    // PlatformAudio audio;
-    // Only drain audio-thread output notifications here; UI edits and host-side
-    // changes are event-driven and never scan parameter values on a timer.
-    // QTimer outputDeliveryTimer;
-    // QObject::connect(&outputDeliveryTimer, &QTimer::timeout,
-    //                  &app, [] { dispatchOutputParameterChanges(); });
-    // outputDeliveryTimer.start(33);
-    // setOnParameterChanged([&](int id, double value) {
-    //     audio->pushParameterChange(id, value);
-    // });
     const auto definitions = PLUGIN_CLASS::getParameters();
 
     AudioContext audioContext;
@@ -112,7 +87,6 @@ int main(int argc, char *argv[])
             definition.defaultValue
         });
     }
-
 
     RtAudio rtaudio;
 
@@ -130,19 +104,10 @@ int main(int argc, char *argv[])
     const auto inputInfo = rtaudio.getDeviceInfo(inputParameters.deviceId);
     const auto outputInfo = rtaudio.getDeviceInfo(outputParameters.deviceId);
 
-    std::cout
-        << "Input: " << inputInfo.name
-        << ", channels: " << inputInfo.inputChannels << '\n'
-        << "Output: " << outputInfo.name
-        << ", channels: " << outputInfo.outputChannels << '\n';
+    unsigned int inputChannels = std::min(requestedChannels, inputInfo.inputChannels);
+    unsigned int outputChannels = std::min(requestedChannels, outputInfo.outputChannels);
 
-    unsigned int inputChannels =
-        std::min(requestedChannels, inputInfo.inputChannels);
-    unsigned int outputChannels =
-        std::min(requestedChannels, outputInfo.outputChannels);
-
-    if (inputParameters.deviceId == outputParameters.deviceId &&
-        inputInfo.duplexChannels > 0)
+    if (inputParameters.deviceId == outputParameters.deviceId && inputInfo.duplexChannels > 0)
     {
         inputChannels = std::min(inputChannels, inputInfo.duplexChannels);
         outputChannels = std::min(outputChannels, inputInfo.duplexChannels);
@@ -154,8 +119,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    const auto supportsSampleRate = [](const RtAudio::DeviceInfo& info,
-                                       unsigned int rate)
+    const auto supportsSampleRate = [](const RtAudio::DeviceInfo& info, unsigned int rate)
     {
         return rate > 0 &&
             (rate == info.currentSampleRate ||
@@ -190,11 +154,6 @@ int main(int argc, char *argv[])
                      "sample rate\n";
         return 1;
     }
-
-    std::cout
-        << "Opening " << inputChannels << " input / "
-        << outputChannels << " output channels at "
-        << sampleRate << " Hz\n";
 
     inputParameters.nChannels = inputChannels;
     outputParameters.nChannels = outputChannels;

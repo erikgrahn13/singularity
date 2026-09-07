@@ -15,7 +15,7 @@ public:
         ParameterCallback callback);
 
     std::span<const Parameter> parameterDefinitions() const override;
-    double getParameter(int id) const override;
+    double getParameter(int id) override;
     void setParameter(int id, double value) override;
 
 private:

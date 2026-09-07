@@ -18,7 +18,7 @@ std::span<const Parameter> APPController::parameterDefinitions() const
     return parameters_;
 }
 
-double APPController::getParameter(int id) const
+double APPController::getParameter(int id)
 {
     const auto parameter = values_.find(id);
     if (parameter == values_.end())

@@ -49,11 +49,7 @@ SingularityView::SingularityView(Vst::EditController* editController)
     ensureQtApplication();
 
     auto* vstController = static_cast<VST3Controller*>(editController);
-    auto& params = static_cast<IParameterProvider&>(*vstController);
-    controller_ = std::make_unique<SingularityController>(
-        params,
-        "",
-        &vstController->audioDataQueue());
+    controller_ = std::make_unique<SingularityController>(*vstController);
 
     view_ = std::make_unique<QQuickView>();
     QObject::connect(

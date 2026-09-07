@@ -1,5 +1,9 @@
 include_guard(GLOBAL)
 
+if(WIN32)
+    set(RTAUDIO_API_ASIO ON)
+endif()
+
 FetchContent_Declare(
     rtaudio
     GIT_REPOSITORY https://github.com/thestk/rtaudio.git
