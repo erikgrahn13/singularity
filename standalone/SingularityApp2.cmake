@@ -1,7 +1,13 @@
 include_guard(GLOBAL)
 
+set(RTAUDIO_BUILD_SHARED_LIBS OFF CACHE BOOL "Build RtAudio as a static library")
+
 if(WIN32)
-    set(RTAUDIO_API_ASIO ON)
+    set(RTAUDIO_API_ASIO ON CACHE BOOL "Build RtAudio with ASIO support")
+endif()
+
+if(MSVC)
+    set(RTAUDIO_STATIC_MSVCRT OFF CACHE BOOL "Use the dynamic MSVC runtime")
 endif()
 
 FetchContent_Declare(
