@@ -7,14 +7,46 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QQmlEngine>
+#include <QQmlContext>
 #include <QUrl>
 
-SingularityController::SingularityController(
-    IParameterProvider& parameterProvider,
-    std::string_view resourcePath,
-    Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
-    : parameterProvider_(parameterProvider)
+QmlParameter::QmlParameter(int id, SingularityController& controller, QObject* parent)
+    : QObject(parent), id_(id), controller_(controller)
 {
+    
+}
+
+double QmlParameter::value() const
+{
+    return controller_.getParameterValue(id_);
+}
+
+void QmlParameter::setValue(double value)
+{
+    if (this->value() == value)
+        return;
+    controller_.setParameterValue(id_, value);
+    emit valueChanged();
+}
+
+void QmlParameter::notifyChanged()
+{
+    emit valueChanged();
+}
+
+// SingularityController::SingularityController(IParameterProvider& parameterProvider, std::span<const Parameter> definitions)
+//     : parameterProvider_(parameterProvider)
+SingularityController::SingularityController(IParameterBackend& parameterBackend)
+    : parameterBackend_(parameterBackend)
+{
+
+    for (const auto& definition :parameterBackend_.parameterDefinitions())
+    {
+        const int id = static_cast<int>(definition.id);
+        auto* parameter = new QmlParameter(id, *this, this);
+        qmlParameters_.insert(id, parameter);
+    }
+
 #if defined(SINGULARITY_QML_SOURCE_FILE)
     qmlFile_ = QFileInfo(
         QStringLiteral(SINGULARITY_QML_SOURCE_FILE)).absoluteFilePath();
@@ -68,22 +100,11 @@ void SingularityController::setLogger(LogCallback callback)
     logger_ = std::move(callback);
 }
 
-void SingularityController::tick()
-{
-    QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
-}
-
-void SingularityController::registerImage(
-    const std::string& name,
-    const uint8_t* data,
-    int size)
-{
-}
-
 void SingularityController::attachToView(QQuickView& view)
 {
     detachView();
     view_ = &view;
+    view.rootContext()->setContextProperty(QStringLiteral("parameters"), this);
 
     view.setResizeMode(QQuickView::SizeViewToRootObject);
     view.setTitle(QStringLiteral("Hello World"));
@@ -113,4 +134,40 @@ void SingularityController::detachView()
     QObject::disconnect(statusConnection_);
     statusConnection_ = {};
     view_.clear();
+}
+
+// QObject* SingularityController::parameter(int id) const
+// {
+//     auto* object = parameters_.value(id, nullptr);
+//     qWarning() << "parameter ID:" << id;
+
+//     if (!object)
+//         qWarning() << "Unknown parameter ID:" << id;
+//     return object;
+// }
+
+
+
+// double SingularityController::value()
+// {
+//     return 0.0;
+// }
+
+// void SingularityController::setValue(double value)
+// {
+// }
+QObject* SingularityController::get(int id) const
+{
+    return qmlParameters_.value(id, nullptr);
+}
+
+
+double SingularityController::getParameterValue(int id) const
+{
+    return parameterBackend_.getParameter(id);
+}
+
+void SingularityController::setParameterValue(int id, double value)
+{
+    parameterBackend_.setParameter(id, value);
 }

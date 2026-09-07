@@ -1,7 +1,8 @@
 #pragma once
 #include <span>
-#include "IParameterProvider.h"
-#include "BuiltInProgram.h"
+// #include "IParameterProvider.h"
+#include "IParameterBackend.h"
+// #include "BuiltInProgram.h"
 #include "AudioDataExchange.h"
 
 using Singularity::AudioDataExchange::sendAudioDataToUI;
