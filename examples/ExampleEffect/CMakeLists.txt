@@ -13,9 +13,9 @@ singularity_create_plugin(
     PLUGIN_CLASS_HEADER "ExampleEffect.h"
     RESOURCES
         resources/logo_transparent.png
-        resources/mb-forever-raw.regular.ttf
-    DATA_RESOURCES
-        data/logo_transparent2.png
+    #     resources/mb-forever-raw.regular.ttf
+    # DATA_RESOURCES
+    #     data/logo_transparent2.png
 
 )
 

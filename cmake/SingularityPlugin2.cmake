@@ -11,27 +11,39 @@ function(singularity_create_plugin target)
     set(oneValueArgs
         VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER PLUGIN_NAME
         CAPI_SDK_DIR CAPI_MAX_BLOCK_SIZE CAPI_STACK_SIZE)
-    set(multiValueArgs SOURCES UI FORMATS RESOURCES DATA_RESOURCES CAPI_INCLUDE_DIRS)
+    set(multiValueArgs SOURCES QML_FILES FORMATS RESOURCES DATA_RESOURCES CAPI_INCLUDE_DIRS)
 
     # Parse the arguments
     cmake_parse_arguments(PARAMS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 
-    # QT stuff APP
-
-    message("erik ${PARAMS_PLUGIN_CLASS_HEADER}")
-    message("erik2 ${CMAKE_CURRENT_SOURCE_DIR}")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    qt_add_library(${target} STATIC
-        ${SINGULARITY_ROOT_DIR}/SingularityController.h
-        ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
+    # qt_add_library(${target} STATIC
+    #     ${SINGULARITY_ROOT_DIR}/SingularityController.h
+    #     ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
+    # )
+
+    set(PLUGIN_VIEW "${SINGULARITY_ROOT_DIR}/PluginView.qml")
+
+    set_source_files_properties(
+        "${PLUGIN_VIEW}"
+        PROPERTIES
+            QT_RESOURCE_ALIAS "PluginView.qml"
     )
 
     qt_add_qml_module(${target}
+        STATIC
         URI Singularity.${target}
         NO_PLUGIN
+        SOURCES
+            ${SINGULARITY_ROOT_DIR}/SingularityController.h
+            ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         QML_FILES
+            ${PLUGIN_VIEW}
             Main.qml
+            ${PARAMS_QML_FILES}
+        RESOURCES
+            ${PARAMS_RESOURCES}
     )
 
     target_link_libraries(${target} PUBLIC
@@ -50,7 +62,6 @@ function(singularity_create_plugin target)
     include(FetchContent)
 
     foreach(FORMAT IN LISTS PARAMS_FORMATS)
-        message("erik2 ${FORMAT}")
         if(FORMAT STREQUAL "APP")
             include("${SINGULARITY_ROOT_DIR}/standalone/SingularityApp2.cmake")
             singularity_create_app_plugin(${target})

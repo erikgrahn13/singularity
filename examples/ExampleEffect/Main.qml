@@ -2,8 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 
-
-Rectangle {
+PluginView {
     id: window
     width: 440
     height: 380

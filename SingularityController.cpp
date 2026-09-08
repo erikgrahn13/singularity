@@ -9,6 +9,7 @@
 #include <QQmlEngine>
 #include <QQmlContext>
 #include <QUrl>
+#include <QQuickItem>
 
 QmlParameter::QmlParameter(int id, SingularityController& controller, QObject* parent)
     : QObject(parent), id_(id), controller_(controller)
@@ -113,11 +114,31 @@ void SingularityController::attachToView(QQuickView& view)
         &view,
         [&view](QQuickView::Status status)
         {
-            if (status != QQuickView::Error)
+            if (status == QQuickView::Error)
+            {
+                for (const auto& error : view.errors())
+                    qWarning().noquote() << error.toString();
+
+                return;
+            }
+
+            if (status != QQuickView::Ready)
                 return;
 
-            for (const auto& error : view.errors())
-                qWarning().noquote() << error.toString();
+            auto* root = view.rootObject();
+            if (!root)
+                return;
+
+            const auto version =
+                root->property("singularityPluginViewVersion");
+
+            if (!version.isValid() || version.toInt() != 1)
+            {
+                qCritical()
+                    << "Main.qml must use PluginView as its root component";
+
+                view.setSource({});
+            }
         });
 
 #if defined(SINGULARITY_QML_SOURCE_FILE)
