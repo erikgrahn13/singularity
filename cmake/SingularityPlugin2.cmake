@@ -33,7 +33,7 @@ function(singularity_create_plugin target)
 
     qt_add_qml_module(${target}
         STATIC
-        URI Singularity.${target}
+        URI Singularity
         NO_PLUGIN
         SOURCES
             ${SINGULARITY_ROOT_DIR}/SingularityController.h
@@ -53,7 +53,7 @@ function(singularity_create_plugin target)
     target_compile_definitions(${target} PUBLIC
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
-        SINGULARITY_QML_MODULE_URI="Singularity.${target}"
+        SINGULARITY_QML_MODULE_URI="Singularity"
         $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )
 

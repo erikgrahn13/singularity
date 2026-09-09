@@ -26,6 +26,38 @@ struct AudioContext
     unsigned int outputChannels = 0;
 };
 
+template <typename PluginType>
+requires (PluginType::isInstrument)
+void processPluginAudio(
+    PluginType& plugin,
+    std::span<const float* const>,
+    std::span<float* const> outputs,
+    unsigned int frameCount,
+    ParamList params)
+{
+    plugin.template process<float>(
+        outputs,
+        static_cast<int>(frameCount),
+        std::span<const MidiEvent>{},
+        params);
+}
+
+template <typename PluginType>
+requires (!PluginType::isInstrument)
+void processPluginAudio(
+    PluginType& plugin,
+    std::span<const float* const> inputs,
+    std::span<float* const> outputs,
+    unsigned int frameCount,
+    ParamList params)
+{
+    plugin.template process<float>(
+        inputs,
+        outputs,
+        static_cast<int>(frameCount),
+        params);
+}
+
 int audioCallback( void *outputBuffer, void *inputBuffer, unsigned int frameCount,
            double streamTime, RtAudioStreamStatus status, void *userData )
 {
@@ -60,12 +92,11 @@ int audioCallback( void *outputBuffer, void *inputBuffer, unsigned int frameCoun
          ++channel)
         outputs[channel] = output + channel * frameCount;
 
-    context.plugin.process<float>(
-        std::span<const float* const>(
-            inputs.data(), context.inputChannels),
-        std::span<float* const>(
-            outputs.data(), context.outputChannels),
-        static_cast<int>(frameCount),
+    processPluginAudio(
+        context.plugin,
+        std::span<const float* const>(inputs.data(), context.inputChannels),
+        std::span<float* const>(outputs.data(), context.outputChannels),
+        frameCount,
         ParamList {context.parameters});
 
     return 0;

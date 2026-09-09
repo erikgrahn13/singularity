@@ -1,2 +1,2 @@
 add_subdirectory(ExampleEffect)
-# add_subdirectory(ExampleInstrument)
+add_subdirectory(ExampleInstrument)
