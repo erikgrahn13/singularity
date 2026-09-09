@@ -166,6 +166,25 @@ function(singularity_create_vst3_plugin target)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
         target_link_libraries(${target}_VST3 PRIVATE PkgConfig::XCB)
+
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+            set_target_properties(${target}_VST3 PROPERTIES
+                BUILD_WITH_INSTALL_RPATH TRUE
+                INSTALL_RPATH "$ORIGIN/qt"
+            )
+
+            find_program(PATCHELF_EXECUTABLE patchelf REQUIRED)
+
+            add_custom_command(
+                TARGET ${target}_VST3 POST_BUILD
+                COMMAND "${CMAKE_COMMAND}"
+                    "-DVST3_MODULE=$<TARGET_FILE:${target}_VST3>"
+                    "-DQT_DIR=$<TARGET_FILE_DIR:${target}_VST3>/qt"
+                    "-DQT_XCB_PLUGIN=$<TARGET_FILE:Qt6::QXcbIntegrationPlugin>"
+                    "-DPATCHELF=${PATCHELF_EXECUTABLE}"
+                    -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3Linux.cmake"
+            )
+        endif()
     endif()
 
     target_include_directories(${target}_VST3 PRIVATE

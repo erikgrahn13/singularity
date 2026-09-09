@@ -3,9 +3,11 @@
 
 #include <QCoreApplication>
 #include <QEventLoop>
+#include <QFileInfo>
 #include <QGuiApplication>
 
 #if defined(__linux__)
+#  include <dlfcn.h>
 #  include <xcb/xcb.h>
 #endif
 
@@ -19,14 +21,28 @@ void ensureQtApplication()
     QCoreApplication::setAttribute(Qt::AA_PluginApplication);
 
 #if defined(__linux__)
-    static int argc = 3;
+    static QByteArray platformPluginPath = []
+    {
+        Dl_info moduleInfo {};
+        if (dladdr(reinterpret_cast<void*>(&ensureQtApplication), &moduleInfo) == 0)
+            return QByteArray {};
+
+        return (QFileInfo(QString::fromLocal8Bit(moduleInfo.dli_fname)).absolutePath()
+                + QStringLiteral("/qt"))
+            .toLocal8Bit();
+    }();
+
+    static int argc = 5;
     static char applicationName[] = "singularity-vst3";
     static char platformOption[] = "-platform";
     static char platformName[] = "xcb";
+    static char platformPluginPathOption[] = "-platformpluginpath";
     static char* argv[] = {
         applicationName,
         platformOption,
         platformName,
+        platformPluginPathOption,
+        platformPluginPath.data(),
         nullptr
     };
 #else
