@@ -48,3 +48,46 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3
 
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-artifacts-${{ matrix.os }}
+          path: |
+            build/examples/ExampleEffect/**
+            build/examples/ExampleInstrument/**
+          if-no-files-found: error
+
+  test:
+    name: Test
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Download plugin artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: plugin-artifacts-${{ matrix.os }}
+          path: ./plugin-artifacts
+
+      - name: Download Pluginval
+        shell: bash
+        run: |
+          mkdir -p pluginval
+          case "${{ runner.os }}" in
+            Linux)
+              asset="pluginval_Linux.zip"
+              ;;
+            macOS)
+              asset="pluginval_macOS.zip"
+              ;;
+            Windows)
+              asset="pluginval_Windows.zip"
+              ;;
+          esac
+
+          curl -fsSL "https://github.com/Tracktion/pluginval/releases/latest/download/${asset}" -o pluginval.zip
+          unzip -q pluginval.zip -d pluginval
+
