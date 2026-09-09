@@ -90,4 +90,5 @@ jobs:
 
           curl -fsSL "https://github.com/Tracktion/pluginval/releases/latest/download/${asset}" -o pluginval.zip
           unzip -q pluginval.zip -d pluginval
+          ./pluginval/pluginval --strictness-level 10 --skip-gui-tests --validate-in-process "plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
 
