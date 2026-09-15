@@ -174,16 +174,49 @@ function(singularity_create_vst3_plugin target)
             )
 
             find_program(PATCHELF_EXECUTABLE patchelf REQUIRED)
+            set(qmlImportsFile
+                "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports/${target}_VST3.cmake"
+            )
+
+            add_custom_command(
+                OUTPUT "${qmlImportsFile}"
+                COMMAND "${CMAKE_COMMAND}" -E make_directory
+                        "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
+                COMMAND "$<TARGET_FILE:Qt6::qmlimportscanner>"
+                    -rootPath "${CMAKE_CURRENT_SOURCE_DIR}"
+                    -importPath "${CMAKE_CURRENT_BINARY_DIR}"
+                    -importPath "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}"
+                    -cmake-output
+                    -output-file "${qmlImportsFile}"
+                DEPENDS
+                    "${PLUGIN_VIEW}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/Main.qml"
+                    ${PARAMS_QML_FILES}
+                VERBATIM
+            )
+
+            add_custom_target(${target}_VST3_qmlimportscan
+                DEPENDS "${qmlImportsFile}"
+            )
+
+            add_dependencies(${target}_VST3 ${target}_VST3_qmlimportscan)
+
+
+            message("erik1 ${qmlImportsFile}")
 
             add_custom_command(
                 TARGET ${target}_VST3 POST_BUILD
                 COMMAND "${CMAKE_COMMAND}"
                     "-DVST3_MODULE=$<TARGET_FILE:${target}_VST3>"
                     "-DQT_DIR=$<TARGET_FILE_DIR:${target}_VST3>/qt"
+                    "-DQML_IMPORTS_FILE=${qmlImportsFile}"
+                    "-DQT_LIBRARY_DIR=$<TARGET_FILE_DIR:Qt6::Core>"
                     "-DQT_XCB_PLUGIN=$<TARGET_FILE:Qt6::QXcbIntegrationPlugin>"
                     "-DPATCHELF=${PATCHELF_EXECUTABLE}"
                     -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3Linux.cmake"
             )
+
+
         endif()
     endif()
 

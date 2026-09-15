@@ -5,6 +5,7 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QQmlEngine>
 
 #if defined(__linux__)
 #  include <dlfcn.h>
@@ -12,6 +13,18 @@
 #endif
 
 namespace {
+
+#if defined(__linux__)
+QString qtDirectory()
+{
+    Dl_info moduleInfo {};
+    if (dladdr(reinterpret_cast<void*>(&qtDirectory), &moduleInfo) == 0)
+        return {};
+
+    return QFileInfo(QString::fromLocal8Bit(moduleInfo.dli_fname)).absolutePath()
+        + QStringLiteral("/qt");
+}
+#endif
 
 void ensureQtApplication()
 {
@@ -21,16 +34,7 @@ void ensureQtApplication()
     QCoreApplication::setAttribute(Qt::AA_PluginApplication);
 
 #if defined(__linux__)
-    static QByteArray platformPluginPath = []
-    {
-        Dl_info moduleInfo {};
-        if (dladdr(reinterpret_cast<void*>(&ensureQtApplication), &moduleInfo) == 0)
-            return QByteArray {};
-
-        return (QFileInfo(QString::fromLocal8Bit(moduleInfo.dli_fname)).absolutePath()
-                + QStringLiteral("/qt"))
-            .toLocal8Bit();
-    }();
+    static QByteArray platformPluginPath = qtDirectory().toLocal8Bit();
 
     static int argc = 5;
     static char applicationName[] = "singularity-vst3";
@@ -68,6 +72,9 @@ SingularityView::SingularityView(Vst::EditController* editController)
     controller_ = std::make_unique<SingularityController>(*vstController);
 
     view_ = std::make_unique<QQuickView>();
+#if defined(__linux__)
+    view_->engine()->addImportPath(qtDirectory() + QStringLiteral("/qml"));
+#endif
     QObject::connect(
         view_.get(),
         &QQuickView::statusChanged,
