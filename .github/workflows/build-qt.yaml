@@ -84,9 +84,11 @@ jobs:
           case "${{ runner.os }}" in
             Linux)
               asset="pluginval_Linux.zip"
+              pluginval_binary="pluginval"
               ;;
             macOS)
               asset="pluginval_macOS.zip"
+              pluginval_binary="pluginval.app/Contents/MacOS/pluginval"
               ;;
             Windows)
               asset="pluginval_Windows.zip"
@@ -95,5 +97,5 @@ jobs:
 
           curl -fsSL "https://github.com/Tracktion/pluginval/releases/latest/download/${asset}" -o pluginval.zip
           unzip -q pluginval.zip -d pluginval
-          ./pluginval/pluginval --strictness-level 10 --skip-gui-tests --validate-in-process "plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
+          ./pluginval/${pluginval_binary} --strictness-level 10 --skip-gui-tests --validate-in-process "plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
 
