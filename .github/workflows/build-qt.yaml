@@ -92,6 +92,7 @@ jobs:
               ;;
             Windows)
               asset="pluginval_Windows.zip"
+              pluginval_binary="pluginval.exe"
               ;;
           esac
 
