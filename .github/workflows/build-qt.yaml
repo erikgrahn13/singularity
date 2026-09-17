@@ -85,18 +85,20 @@ jobs:
             Linux)
               asset="pluginval_Linux.zip"
               pluginval_binary="pluginval"
+              plugin_path="plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
               ;;
             macOS)
               asset="pluginval_macOS.zip"
               pluginval_binary="pluginval.app/Contents/MacOS/pluginval"
+              plugin_path="plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
               ;;
             Windows)
               asset="pluginval_Windows.zip"
               pluginval_binary="pluginval.exe"
+              plugin_path="plugin-artifacts/ExampleEffect/out/VST3/Example Effect.vst3"
               ;;
           esac
 
           curl -fsSL "https://github.com/Tracktion/pluginval/releases/latest/download/${asset}" -o pluginval.zip
           unzip -q pluginval.zip -d pluginval
-          ./pluginval/${pluginval_binary} --strictness-level 10 --skip-gui-tests --validate-in-process "plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
-
+          "./pluginval/${pluginval_binary}" --strictness-level 10 --skip-gui-tests --validate-in-process "${plugin_path}"
