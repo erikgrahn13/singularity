@@ -48,7 +48,26 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3
 
-      - name: Upload plugin artifacts
+      - name: Package macOS plugin
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          plugin="build/examples/ExampleEffect/out/VST3/Release/Example Effect.vst3"
+          codesign --verify --deep --strict --verbose=4 "$plugin"
+          tar -C build/examples -czf plugin-artifacts-macos.tar.gz \
+            "ExampleEffect/out/VST3/Release/Example Effect.vst3"
+
+      - name: Upload macOS plugin artifact
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-artifacts-${{ matrix.os }}
+          path: plugin-artifacts-macos.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload Linux and Windows plugin artifacts
+        if: runner.os != 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: plugin-artifacts-${{ matrix.os }}
@@ -76,6 +95,15 @@ jobs:
         with:
           name: plugin-artifacts-${{ matrix.os }}
           path: ./plugin-artifacts
+
+      - name: Extract and verify macOS plugin
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          tar -xzf plugin-artifacts/plugin-artifacts-macos.tar.gz \
+            -C plugin-artifacts
+          codesign --verify --deep --strict --verbose=4 \
+            "plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
 
       - name: Download Pluginval
         shell: bash
