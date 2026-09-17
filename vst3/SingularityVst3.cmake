@@ -308,7 +308,6 @@ function(singularity_create_vst3_plugin target)
                 COMMAND "${MACDEPLOYQT_EXECUTABLE}"
                     "$<TARGET_BUNDLE_DIR:${target}_VST3>"
                     -no-plugins
-                    -no-codesign
             )
 
             #     COMMAND "${CMAKE_COMMAND}" -E rm -rf
