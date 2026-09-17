@@ -283,12 +283,59 @@ function(singularity_create_vst3_plugin target)
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
+        
 
         if(_create_module_info)
             smtg_target_create_module_info_file(${target}_VST3)
         endif()
         if(_run_vst_validator)
             smtg_target_run_vst_validator(${target}_VST3)
+        endif()
+    elseif(APPLE)
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+            # if(NOT TARGET Qt6::QCocoaIntegrationPlugin)
+            #     find_package(Qt6 REQUIRED COMPONENTS QCocoaIntegrationPlugin)
+            # endif()
+
+            find_program(MACDEPLOYQT_EXECUTABLE
+                NAMES macdeployqt
+                HINTS "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_BINS}"
+                REQUIRED
+            )
+
+            add_custom_command(
+                TARGET ${target}_VST3 POST_BUILD
+                COMMAND "${MACDEPLOYQT_EXECUTABLE}"
+                    "$<TARGET_BUNDLE_DIR:${target}_VST3>"
+                    -no-plugins
+                    -no-codesign
+            )
+
+            #     COMMAND "${CMAKE_COMMAND}" -E rm -rf
+            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/Frameworks"
+            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/PlugIns"
+            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/Resources/qml"
+
+            #     COMMAND "${MACDEPLOYQT_EXECUTABLE}"
+            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>"
+            #         "-qmldir=${CMAKE_CURRENT_SOURCE_DIR}"
+            #         -no-plugins
+            #         -no-codesign
+
+            #     COMMAND "${CMAKE_COMMAND}" -E make_directory
+            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/PlugIns/platforms"
+            #     COMMAND "${CMAKE_COMMAND}" -E copy
+            #         "$<TARGET_FILE:Qt6::QCocoaIntegrationPlugin>"
+            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/PlugIns/platforms/"
+
+            #     COMMAND "${CMAKE_COMMAND}"
+            #         "-DVST3_BUNDLE=$<TARGET_BUNDLE_DIR:${target}_VST3>"
+            #         "-DQT_LIB_DIR=${QT6_INSTALL_PREFIX}/${QT6_INSTALL_LIBS}"
+            #         "-DCODESIGN_IDENTITY=-"
+            #         -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3Mac.cmake"
+
+            #     VERBATIM
+            # )
         endif()
     endif()
 

@@ -13,8 +13,15 @@
 #  include <QQmlDebuggingEnabler>
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 #  include <dlfcn.h>
+#endif
+
+#if defined(__APPLE__) && defined(QT_QML_DEBUG)
+#  include <crt_externs.h>
+#endif
+
+#if defined(__linux__)
 #  include <xcb/xcb.h>
 #endif
 
@@ -49,10 +56,47 @@ QByteArray qmlDebuggerArgument()
 #endif
 #endif
 
+#if defined(__APPLE__)
+QString bundleContentsDirectory()
+{
+    Dl_info moduleInfo {};
+    if (dladdr(reinterpret_cast<void*>(&bundleContentsDirectory),
+               &moduleInfo) == 0)
+        return {};
+
+    const QFileInfo moduleFile(
+        QString::fromLocal8Bit(moduleInfo.dli_fname));
+    return moduleFile.absolutePath() + QStringLiteral("/..");
+}
+
+#if defined(QT_QML_DEBUG)
+QByteArray qmlDebuggerArgument()
+{
+    const int argumentCount = *_NSGetArgc();
+    char** arguments = *_NSGetArgv();
+
+    for (int index = 0; index < argumentCount; ++index)
+    {
+        const QByteArray argument(arguments[index]);
+        if (argument.startsWith("-qmljsdebugger="))
+            return argument;
+    }
+
+    return {};
+}
+#endif
+#endif
+
 void ensureQtApplication()
 {
     if (QCoreApplication::instance())
+    {
+#if defined(__APPLE__)
+        QCoreApplication::addLibraryPath(
+            bundleContentsDirectory() + QStringLiteral("/PlugIns"));
+#endif
         return;
+    }
 
     QCoreApplication::setAttribute(Qt::AA_PluginApplication);
 
@@ -71,6 +115,28 @@ void ensureQtApplication()
         applicationName,
         platformOption,
         platformName,
+        platformPluginPathOption,
+        platformPluginPath.data(),
+        nullptr,
+        nullptr
+    };
+
+#if defined(QT_QML_DEBUG)
+    if (!qmlDebugArgument.isEmpty())
+        argv[argc++] = qmlDebugArgument.data();
+#endif
+#elif defined(__APPLE__)
+    static QByteArray platformPluginPath =
+        (bundleContentsDirectory() + QStringLiteral("/PlugIns")).toLocal8Bit();
+#if defined(QT_QML_DEBUG)
+    static QByteArray qmlDebugArgument = qmlDebuggerArgument();
+#endif
+
+    static int argc = 3;
+    static char applicationName[] = "singularity-vst3";
+    static char platformPluginPathOption[] = "-platformpluginpath";
+    static char* argv[] = {
+        applicationName,
         platformPluginPathOption,
         platformPluginPath.data(),
         nullptr,
@@ -106,6 +172,9 @@ SingularityView::SingularityView(Vst::EditController* editController)
     view_ = std::make_unique<QQuickView>();
 #if defined(__linux__)
     view_->engine()->addImportPath(qtDirectory() + QStringLiteral("/qml"));
+#elif defined(__APPLE__)
+    view_->engine()->addImportPath(
+        bundleContentsDirectory() + QStringLiteral("/Resources/qml"));
 #endif
     QObject::connect(
         view_.get(),

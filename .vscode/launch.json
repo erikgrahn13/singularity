@@ -52,6 +52,42 @@
             ]
         },
         {
+            "name": "EditorHost MacOS ExampleEffect QML Preview",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/opt/homebrew/bin/qmlpreview",
+            "args": [
+                "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/editorhost.app/Contents/MacOS/editorhost",
+                "${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/${command:cmake.buildType}/Example Effect.vst3"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "targetArchitecture": "arm64",
+            "symbolLoadInfo": {
+                "loadAll": false,
+                "exceptionList": "*Example*;*singularity*;*editorhost*"
+            },
+            "setupCommands": [
+                {
+                    "description": "Keep QML Preview running after it launches EditorHost",
+                    "text": "set detach-on-fork on",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Debug EditorHost and the loaded VST3",
+                    "text": "set follow-fork-mode child",
+                    "ignoreFailures": false
+                },
+                {
+                    "text": "set debuginfod enabled off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "EditorHost Linux ExampleEffect QML Preview",
             "type": "cppdbg",
             "request": "launch",
