@@ -52,6 +52,41 @@
             ]
         },
         {
+            "name": "EditorHost Linux ExampleEffect QML Preview",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/lib64/qt6/bin/qmlpreview",
+            "args": [
+                "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/editorhost",
+                "${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/${command:cmake.buildType}/Example Effect.vst3"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "symbolLoadInfo": {
+                "loadAll": false,
+                "exceptionList": "*Example*;*singularity*;*editorhost*"
+            },
+            "setupCommands": [
+                {
+                    "description": "Keep QML Preview running after it launches EditorHost",
+                    "text": "set detach-on-fork on",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Debug EditorHost and the loaded VST3",
+                    "text": "set follow-fork-mode child",
+                    "ignoreFailures": false
+                },
+                {
+                    "text": "set debuginfod enabled off",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "EditorHost Linux ExampleInstrument",
             "type": "cppdbg",
             "request": "launch",
@@ -109,6 +144,32 @@
             "environment": [],
             "args": [],
             "MIMode": "gdb"
+        },
+        {
+            "name": "ExampleEffect APP QML Preview Linux",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/lib64/qt6/bin/qmlpreview",
+            "args": [
+                "${command:cmake.launchTargetPath}"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
+            "preLaunchTask": "CMake: build",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Keep QML Preview running after it launches the application",
+                    "text": "set detach-on-fork on",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Debug the application launched by QML Preview",
+                    "text": "set follow-fork-mode child",
+                    "ignoreFailures": false
+                }
+            ]
         }
     ]
 }

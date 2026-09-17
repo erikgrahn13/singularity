@@ -1,11 +1,6 @@
-#include <QDebug>
-#include <QFileInfo>
-#include <QFileSystemWatcher>
 #include <QGuiApplication>
-#include <QQmlEngine>
-#include <QTimer>
-#include <QUrl>
 #include <QQuickView>
+#include <QUrl>
 
 #include <algorithm>
 #include <array>
@@ -212,13 +207,15 @@ int main(int argc, char *argv[])
 
 
     // auto controller = std::make_unique<SingularityController>(getParameterContainer(), definitions);
-    controller.setLogger([](const std::string& msg) {
-        std::cout << msg << std::endl;
-    });
-
     QQuickView view;
     view.setResizeMode(QQuickView::SizeViewToRootObject);
+#if defined(SINGULARITY_QML_SOURCE_FILE)
+    controller.attachToView(
+        view,
+        QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
+#else
     controller.attachToView(view);
+#endif
     view.show();
     view.requestActivate();
 

@@ -34,6 +34,11 @@ function(singularity_create_app_plugin target)
         rtaudio
     )
 
+    target_compile_definitions(${target}_APP PRIVATE
+        $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
+    )
+
     target_include_directories(${target}_APP PRIVATE
         ${SINGULARITY_ROOT_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}

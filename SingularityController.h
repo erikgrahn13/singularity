@@ -4,17 +4,11 @@
 
 #include "AudioDataExchange.h"
 
-#include <functional>
-#include <string>
-#include <string_view>
-
-#include <QFileSystemWatcher>
 #include <QMetaObject>
 #include <QPointer>
 #include <QQuickView>
-#include <QString>
-#include <QTimer>
 #include <QHash>
+#include <QUrl>
 
 class SingularityController;
 
@@ -44,13 +38,10 @@ class SingularityController : public QObject
 {
     Q_OBJECT
 public:
-    using LogCallback = std::function<void(const std::string&)>;
-
     SingularityController(IParameterBackend& parameterBackend);
     ~SingularityController();
 
-    void setLogger(LogCallback callback);
-    void attachToView(QQuickView& view);
+    void attachToView(QQuickView& view, const QUrl& source = {});
     void detachView();
 
     Q_INVOKABLE QObject* get(int id) const;
@@ -61,11 +52,7 @@ private:
     double getParameterValue(int id) const;
     void setParameterValue(int id, double value);
     QPointer<QQuickView> view_;
-    QFileSystemWatcher qmlWatcher_;
-    QTimer reloadTimer_;
-    QString qmlFile_;
     QMetaObject::Connection statusConnection_;
-    LogCallback logger_;
     IParameterBackend& parameterBackend_;
     QHash<int, QmlParameter*> qmlParameters_;
 };

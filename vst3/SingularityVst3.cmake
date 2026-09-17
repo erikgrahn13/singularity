@@ -5,7 +5,6 @@ include_guard(GLOBAL)
 option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
 option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" OFF)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
-# option(JS_HOT_RELOAD "Watch and hot-reload JS scripts at runtime" ON)
 # option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
 
 FetchContent_Declare(
@@ -95,6 +94,10 @@ function(singularity_create_vst3_plugin target)
     # set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
     set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
 
+    if(WIN32)
+        set(SMTG_CREATE_PLUGIN_LINK OFF)
+    endif()
+
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
         ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
@@ -158,6 +161,8 @@ function(singularity_create_vst3_plugin target)
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_NAME="${VST3_PLUGIN_TITLE}"
+        $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )
 
     target_link_libraries(${target}_VST3 PRIVATE sdk ${target})
@@ -218,6 +223,47 @@ function(singularity_create_vst3_plugin target)
 
 
         endif()
+    elseif(WIN32)
+        find_program(WINDEPLOYQT_EXECUTABLE
+            NAMES windeployqt
+            HINTS "${QT6_INSTALL_PREFIX}/bin"
+            REQUIRED
+        )
+
+        set(_windeployqt_input
+            "$<TARGET_FILE_DIR:${target}_VST3>/${target}_windeployqt.exe")
+
+        add_custom_command(
+            TARGET ${target}_VST3 POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E rm -rf
+                "$<TARGET_FILE_DIR:${target}_VST3>/qmltooling"
+                "$<TARGET_FILE_DIR:${target}_VST3>/tls"
+            COMMAND "${CMAKE_COMMAND}" -E rm -f
+                "$<TARGET_FILE_DIR:${target}_VST3>/d3dcompiler_47.dll"
+                "$<TARGET_FILE_DIR:${target}_VST3>/dxcompiler.dll"
+                "$<TARGET_FILE_DIR:${target}_VST3>/dxil.dll"
+                "$<TARGET_FILE_DIR:${target}_VST3>/opengl32sw.dll"
+            COMMAND "${CMAKE_COMMAND}" -E copy
+                "$<TARGET_FILE:${target}_VST3>"
+                "${_windeployqt_input}"
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                "$<$<CONFIG:Debug>:--debug>"
+                "$<$<NOT:$<CONFIG:Debug>>:--release>"
+                --force
+                --no-translations
+                --no-system-d3d-compiler
+                --no-system-dxc-compiler
+                --no-opengl-sw
+                --skip-plugin-types qmltooling,tls
+                --verbose 1
+                --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
+                --dir "$<TARGET_FILE_DIR:${target}_VST3>"
+                "${_windeployqt_input}"
+            COMMAND "${CMAKE_COMMAND}" -E rm -f
+                "${_windeployqt_input}"
+            COMMAND_EXPAND_LISTS
+            VERBATIM
+        )
     endif()
 
     target_include_directories(${target}_VST3 PRIVATE

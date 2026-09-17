@@ -6,6 +6,12 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QQmlEngine>
+#include <QUrl>
+
+#if defined(QT_QML_DEBUG)
+#  include <QFile>
+#  include <QQmlDebuggingEnabler>
+#endif
 
 #if defined(__linux__)
 #  include <dlfcn.h>
@@ -24,6 +30,23 @@ QString qtDirectory()
     return QFileInfo(QString::fromLocal8Bit(moduleInfo.dli_fname)).absolutePath()
         + QStringLiteral("/qt");
 }
+
+#if defined(QT_QML_DEBUG)
+QByteArray qmlDebuggerArgument()
+{
+    QFile commandLine(QStringLiteral("/proc/self/cmdline"));
+    if (!commandLine.open(QIODevice::ReadOnly))
+        return {};
+
+    for (const auto& argument : commandLine.readAll().split('\0'))
+    {
+        if (argument.startsWith("-qmljsdebugger="))
+            return argument;
+    }
+
+    return {};
+}
+#endif
 #endif
 
 void ensureQtApplication()
@@ -35,6 +58,9 @@ void ensureQtApplication()
 
 #if defined(__linux__)
     static QByteArray platformPluginPath = qtDirectory().toLocal8Bit();
+#if defined(QT_QML_DEBUG)
+    static QByteArray qmlDebugArgument = qmlDebuggerArgument();
+#endif
 
     static int argc = 5;
     static char applicationName[] = "singularity-vst3";
@@ -47,8 +73,14 @@ void ensureQtApplication()
         platformName,
         platformPluginPathOption,
         platformPluginPath.data(),
+        nullptr,
         nullptr
     };
+
+#if defined(QT_QML_DEBUG)
+    if (!qmlDebugArgument.isEmpty())
+        argv[argc++] = qmlDebugArgument.data();
+#endif
 #else
     static int argc = 1;
     static char applicationName[] = "singularity-vst3";
@@ -97,7 +129,13 @@ SingularityView::SingularityView(Vst::EditController* editController)
             plugFrame->resizeView(this, &requested);
         });
 
+#if defined(SINGULARITY_QML_SOURCE_FILE)
+    controller_->attachToView(
+        *view_,
+        QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
+#else
     controller_->attachToView(*view_);
+#endif
 
     const QSize size = view_->initialSize();
     setRect({
