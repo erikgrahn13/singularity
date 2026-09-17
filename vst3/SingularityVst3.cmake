@@ -98,6 +98,16 @@ function(singularity_create_vst3_plugin target)
         set(SMTG_CREATE_PLUGIN_LINK OFF)
     endif()
 
+    # On Windows, the SDK's moduleinfotool and validator load the plug-in as
+    # POST_BUILD steps. Defer them until after windeployqt has copied the Qt
+    # runtime next to the module, which is required for Debug Qt builds.
+    set(_create_module_info "${SMTG_CREATE_MODULE_INFO}")
+    set(_run_vst_validator "${SMTG_RUN_VST_VALIDATOR}")
+    if(WIN32)
+        set(SMTG_CREATE_MODULE_INFO OFF)
+        set(SMTG_RUN_VST_VALIDATOR OFF)
+    endif()
+
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
         ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
@@ -113,6 +123,15 @@ function(singularity_create_vst3_plugin target)
         ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.h
         ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
     )
+
+    if(WIN32)
+        set(SMTG_CREATE_MODULE_INFO "${_create_module_info}")
+        set(SMTG_RUN_VST_VALIDATOR "${_run_vst_validator}")
+        # A VST3 bundle's module filename must match its package name. Qt's
+        # Windows project setup supplies a "d" debug postfix by default,
+        # which would make the SDK tools look for a different filename.
+        set_target_properties(${target}_VST3 PROPERTIES DEBUG_POSTFIX "")
+    endif()
 
     set_property(TARGET ${target}_VST3 PROPERTY SINGULARITY_VST3_PLUGIN TRUE)
     set_property(TARGET ${target}_VST3 PROPERTY SINGULARITY_VST3_PROCESSOR_UID
@@ -235,14 +254,6 @@ function(singularity_create_vst3_plugin target)
 
         add_custom_command(
             TARGET ${target}_VST3 POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E rm -rf
-                "$<TARGET_FILE_DIR:${target}_VST3>/qmltooling"
-                "$<TARGET_FILE_DIR:${target}_VST3>/tls"
-            COMMAND "${CMAKE_COMMAND}" -E rm -f
-                "$<TARGET_FILE_DIR:${target}_VST3>/d3dcompiler_47.dll"
-                "$<TARGET_FILE_DIR:${target}_VST3>/dxcompiler.dll"
-                "$<TARGET_FILE_DIR:${target}_VST3>/dxil.dll"
-                "$<TARGET_FILE_DIR:${target}_VST3>/opengl32sw.dll"
             COMMAND "${CMAKE_COMMAND}" -E copy
                 "$<TARGET_FILE:${target}_VST3>"
                 "${_windeployqt_input}"
@@ -261,9 +272,24 @@ function(singularity_create_vst3_plugin target)
                 "${_windeployqt_input}"
             COMMAND "${CMAKE_COMMAND}" -E rm -f
                 "${_windeployqt_input}"
+            COMMAND "${CMAKE_COMMAND}" -E rm -rf
+                "$<TARGET_FILE_DIR:${target}_VST3>/qmltooling"
+                "$<TARGET_FILE_DIR:${target}_VST3>/tls"
+            COMMAND "${CMAKE_COMMAND}" -E rm -f
+                "$<TARGET_FILE_DIR:${target}_VST3>/d3dcompiler_47.dll"
+                "$<TARGET_FILE_DIR:${target}_VST3>/dxcompiler.dll"
+                "$<TARGET_FILE_DIR:${target}_VST3>/dxil.dll"
+                "$<TARGET_FILE_DIR:${target}_VST3>/opengl32sw.dll"
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
+
+        if(_create_module_info)
+            smtg_target_create_module_info_file(${target}_VST3)
+        endif()
+        if(_run_vst_validator)
+            smtg_target_run_vst_validator(${target}_VST3)
+        endif()
     endif()
 
     target_include_directories(${target}_VST3 PRIVATE
