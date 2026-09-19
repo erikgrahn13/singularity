@@ -1,3 +1,7 @@
+if(POLICY CMP0207)
+    cmake_policy(SET CMP0207 NEW)
+endif()
+
 if(DEPLOY_PLATFORM STREQUAL "Linux")
     file(REMOVE_RECURSE "${QT_DIR}")
     set(qmlRoot "${QT_DIR}/qml")
