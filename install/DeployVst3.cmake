@@ -106,6 +106,9 @@ elseif(DEPLOY_PLATFORM STREQUAL "Windows")
         MODULES "${VST3_MODULE}" "${QT_PLUGIN}" ${qmlPlugins}
         DIRECTORIES "${QT_LIBRARY_DIR}"
         RESOLVED_DEPENDENCIES_VAR dependencies
+        PRE_EXCLUDE_REGEXES
+            "^api-ms-.*\\.dll$"
+            "^ext-ms-.*\\.dll$"
         POST_EXCLUDE_REGEXES
             ".*/[Ww]indows/[Ss]ystem32/.*"
     )
