@@ -190,152 +190,151 @@ function(singularity_create_vst3_plugin target)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
         target_link_libraries(${target}_VST3 PRIVATE PkgConfig::XCB)
+    endif()
 
-        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+
+        set(qmlImportsFile "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports/${target}_VST3.cmake")
+        set(deployArguments
+            "-DDEPLOY_PLATFORM=${CMAKE_SYSTEM_NAME}"
+            "-DVST3_MODULE=$<TARGET_FILE:${target}_VST3>"
+            "-DQML_IMPORTS_FILE=${qmlImportsFile}"
+        )
+    
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            find_program(PATCHELF_EXECUTABLE patchelf REQUIRED)
+
             set_target_properties(${target}_VST3 PROPERTIES
                 BUILD_WITH_INSTALL_RPATH TRUE
                 INSTALL_RPATH "$ORIGIN/qt"
             )
-
-            find_program(PATCHELF_EXECUTABLE patchelf REQUIRED)
-            set(qmlImportsFile
-                "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports/${target}_VST3.cmake"
+            list(APPEND deployArguments
+                "-DQT_DIR=$<TARGET_FILE_DIR:${target}_VST3>/qt"
+                "-DQT_LIBRARY_DIR=$<TARGET_FILE_DIR:Qt6::Core>"
+                "-DQT_PLUGIN=$<TARGET_FILE:Qt6::QXcbIntegrationPlugin>"
+                "-DPATCHELF=${PATCHELF_EXECUTABLE}"
             )
+        elseif(APPLE)
+            find_program(INSTALL_NAME_TOOL_EXECUTABLE install_name_tool REQUIRED)
+            find_program(CODESIGN_EXECUTABLE codesign REQUIRED
+            )
+            list(APPEND deployArguments
+                "-DVST3_BUNDLE=$<TARGET_BUNDLE_DIR:${target}_VST3>"
+                "-DQT_LIBRARY_DIR=${QT6_INSTALL_PREFIX}/${QT6_INSTALL_LIBS}"
+                "-DQT_PLUGIN=$<TARGET_FILE:Qt6::QCocoaIntegrationPlugin>"
+                "-DINSTALL_NAME_TOOL=${INSTALL_NAME_TOOL_EXECUTABLE}"
+                "-DCODESIGN=${CODESIGN_EXECUTABLE}"
+            )
+        elseif(WIN32)
+            list(APPEND deployArguments
+                "-DQT_DIR=$<TARGET_FILE_DIR:${target}_VST3>"
+                "-DQT_LIBRARY_DIR=$<TARGET_FILE_DIR:Qt6::Core>"
+                "-DQT_PLUGIN=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
+            )
+        else()
+            message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+        endif()
+
+
+        # if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE)
+
+
+
+
+            # add_custom_command(
+            #     OUTPUT "${qmlImportsFile}"
+            #     COMMAND "${CMAKE_COMMAND}" -E make_directory
+            #             "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
+            #     COMMAND "$<TARGET_FILE:Qt6::qmlimportscanner>"
+            #         -rootPath "${CMAKE_CURRENT_SOURCE_DIR}"
+            #         -importPath "${CMAKE_CURRENT_BINARY_DIR}"
+            #         -importPath "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}"
+            #         -cmake-output
+            #         -output-file "${qmlImportsFile}"
+            #     DEPENDS
+            #         "${PLUGIN_VIEW}"
+            #         "${CMAKE_CURRENT_SOURCE_DIR}/Main.qml"
+            #         ${PARAMS_QML_FILES}
+            #     VERBATIM
+            # )
+
+            # add_custom_target(${target}_VST3_qmlimportscan
+            #     DEPENDS "${qmlImportsFile}"
+            # )
+
+            # add_dependencies(${target}_VST3 ${target}_VST3_qmlimportscan)
 
             add_custom_command(
-                OUTPUT "${qmlImportsFile}"
+                TARGET ${target}_VST3 POST_BUILD
+
                 COMMAND "${CMAKE_COMMAND}" -E make_directory
-                        "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
+                    "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
+
                 COMMAND "$<TARGET_FILE:Qt6::qmlimportscanner>"
                     -rootPath "${CMAKE_CURRENT_SOURCE_DIR}"
                     -importPath "${CMAKE_CURRENT_BINARY_DIR}"
                     -importPath "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}"
                     -cmake-output
                     -output-file "${qmlImportsFile}"
-                DEPENDS
-                    "${PLUGIN_VIEW}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/Main.qml"
-                    ${PARAMS_QML_FILES}
+
+                COMMAND "${CMAKE_COMMAND}"
+                    ${deployArguments}
+                    -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3.cmake"
+                
+                BYPRODUCTS
+                    "${qmlImportsFile}"
                 VERBATIM
             )
+        # elseif(WIN32)
+        #     find_program(WINDEPLOYQT_EXECUTABLE
+        #         NAMES windeployqt
+        #         HINTS "${QT6_INSTALL_PREFIX}/bin"
+        #         REQUIRED
+        #     )
 
-            add_custom_target(${target}_VST3_qmlimportscan
-                DEPENDS "${qmlImportsFile}"
-            )
+        #     set(_windeployqt_input
+        #         "$<TARGET_FILE_DIR:${target}_VST3>/${target}_windeployqt.exe")
 
-            add_dependencies(${target}_VST3 ${target}_VST3_qmlimportscan)
+        #     add_custom_command(
+        #         TARGET ${target}_VST3 POST_BUILD
+        #         COMMAND "${CMAKE_COMMAND}" -E copy
+        #             "$<TARGET_FILE:${target}_VST3>"
+        #             "${_windeployqt_input}"
+        #         COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+        #             "$<$<CONFIG:Debug>:--debug>"
+        #             "$<$<NOT:$<CONFIG:Debug>>:--release>"
+        #             --force
+        #             --no-translations
+        #             --no-system-d3d-compiler
+        #             --no-system-dxc-compiler
+        #             --no-opengl-sw
+        #             --skip-plugin-types qmltooling,tls
+        #             --verbose 1
+        #             --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
+        #             --dir "$<TARGET_FILE_DIR:${target}_VST3>"
+        #             "${_windeployqt_input}"
+        #         COMMAND "${CMAKE_COMMAND}" -E rm -f
+        #             "${_windeployqt_input}"
+        #         COMMAND "${CMAKE_COMMAND}" -E rm -rf
+        #             "$<TARGET_FILE_DIR:${target}_VST3>/qmltooling"
+        #             "$<TARGET_FILE_DIR:${target}_VST3>/tls"
+        #         COMMAND "${CMAKE_COMMAND}" -E rm -f
+        #             "$<TARGET_FILE_DIR:${target}_VST3>/d3dcompiler_47.dll"
+        #             "$<TARGET_FILE_DIR:${target}_VST3>/dxcompiler.dll"
+        #             "$<TARGET_FILE_DIR:${target}_VST3>/dxil.dll"
+        #             "$<TARGET_FILE_DIR:${target}_VST3>/opengl32sw.dll"
+        #         COMMAND_EXPAND_LISTS
+        #         VERBATIM
+        #     )
+            
 
-
-            message("erik1 ${qmlImportsFile}")
-
-            add_custom_command(
-                TARGET ${target}_VST3 POST_BUILD
-                COMMAND "${CMAKE_COMMAND}"
-                    "-DVST3_MODULE=$<TARGET_FILE:${target}_VST3>"
-                    "-DQT_DIR=$<TARGET_FILE_DIR:${target}_VST3>/qt"
-                    "-DQML_IMPORTS_FILE=${qmlImportsFile}"
-                    "-DQT_LIBRARY_DIR=$<TARGET_FILE_DIR:Qt6::Core>"
-                    "-DQT_XCB_PLUGIN=$<TARGET_FILE:Qt6::QXcbIntegrationPlugin>"
-                    "-DPATCHELF=${PATCHELF_EXECUTABLE}"
-                    -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3Linux.cmake"
-            )
-
-
-        endif()
-    elseif(WIN32)
-        find_program(WINDEPLOYQT_EXECUTABLE
-            NAMES windeployqt
-            HINTS "${QT6_INSTALL_PREFIX}/bin"
-            REQUIRED
-        )
-
-        set(_windeployqt_input
-            "$<TARGET_FILE_DIR:${target}_VST3>/${target}_windeployqt.exe")
-
-        add_custom_command(
-            TARGET ${target}_VST3 POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy
-                "$<TARGET_FILE:${target}_VST3>"
-                "${_windeployqt_input}"
-            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-                "$<$<CONFIG:Debug>:--debug>"
-                "$<$<NOT:$<CONFIG:Debug>>:--release>"
-                --force
-                --no-translations
-                --no-system-d3d-compiler
-                --no-system-dxc-compiler
-                --no-opengl-sw
-                --skip-plugin-types qmltooling,tls
-                --verbose 1
-                --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
-                --dir "$<TARGET_FILE_DIR:${target}_VST3>"
-                "${_windeployqt_input}"
-            COMMAND "${CMAKE_COMMAND}" -E rm -f
-                "${_windeployqt_input}"
-            COMMAND "${CMAKE_COMMAND}" -E rm -rf
-                "$<TARGET_FILE_DIR:${target}_VST3>/qmltooling"
-                "$<TARGET_FILE_DIR:${target}_VST3>/tls"
-            COMMAND "${CMAKE_COMMAND}" -E rm -f
-                "$<TARGET_FILE_DIR:${target}_VST3>/d3dcompiler_47.dll"
-                "$<TARGET_FILE_DIR:${target}_VST3>/dxcompiler.dll"
-                "$<TARGET_FILE_DIR:${target}_VST3>/dxil.dll"
-                "$<TARGET_FILE_DIR:${target}_VST3>/opengl32sw.dll"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
-        
-
-        if(_create_module_info)
-            smtg_target_create_module_info_file(${target}_VST3)
-        endif()
-        if(_run_vst_validator)
-            smtg_target_run_vst_validator(${target}_VST3)
-        endif()
-    elseif(APPLE)
-        if(CMAKE_BUILD_TYPE STREQUAL "Release")
-            # if(NOT TARGET Qt6::QCocoaIntegrationPlugin)
-            #     find_package(Qt6 REQUIRED COMPONENTS QCocoaIntegrationPlugin)
-            # endif()
-
-            find_program(MACDEPLOYQT_EXECUTABLE
-                NAMES macdeployqt
-                HINTS "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_BINS}"
-                REQUIRED
-            )
-
-            add_custom_command(
-                TARGET ${target}_VST3 POST_BUILD
-                COMMAND "${MACDEPLOYQT_EXECUTABLE}"
-                    "$<TARGET_BUNDLE_DIR:${target}_VST3>"
-                    -no-plugins
-            )
-
-            #     COMMAND "${CMAKE_COMMAND}" -E rm -rf
-            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/Frameworks"
-            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/PlugIns"
-            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/Resources/qml"
-
-            #     COMMAND "${MACDEPLOYQT_EXECUTABLE}"
-            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>"
-            #         "-qmldir=${CMAKE_CURRENT_SOURCE_DIR}"
-            #         -no-plugins
-            #         -no-codesign
-
-            #     COMMAND "${CMAKE_COMMAND}" -E make_directory
-            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/PlugIns/platforms"
-            #     COMMAND "${CMAKE_COMMAND}" -E copy
-            #         "$<TARGET_FILE:Qt6::QCocoaIntegrationPlugin>"
-            #         "$<TARGET_BUNDLE_DIR:${target}_VST3>/Contents/PlugIns/platforms/"
-
-            #     COMMAND "${CMAKE_COMMAND}"
-            #         "-DVST3_BUNDLE=$<TARGET_BUNDLE_DIR:${target}_VST3>"
-            #         "-DQT_LIB_DIR=${QT6_INSTALL_PREFIX}/${QT6_INSTALL_LIBS}"
-            #         "-DCODESIGN_IDENTITY=-"
-            #         -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3Mac.cmake"
-
-            #     VERBATIM
-            # )
-        endif()
+        #     if(_create_module_info)
+        #         smtg_target_create_module_info_file(${target}_VST3)
+        #     endif()
+        #     if(_run_vst_validator)
+        #         smtg_target_run_vst_validator(${target}_VST3)
+        #     endif()
+        # endif()
     endif()
 
     target_include_directories(${target}_VST3 PRIVATE
