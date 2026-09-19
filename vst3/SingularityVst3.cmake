@@ -98,15 +98,15 @@ function(singularity_create_vst3_plugin target)
         set(SMTG_CREATE_PLUGIN_LINK OFF)
     endif()
 
-    # On Windows, the SDK's moduleinfotool and validator load the plug-in as
-    # POST_BUILD steps. Defer them until after windeployqt has copied the Qt
-    # runtime next to the module, which is required for Debug Qt builds.
+    # On Windows, defer moduleinfotool until after the Qt runtime has been
+    # copied next to the module.
     set(_create_module_info "${SMTG_CREATE_MODULE_INFO}")
-    set(_run_vst_validator "${SMTG_RUN_VST_VALIDATOR}")
     if(WIN32)
         set(SMTG_CREATE_MODULE_INFO OFF)
-        set(SMTG_RUN_VST_VALIDATOR OFF)
     endif()
+
+    # Validation is performed by pluginval in CI.
+    set(SMTG_RUN_VST_VALIDATOR OFF)
 
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
@@ -126,10 +126,8 @@ function(singularity_create_vst3_plugin target)
 
     if(WIN32)
         set(SMTG_CREATE_MODULE_INFO "${_create_module_info}")
-        set(SMTG_RUN_VST_VALIDATOR "${_run_vst_validator}")
         # A VST3 bundle's module filename must match its package name. Qt's
-        # Windows project setup supplies a "d" debug postfix by default,
-        # which would make the SDK tools look for a different filename.
+        # Windows project setup supplies a "d" debug postfix by default.
         set_target_properties(${target}_VST3 PROPERTIES DEBUG_POSTFIX "")
     endif()
 
@@ -285,6 +283,10 @@ function(singularity_create_vst3_plugin target)
                     "${qmlImportsFile}"
                 VERBATIM
             )
+
+            if(WIN32 AND _create_module_info)
+                smtg_target_create_module_info_file(${target}_VST3)
+            endif()
         # elseif(WIN32)
         #     find_program(WINDEPLOYQT_EXECUTABLE
         #         NAMES windeployqt

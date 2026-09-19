@@ -117,6 +117,15 @@ elseif(DEPLOY_PLATFORM STREQUAL "Windows")
         DESTINATION "${QT_DIR}"
     )
 
+    # Qt's icuuc.dll is a small forwarding shim. CMake resolves the same name
+    # from System32 first and the system-library filter then excludes it, so
+    # copy Qt's shim explicitly when this Qt build provides one.
+    if(EXISTS "${QT_LIBRARY_DIR}/icuuc.dll")
+        file(COPY "${QT_LIBRARY_DIR}/icuuc.dll"
+            DESTINATION "${QT_DIR}"
+        )
+    endif()
+
     file(COPY "${QT_PLUGIN}"
         DESTINATION "${QT_DIR}/platforms"
     )
