@@ -52,6 +52,7 @@ function(singularity_create_plugin target)
     )
 
     target_compile_definitions(${target} PUBLIC
+        PLUGIN_NAME="${PARAMS_PLUGIN_NAME}"
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
         SINGULARITY_QML_MODULE_URI="Singularity"
