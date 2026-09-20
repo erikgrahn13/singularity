@@ -48,6 +48,10 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3
 
+      - name: Install
+        run:  |
+          cmake --install build --config Release --component ExampleEffectStandalone --prefix "$PWD/build/examples/ExampleEffect/out/APP"
+
       - name: Package macOS plugin
         if: runner.os == 'macOS'
         shell: bash
@@ -72,7 +76,7 @@ jobs:
         with:
           name: plugin-artifacts-${{ matrix.os }}
           path: |
-            build/examples/ExampleEffect/**
+            build/examples/ExampleEffect/out/**
             build/examples/ExampleInstrument/**
           if-no-files-found: error
 

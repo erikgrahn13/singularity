@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(rtaudio)
 function(singularity_create_app_plugin target)
 
     qt_add_executable(${target}_APP
+        WIN32 MACOSX_BUNDLE
         ${SINGULARITY_ROOT_DIR}/standalone/main2.cpp
         ${SINGULARITY_ROOT_DIR}/standalone/APPController.cpp
         # ${rtaudio_SOURCE_DIR}/RtAudio.cpp
@@ -46,104 +47,214 @@ function(singularity_create_app_plugin target)
     )
 
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(appComponent "${target}Standalone")
+        set(appDeployOptions NO_TRANSLATIONS)
 
-            FetchContent_Declare(
-                patchelf_0191
-                URL
-                    "https://github.com/NixOS/patchelf/releases/download/0.19.1/patchelf-0.19.1-x86_64.tar.gz"
-                URL_HASH
-                    SHA256=a6818fef80128fb354423234ecacdcca3e993913d774e5d8346bc63f70fed4cf
+        if(APPLE)
+            list(APPEND appDeployOptions
+                # MACOS_BUNDLE_POST_BUILD
+            )
+        elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            list(APPEND appDeployOptions
+                EXCLUDE_PLUGINS
+                    qtvirtualkeyboardplugin
+
+                EXCLUDE_PLUGIN_TYPES
+                    egldeviceintegrations
+                    generic
+                    iconengines
+                    imageformats
+                    networkinformation
+                    platformthemes
+                    printsupport
+                    qmltooling
+                    styles
+                    tls
+                    wayland-decoration-client
+                    wayland-graphics-integration-client
+                    wayland-shell-integration
+
+                POST_INCLUDE_REGEXES
+                    ".*/libQt6.*"
+                    ".*/libicu.*"
             )
 
-            FetchContent_MakeAvailable(patchelf_0191)
+            # FetchContent_Declare(
+            #     patchelf_0191
+            #     URL
+            #         "https://github.com/NixOS/patchelf/releases/download/0.19.1/patchelf-0.19.1-x86_64.tar.gz"
+            #     URL_HASH
+            #         SHA256=a6818fef80128fb354423234ecacdcca3e993913d774e5d8346bc63f70fed4cf
+            #     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            # )
 
-            set(
-                PATCHELF_EXECUTABLE
-                "${patchelf_0191_SOURCE_DIR}/bin/patchelf"
-            )
+            # FetchContent_MakeAvailable(patchelf_0191)
 
-            file(CHMOD "${PATCHELF_EXECUTABLE}"
-                PERMISSIONS
-                    OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                    GROUP_READ GROUP_EXECUTE
-                    WORLD_READ WORLD_EXECUTE
-            )
+            # set(QT_DEPLOY_PATCHELF_EXECUTABLE "${patchelf_0191_SOURCE_DIR}/bin/patchelf" CACHE FILEPATH "patchelf used by Qt deployment")
 
+            # file(CHMOD "${QT_DEPLOY_PATCHELF_EXECUTABLE}"
+            #     PERMISSIONS
+            #         OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            #         GROUP_READ GROUP_EXECUTE
+            #         WORLD_READ WORLD_EXECUTE
+            # )
 
-            FetchContent_Declare(
-                linuxdeploy
-                URL
-                    "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage"
-                DOWNLOAD_NO_EXTRACT TRUE
-                TLS_VERIFY TRUE
-            )
-            FetchContent_Declare(
-                linuxdeploy_plugin_qt
-                URL
-                    "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage"
-                DOWNLOAD_NO_EXTRACT TRUE
-                TLS_VERIFY TRUE
-            )
+            # set(QT_DEPLOY_USE_PATCHELF ON CACHE BOOL "Use patchelf during Qt deployment")
 
-            FetchContent_MakeAvailable(linuxdeploy linuxdeploy_plugin_qt)
-            set(LINUXDEPLOY_EXECUTABLE "${linuxdeploy_SOURCE_DIR}/linuxdeploy-x86_64.AppImage")
-            set(LINUXDEPLOY_PLUGIN_QT_EXECUTABLE "${linuxdeploy_plugin_qt_SOURCE_DIR}/linuxdeploy-plugin-qt-x86_64.AppImage")
-
-            file(CHMOD
-                "${LINUXDEPLOY_EXECUTABLE}"
-                "${LINUXDEPLOY_PLUGIN_QT_EXECUTABLE}"
-                PERMISSIONS
-                    OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                    GROUP_READ GROUP_EXECUTE
-                    WORLD_READ WORLD_EXECUTE
-            )
-
-            set(appDir "${CMAKE_CURRENT_BINARY_DIR}/${target}.AppDir")
-            set(appImage "${CMAKE_CURRENT_BINARY_DIR}/${target}-${PROJECT_VERSION}-x86_64.AppImage")
-            set(desktopFile "${CMAKE_CURRENT_BINARY_DIR}/${target}.desktop")
-            set(appIcon "${SINGULARITY_ROOT_DIR}/resources/logo_transparent_512.png")
+            set(appLauncher "${CMAKE_CURRENT_BINARY_DIR}/${target}-launcher")
 
             file(GENERATE
-                OUTPUT "${desktopFile}"
+                OUTPUT "${appLauncher}"
                 CONTENT
-                    "[Desktop Entry]\nType=Application\nName=${target}\nExec=$<TARGET_FILE_NAME:${target}_APP>\nIcon=${target}\nCategories=AudioVideo;Audio;\n"
+        "#!/bin/sh
+
+        appDir=\$(CDPATH= cd \"\$(dirname \"\$0\")\" && pwd)
+
+        if [ -n \"\$LD_LIBRARY_PATH\" ]; then
+            export LD_LIBRARY_PATH=\"\$appDir/../${CMAKE_INSTALL_LIBDIR}:\$LD_LIBRARY_PATH\"
+        else
+            export LD_LIBRARY_PATH=\"\$appDir/../${CMAKE_INSTALL_LIBDIR}\"
+        fi
+
+        exec \"\$appDir/${target}_APP\" \"\$@\"
+        "
             )
 
-            add_custom_command(
-                TARGET ${target}_APP
-                POST_BUILD
-
-                COMMAND "${CMAKE_COMMAND}" -E rm -rf
-                    "${appDir}"
-
-                COMMAND "${CMAKE_COMMAND}" -E env
-                    --unset=DEBUG
-                    NO_STRIP=1
-                    "PATCHELF=${PATCHELF_EXECUTABLE}"
-                    "PATH=${linuxdeploy_plugin_qt_SOURCE_DIR}:$ENV{PATH}"
-                    "QMAKE=$<TARGET_FILE:Qt6::qmake>"
-                    "QML_SOURCES_PATHS=${CMAKE_CURRENT_SOURCE_DIR}"
-                    "LINUXDEPLOY_OUTPUT_APP_NAME=${target}"
-                    "LINUXDEPLOY_OUTPUT_VERSION=${PROJECT_VERSION}"
-                    "LDAI_OUTPUT=${appImage}"
-                    "${LINUXDEPLOY_EXECUTABLE}"
-                    --verbosity=2
-                    --appdir "${appDir}"
-                    --executable "$<TARGET_FILE:${target}_APP>"
-                    --desktop-file "${desktopFile}"
-                    --icon-file "${appIcon}"
-                    --icon-filename "${target}"
-                    --plugin qt
-                    --output appimage
-
-                BYPRODUCTS
-                    "${appImage}"
-
-                VERBATIM
-                COMMENT "Creating ${target} AppImage"
+            install(
+                PROGRAMS "${appLauncher}"
+                DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                RENAME "${target}"
+                COMPONENT "${appComponent}"
             )
         endif()
+
+        install(
+            TARGETS ${target}_APP
+
+            BUNDLE
+                DESTINATION .
+                COMPONENT "${appComponent}"
+
+            RUNTIME
+                DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                COMPONENT "${appComponent}"
+        )
+
+        qt_generate_deploy_qml_app_script(
+            TARGET ${target}_APP
+            OUTPUT_SCRIPT appDeployScript
+            ${appDeployOptions}
+        )
+
+        install(
+            SCRIPT "${appDeployScript}"
+            COMPONENT "${appComponent}"
+        )
+
+
+
+
+
+
+
+        # if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+        #     FetchContent_Declare(
+        #         patchelf_0191
+        #         URL
+        #             "https://github.com/NixOS/patchelf/releases/download/0.19.1/patchelf-0.19.1-x86_64.tar.gz"
+        #         URL_HASH
+        #             SHA256=a6818fef80128fb354423234ecacdcca3e993913d774e5d8346bc63f70fed4cf
+        #     )
+
+        #     FetchContent_MakeAvailable(patchelf_0191)
+
+        #     set(
+        #         PATCHELF_EXECUTABLE
+        #         "${patchelf_0191_SOURCE_DIR}/bin/patchelf"
+        #     )
+
+        #     file(CHMOD "${PATCHELF_EXECUTABLE}"
+        #         PERMISSIONS
+        #             OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        #             GROUP_READ GROUP_EXECUTE
+        #             WORLD_READ WORLD_EXECUTE
+        #     )
+
+
+        #     FetchContent_Declare(
+        #         linuxdeploy
+        #         URL
+        #             "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage"
+        #         DOWNLOAD_NO_EXTRACT TRUE
+        #         TLS_VERIFY TRUE
+        #     )
+        #     FetchContent_Declare(
+        #         linuxdeploy_plugin_qt
+        #         URL
+        #             "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage"
+        #         DOWNLOAD_NO_EXTRACT TRUE
+        #         TLS_VERIFY TRUE
+        #     )
+
+        #     FetchContent_MakeAvailable(linuxdeploy linuxdeploy_plugin_qt)
+        #     set(LINUXDEPLOY_EXECUTABLE "${linuxdeploy_SOURCE_DIR}/linuxdeploy-x86_64.AppImage")
+        #     set(LINUXDEPLOY_PLUGIN_QT_EXECUTABLE "${linuxdeploy_plugin_qt_SOURCE_DIR}/linuxdeploy-plugin-qt-x86_64.AppImage")
+
+        #     file(CHMOD
+        #         "${LINUXDEPLOY_EXECUTABLE}"
+        #         "${LINUXDEPLOY_PLUGIN_QT_EXECUTABLE}"
+        #         PERMISSIONS
+        #             OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        #             GROUP_READ GROUP_EXECUTE
+        #             WORLD_READ WORLD_EXECUTE
+        #     )
+
+        #     set(appDir "${CMAKE_CURRENT_BINARY_DIR}/${target}.AppDir")
+        #     set(appImage "${CMAKE_CURRENT_BINARY_DIR}/${target}-${PROJECT_VERSION}-x86_64.AppImage")
+        #     set(desktopFile "${CMAKE_CURRENT_BINARY_DIR}/${target}.desktop")
+        #     set(appIcon "${SINGULARITY_ROOT_DIR}/resources/logo_transparent_512.png")
+
+        #     file(GENERATE
+        #         OUTPUT "${desktopFile}"
+        #         CONTENT
+        #             "[Desktop Entry]\nType=Application\nName=${target}\nExec=$<TARGET_FILE_NAME:${target}_APP>\nIcon=${target}\nCategories=AudioVideo;Audio;\n"
+        #     )
+
+        #     add_custom_command(
+        #         TARGET ${target}_APP
+        #         POST_BUILD
+
+        #         COMMAND "${CMAKE_COMMAND}" -E rm -rf
+        #             "${appDir}"
+
+        #         COMMAND "${CMAKE_COMMAND}" -E env
+        #             --unset=DEBUG
+        #             NO_STRIP=1
+        #             "PATCHELF=${PATCHELF_EXECUTABLE}"
+        #             "PATH=${linuxdeploy_plugin_qt_SOURCE_DIR}:$ENV{PATH}"
+        #             "QMAKE=$<TARGET_FILE:Qt6::qmake>"
+        #             "QML_SOURCES_PATHS=${CMAKE_CURRENT_SOURCE_DIR}"
+        #             "LINUXDEPLOY_OUTPUT_APP_NAME=${target}"
+        #             "LINUXDEPLOY_OUTPUT_VERSION=${PROJECT_VERSION}"
+        #             "LDAI_OUTPUT=${appImage}"
+        #             "${LINUXDEPLOY_EXECUTABLE}"
+        #             --verbosity=2
+        #             --appdir "${appDir}"
+        #             --executable "$<TARGET_FILE:${target}_APP>"
+        #             --desktop-file "${desktopFile}"
+        #             --icon-file "${appIcon}"
+        #             --icon-filename "${target}"
+        #             --plugin qt
+        #             --output appimage
+
+        #         BYPRODUCTS
+        #             "${appImage}"
+
+        #         VERBATIM
+        #         COMMENT "Creating ${target} AppImage"
+        #     )
+        # endif()
     endif()
 
     # target_compile_definitions(${target}_APP PRIVATE

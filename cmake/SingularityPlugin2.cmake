@@ -2,6 +2,31 @@ include_guard(GLOBAL)
 
 cmake_path(GET CMAKE_CURRENT_LIST_DIR PARENT_PATH _singularity_root_dir)
 set(SINGULARITY_ROOT_DIR "${_singularity_root_dir}" CACHE INTERNAL "" FORCE)
+include(FetchContent)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
+        AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    FetchContent_Declare(
+        patchelf_0191
+        URL
+            "https://github.com/NixOS/patchelf/releases/download/0.19.1/patchelf-0.19.1-x86_64.tar.gz"
+        URL_HASH
+            SHA256=a6818fef80128fb354423234ecacdcca3e993913d774e5d8346bc63f70fed4cf
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
+    FetchContent_MakeAvailable(patchelf_0191)
+
+    set(QT_DEPLOY_PATCHELF_EXECUTABLE "${patchelf_0191_SOURCE_DIR}/bin/patchelf" CACHE FILEPATH "patchelf used by Qt deployment")
+    set(QT_DEPLOY_USE_PATCHELF ON CACHE BOOL "Use patchelf during Qt deployment")
+
+    file(CHMOD "${QT_DEPLOY_PATCHELF_EXECUTABLE}"
+        PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE
+    )
+endif()
 
 find_package(Qt6 6.7 REQUIRED COMPONENTS Quick)
 qt_standard_project_setup(REQUIRES 6.7)
@@ -59,8 +84,6 @@ function(singularity_create_plugin target)
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)
-
-    include(FetchContent)
 
     foreach(FORMAT IN LISTS PARAMS_FORMATS)
         if(FORMAT STREQUAL "APP")
