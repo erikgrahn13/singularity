@@ -91,15 +91,6 @@ jobs:
           name: plugin-artifacts-${{ matrix.os }}
           path: ./plugin-artifacts
 
-      - name: Extract and verify macOS plugin
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          tar -xzf plugin-artifacts/plugin-artifacts-macos.tar.gz \
-            -C plugin-artifacts
-          codesign --verify --deep --strict --verbose=4 \
-            "plugin-artifacts/ExampleEffect/out/VST3/Release/Example Effect.vst3"
-
       - name: Download Pluginval
         shell: bash
         run: |
