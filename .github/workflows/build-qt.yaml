@@ -62,8 +62,7 @@ jobs:
       #     compression-level: 0
       #     if-no-files-found: error
 
-      - name: Upload Linux and Windows plugin artifacts
-        if: runner.os != 'macOS'
+      - name: Upload plugin artifacts
         uses: actions/upload-artifact@v4
         with:
           name: plugin-artifacts-${{ matrix.os }}
