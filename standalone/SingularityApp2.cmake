@@ -48,28 +48,32 @@ function(singularity_create_app_plugin target)
 
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(appComponent "${target}Standalone")
-        set(appDeployOptions NO_TRANSLATIONS)
+        set(appDeployOptions 
+            NO_TRANSLATIONS
 
-        if(APPLE)
-            list(APPEND appDeployOptions
-                # MACOS_BUNDLE_POST_BUILD
-            )
-        elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-            list(APPEND appDeployOptions
-                EXCLUDE_PLUGINS
-                    qtvirtualkeyboardplugin
+            EXCLUDE_PLUGINS
+                qtvirtualkeyboardplugin
 
+            EXCLUDE_PLUGIN_TYPES
+                networkinformation
+                printsupport
+                qmltooling
+                tls
+                iconengines
+                imageformats
+                styles
+        )
+
+        # if(APPLE)
+        #     list(APPEND appDeployOptions
+        #         # MACOS_BUNDLE_POST_BUILD
+        #     )
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            list(APPEND appDeployOptions
                 EXCLUDE_PLUGIN_TYPES
                     egldeviceintegrations
                     generic
-                    iconengines
-                    imageformats
-                    networkinformation
                     platformthemes
-                    printsupport
-                    qmltooling
-                    styles
-                    tls
                     wayland-decoration-client
                     wayland-graphics-integration-client
                     wayland-shell-integration

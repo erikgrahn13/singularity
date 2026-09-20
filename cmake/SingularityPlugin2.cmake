@@ -28,8 +28,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
     )
 endif()
 
-find_package(Qt6 6.7 REQUIRED COMPONENTS Quick)
-qt_standard_project_setup(REQUIRES 6.7)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Quick)
+qt_standard_project_setup(REQUIRES 6.10)
 
 
 function(singularity_create_plugin target)
