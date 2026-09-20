@@ -52,14 +52,6 @@ jobs:
         run:  |
           cmake --install build --config Release --component ExampleEffectStandalone --prefix "$PWD/build/examples/ExampleEffect/out/APP"
 
-      - name: Package macOS plugin
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          plugin="build/examples/ExampleEffect/out/VST3/Release/Example Effect.vst3"
-          codesign --verify --deep --strict --verbose=4 "$plugin"
-          tar -C build/examples -czf plugin-artifacts-macos.tar.gz \
-            "ExampleEffect/out/VST3/Release/Example Effect.vst3"
 
       - name: Upload macOS plugin artifact
         if: runner.os == 'macOS'
