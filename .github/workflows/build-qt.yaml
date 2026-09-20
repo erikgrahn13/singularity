@@ -53,14 +53,14 @@ jobs:
           cmake --install build --config Release --component ExampleEffectStandalone --prefix "$PWD/build/examples/ExampleEffect/out/APP"
 
 
-      - name: Upload macOS plugin artifact
-        if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
-        with:
-          name: plugin-artifacts-${{ matrix.os }}
-          path: plugin-artifacts-macos.tar.gz
-          compression-level: 0
-          if-no-files-found: error
+      # - name: Upload macOS plugin artifact
+      #   if: runner.os == 'macOS'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: plugin-artifacts-${{ matrix.os }}
+      #     path: plugin-artifacts-macos.tar.gz
+      #     compression-level: 0
+      #     if-no-files-found: error
 
       - name: Upload Linux and Windows plugin artifacts
         if: runner.os != 'macOS'
