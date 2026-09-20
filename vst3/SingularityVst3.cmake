@@ -92,7 +92,7 @@ function(singularity_create_vst3_plugin target)
     )
 
     # set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
-    set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR})
+    set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
 
     if(WIN32)
         set(SMTG_CREATE_PLUGIN_LINK OFF)
