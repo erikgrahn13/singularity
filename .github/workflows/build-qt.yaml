@@ -46,29 +46,39 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
 
       - name: Build
-        run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3
+        run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3 ExampleInstrument_APP ExampleInstrument_VST3
 
       - name: Install
         run:  |
           cmake --install build --config Release --component ExampleEffectStandalone --prefix "$PWD/build/examples/ExampleEffect/out/APP"
+          cmake --install build --config Release --component ExampleInstrumentStandalone --prefix "$PWD/build/examples/ExampleInstrument/out/APP"
 
+      - name: Archive Unix artifacts
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          tar -C build/examples \
+            -czf plugin-artifacts.tar.gz \
+            ExampleEffect/out \
+            ExampleInstrument/out
 
-      # - name: Upload macOS plugin artifact
-      #   if: runner.os == 'macOS'
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: plugin-artifacts-${{ matrix.os }}
-      #     path: plugin-artifacts-macos.tar.gz
-      #     compression-level: 0
-      #     if-no-files-found: error
+      - name: Upload Unix plugin artifacts
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-artifacts-${{ matrix.os }}
+          path: plugin-artifacts.tar.gz
+          compression-level: 0
+          if-no-files-found: error
 
-      - name: Upload plugin artifacts
+      - name: Upload Windows plugin artifacts
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: plugin-artifacts-${{ matrix.os }}
           path: |
             build/examples/ExampleEffect/out/**
-            build/examples/ExampleInstrument/**
+            build/examples/ExampleInstrument/out/**
           if-no-files-found: error
 
   test:
@@ -90,6 +100,11 @@ jobs:
         with:
           name: plugin-artifacts-${{ matrix.os }}
           path: ./plugin-artifacts
+
+      - name: Extract Unix plugin artifacts
+        if: runner.os != 'Windows'
+        shell: bash
+        run: tar -xzf plugin-artifacts/plugin-artifacts.tar.gz -C plugin-artifacts
 
       - name: Download Pluginval
         shell: bash

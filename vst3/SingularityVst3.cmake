@@ -36,7 +36,7 @@ smtg_enable_vst3_sdk()
 # endif()
 
 # set(SINGULARITY_VST3SDK_SOURCE_DIR "${vst3sdk_SOURCE_DIR}" CACHE INTERNAL "" FORCE)
-# set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
+set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
 
 # if(WIN32 AND MSVC)
 #     # SMTG_PlatformToolset adds /MTd in Debug. Override it to match the
@@ -91,7 +91,7 @@ function(singularity_create_vst3_plugin target)
         "${CMAKE_CURRENT_BINARY_DIR}/plugincids.h"
     )
 
-    # set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
+    set(public_sdk_SOURCE_DIR ${SINGULARITY_VST3_PUBLIC_SDK_DIR})
     set(SMTG_CUSTOM_BINARY_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/out)
 
     if(WIN32)
