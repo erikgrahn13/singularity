@@ -41,6 +41,12 @@ function(singularity_create_plugin target)
     # Parse the arguments
     cmake_parse_arguments(PARAMS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+    if(PARAMS_PLUGIN_NAME)
+        set(pluginTitle "${PARAMS_PLUGIN_NAME}")
+    else()
+        set(pluginTitle "${target}")
+    endif()
+
 
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     # qt_add_library(${target} STATIC
@@ -77,7 +83,7 @@ function(singularity_create_plugin target)
     )
 
     target_compile_definitions(${target} PUBLIC
-        PLUGIN_NAME="${PARAMS_PLUGIN_NAME}"
+        PLUGIN_NAME="${pluginTitle}"
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
         SINGULARITY_QML_MODULE_URI="Singularity"
@@ -92,7 +98,7 @@ function(singularity_create_plugin target)
         elseif(FORMAT STREQUAL "VST3")
             include("${SINGULARITY_ROOT_DIR}/vst3/SingularityVst3.cmake")
             singularity_create_vst3_plugin(${target}
-                PLUGIN_TITLE "${PARAMS_PLUGIN_NAME}"
+                PLUGIN_TITLE "${pluginTitle}"
             )
         endif()
     endforeach()

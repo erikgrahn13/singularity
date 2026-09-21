@@ -7,6 +7,7 @@ project(ExampleInstrument
 
 singularity_create_plugin(
     ${PROJECT_NAME}
+    PLUGIN_NAME "Example Instrument"
     FORMATS APP VST3
     PLUGIN_CLASS ExampleInstrument
     PLUGIN_CLASS_HEADER "ExampleInstrument.h"
