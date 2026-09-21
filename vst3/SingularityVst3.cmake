@@ -22,13 +22,6 @@ FetchContent_MakeAvailable(vst3sdk)
 
 smtg_enable_vst3_sdk()
 
-# smtg_configure_cmake_generator() sets CMAKE_CONFIGURATION_TYPES in its own
-# directory scope. Promote it so consumers using Singularity via FetchContent
-# can also create correctly structured Windows VST3 bundles.
-# if(WIN32)
-#     set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
-# endif()
-
 # The SDK's threadchecker_mac.mm uses std::terminate() without including
 # <exception>. Newer Xcode/macOS SDKs no longer provide it transitively.
 # if(APPLE AND TARGET sdk_common)
@@ -107,6 +100,13 @@ function(singularity_create_vst3_plugin target)
 
     # Validation is performed by pluginval in CI.
     set(SMTG_RUN_VST_VALIDATOR OFF)
+
+    # The SDK uses CMAKE_CONFIGURATION_TYPES to assign the Windows bundle's
+    # per-configuration output directory, even with single-config generators.
+    # Its own value is directory-scoped and is not visible to later plug-ins.
+    if(WIN32 AND NOT CMAKE_CONFIGURATION_TYPES)
+        set(CMAKE_CONFIGURATION_TYPES "${CMAKE_BUILD_TYPE}")
+    endif()
 
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
