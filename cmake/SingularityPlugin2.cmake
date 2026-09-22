@@ -28,11 +28,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
     )
 endif()
 
-find_package(Qt6 6.10 REQUIRED COMPONENTS Quick)
-qt_standard_project_setup(REQUIRES 6.10)
-
-
-function(singularity_create_plugin target)
+function(_singularity_create_plugin target)
     set(oneValueArgs
         VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER PLUGIN_NAME
         CAPI_SDK_DIR CAPI_MAX_BLOCK_SIZE CAPI_STACK_SIZE)
@@ -103,3 +99,9 @@ function(singularity_create_plugin target)
         endif()
     endforeach()
 endfunction()
+
+macro(singularity_create_plugin target)
+    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick)
+    qt_standard_project_setup(REQUIRES 6.10)
+    _singularity_create_plugin(${target} ${ARGN})
+endmacro()
