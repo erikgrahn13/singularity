@@ -15,11 +15,11 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          qt_archives: "qtbase qtdeclarative qtshadertools icu"
+          qt_archives: "qtbase qtdeclarative icu"
         - os: macos-latest
-          qt_archives: "qtbase qtdeclarative qtshadertools"
+          qt_archives: "qtbase qtdeclarative"
         - os: windows-latest
-          qt_archives: "qtbase qtdeclarative qtshadertools"
+          qt_archives: "qtbase qtdeclarative"
 
     steps:
       - name: Checkout repository
@@ -39,6 +39,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: "6.10.3"
+          modules: "qtshadertools"
           archives: ${{ matrix.qt_archives }}
           cache: true
 
