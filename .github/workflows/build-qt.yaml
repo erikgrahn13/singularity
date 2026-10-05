@@ -15,11 +15,11 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          qt_archives: "qtbase qtdeclarative icu"
+          qt_archives: "qtbase qtdeclarative qtshadertools icu"
         - os: macos-latest
-          qt_archives: "qtbase qtdeclarative"
+          qt_archives: "qtbase qtdeclarative qtshadertools"
         - os: windows-latest
-          qt_archives: "qtbase qtdeclarative"
+          qt_archives: "qtbase qtdeclarative qtshadertools"
 
     steps:
       - name: Checkout repository
