@@ -32,7 +32,7 @@ function(_singularity_create_plugin target)
     set(oneValueArgs
         VENDOR BUNDLE_ID URL EMAIL PLUGIN_CLASS PLUGIN_CLASS_HEADER PLUGIN_NAME
         CAPI_SDK_DIR CAPI_MAX_BLOCK_SIZE CAPI_STACK_SIZE)
-    set(multiValueArgs SOURCES QML_FILES FORMATS RESOURCES DATA_RESOURCES CAPI_INCLUDE_DIRS)
+    set(multiValueArgs SOURCES QML_FILES SHADERS FORMATS RESOURCES DATA_RESOURCES CAPI_INCLUDE_DIRS)
 
     # Parse the arguments
     cmake_parse_arguments(PARAMS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -74,6 +74,17 @@ function(_singularity_create_plugin target)
             ${PARAMS_RESOURCES}
     )
 
+    if(PARAMS_SHADERS)
+        qt_add_shaders(${PROJECT_NAME} ExampleEffectShaders
+            PREFIX "/shaders"
+            BASE "${CMAKE_CURRENT_SOURCE_DIR}/.."
+            FILES
+                ${PARAMS_SHADERS}
+            OPTIMIZED
+        )
+
+    endif()
+
     target_link_libraries(${target} PUBLIC
         Qt6::Quick
     )
@@ -101,7 +112,7 @@ function(_singularity_create_plugin target)
 endfunction()
 
 macro(singularity_create_plugin target)
-    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick)
+    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick ShaderTools)
     qt_standard_project_setup(REQUIRES 6.10)
     _singularity_create_plugin(${target} ${ARGN})
 endmacro()

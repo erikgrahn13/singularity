@@ -50,7 +50,7 @@ void SingularityController::attachToView(QQuickView& view, const QUrl& source)
     view_ = &view;
     view.rootContext()->setContextProperty(QStringLiteral("parameters"), this);
 
-    view.setResizeMode(QQuickView::SizeViewToRootObject);
+    view.setResizeMode(QQuickView::SizeRootObjectToView);
     view.setTitle(QStringLiteral(PLUGIN_NAME));
 
     statusConnection_ = QObject::connect(

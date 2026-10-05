@@ -205,7 +205,13 @@
                     "text": "set follow-fork-mode child",
                     "ignoreFailures": false
                 }
-            ]
+            ],
+            "environment": [
+                {
+                    "name": "QT_LOGGING_RULES",
+                    "value": "qml.debug=true;js.debug=true;singularity.*.debug=true"
+                }
+           ]
         }
     ]
 }

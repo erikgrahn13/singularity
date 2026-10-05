@@ -8,7 +8,7 @@
 class ExampleEffect {
 public:
     static constexpr bool isInstrument = false;
-    static constexpr bool isResizable = false;
+    static constexpr bool isResizable = true;
 
     static auto getParameters()
     {
