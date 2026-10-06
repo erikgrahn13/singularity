@@ -184,18 +184,21 @@ public:
         endEdit(id);
     }
 
-    // void sendMessage(std::string_view name, std::string_view payload) override
-    // {
-    //     auto message = owned(allocateMessage());
-    //     if (!message)
-    //         return;
-    //     message->setMessageID("Singularity.UIMessage");
-    //     message->getAttributes()->setBinary(
-    //         "name", name.data(), static_cast<uint32>(name.size()));
-    //     message->getAttributes()->setBinary(
-    //         "payload", payload.data(), static_cast<uint32>(payload.size()));
-    //     ComponentBase::sendMessage(message);
-    // }
+    void sendAction(
+        std::string_view name,
+        std::string_view payload)
+    {
+        auto message = owned(allocateMessage());
+        if (!message)
+            return;
+
+        message->setMessageID("Singularity.UIMessage");
+        message->getAttributes()->setBinary(
+            "name", name.data(), static_cast<uint32>(name.size()));
+        message->getAttributes()->setBinary(
+            "payload", payload.data(), static_cast<uint32>(payload.size()));
+        ComponentBase::sendMessage(message);
+    }
 
 private:
     struct ControllerProgramBank

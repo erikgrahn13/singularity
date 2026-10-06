@@ -4,13 +4,16 @@
 
 #include "AudioDataExchange.h"
 
+#include <QHash>
 #include <QMetaObject>
 #include <QPointer>
 #include <QQuickView>
-#include <QHash>
+#include <QString>
 #include <QUrl>
+#include <QVariant>
 
-class SingularityController;
+#include <functional>
+#include <string_view>
 
 class QmlParameter : public QObject
 {
@@ -18,7 +21,10 @@ class QmlParameter : public QObject
     Q_PROPERTY(double value READ value WRITE setValue NOTIFY valueChanged)
 
 public:
-    QmlParameter(int id, SingularityController& controller, QObject* parent = nullptr);
+    explicit QmlParameter(
+        int id,
+        IParameterBackend& backend,
+        QObject* parent = nullptr);
 
     double value() const;
     void setValue(double value);
@@ -29,30 +35,52 @@ signals:
 
 private:
     int id_;
-    SingularityController& controller_;
+    IParameterBackend& backend_;
 };
 
+class QmlParameterCollection : public QObject
+{
+    Q_OBJECT
 
+public:
+    explicit QmlParameterCollection(
+        IParameterBackend& backend,
+        QObject* parent = nullptr);
+
+    Q_INVOKABLE QmlParameter* get(int id) const;
+
+private:
+    QHash<int, QmlParameter*> parameters_;
+};
 
 class SingularityController : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(
+        QmlParameterCollection* parameters
+        READ parameters
+        CONSTANT)
+
 public:
-    SingularityController(IParameterBackend& parameterBackend);
+    using ActionCallback =
+        std::function<void(std::string_view, std::string_view)>;
+
+    SingularityController(
+        IParameterBackend& parameterBackend,
+        ActionCallback actionCallback);
     ~SingularityController();
 
     void attachToView(QQuickView& view, const QUrl& source = {});
     void detachView();
 
-    Q_INVOKABLE QObject* get(int id) const;
+    QmlParameterCollection* parameters();
+
+    Q_INVOKABLE void sendAction(QString name);
+    Q_INVOKABLE void sendAction(QString name, QVariant value);
 
 private:
-    friend class QmlParameter;
-
-    double getParameterValue(int id) const;
-    void setParameterValue(int id, double value);
     QPointer<QQuickView> view_;
     QMetaObject::Connection statusConnection_;
-    IParameterBackend& parameterBackend_;
-    QHash<int, QmlParameter*> qmlParameters_;
+    ActionCallback actionCallback_;
+    QmlParameterCollection parameterCollection_;
 };

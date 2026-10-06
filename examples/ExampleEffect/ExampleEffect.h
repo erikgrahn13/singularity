@@ -70,6 +70,14 @@ public:
 
         sendAudioDataToUI(outputs, numSamples);
     }
+
+    void handleAction(std::string_view name, std::string_view value)
+    {
+        if(name == "loadSample")
+        {
+            // Open file here for example
+        }
+    }
 };
 
 static_assert(SingularityPlugin<ExampleEffect>);

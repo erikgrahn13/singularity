@@ -53,6 +53,18 @@ void processPluginAudio(
         params);
 }
 
+template <typename PluginType>
+void handlePluginAction(
+    PluginType& plugin,
+    std::string_view name,
+    std::string_view payload)
+{
+    if constexpr (requires {
+        plugin.handleAction(name, payload);
+    })
+        plugin.handleAction(name, payload);
+}
+
 int audioCallback( void *outputBuffer, void *inputBuffer, unsigned int frameCount,
            double streamTime, RtAudioStreamStatus status, void *userData )
 {
@@ -203,7 +215,12 @@ int main(int argc, char *argv[])
         audioContext.parameterChanges.push({id, value});
     });
 
-    SingularityController controller(appController);
+    SingularityController controller(
+        appController,
+        [&audioContext](std::string_view name, std::string_view payload)
+        {
+            handlePluginAction(audioContext.plugin, name, payload);
+        });
 
 
     // auto controller = std::make_unique<SingularityController>(getParameterContainer(), definitions);

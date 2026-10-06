@@ -4,22 +4,26 @@
 #include <QQmlContext>
 #include <QQuickItem>
 
-QmlParameter::QmlParameter(int id, SingularityController& controller, QObject* parent)
-    : QObject(parent), id_(id), controller_(controller)
+#include <utility>
+
+QmlParameter::QmlParameter(
+    int id,
+    IParameterBackend& backend,
+    QObject* parent)
+    : QObject(parent), id_(id), backend_(backend)
 {
-    
 }
 
 double QmlParameter::value() const
 {
-    return controller_.getParameterValue(id_);
+    return backend_.getParameter(id_);
 }
 
 void QmlParameter::setValue(double value)
 {
     if (this->value() == value)
         return;
-    controller_.setParameterValue(id_, value);
+    backend_.setParameter(id_, value);
     emit valueChanged();
 }
 
@@ -28,15 +32,29 @@ void QmlParameter::notifyChanged()
     emit valueChanged();
 }
 
-SingularityController::SingularityController(IParameterBackend& parameterBackend)
-    : parameterBackend_(parameterBackend)
+QmlParameterCollection::QmlParameterCollection(
+    IParameterBackend& backend,
+    QObject* parent)
+    : QObject(parent)
 {
-    for (const auto& definition :parameterBackend_.parameterDefinitions())
+    for (const auto& definition : backend.parameterDefinitions())
     {
         const int id = static_cast<int>(definition.id);
-        auto* parameter = new QmlParameter(id, *this, this);
-        qmlParameters_.insert(id, parameter);
+        parameters_.insert(id, new QmlParameter(id, backend, this));
     }
+}
+
+QmlParameter* QmlParameterCollection::get(int id) const
+{
+    return parameters_.value(id, nullptr);
+}
+
+SingularityController::SingularityController(
+    IParameterBackend& parameterBackend,
+    ActionCallback actionCallback)
+    : actionCallback_(std::move(actionCallback)),
+      parameterCollection_(parameterBackend, this)
+{
 }
 
 SingularityController::~SingularityController()
@@ -48,7 +66,9 @@ void SingularityController::attachToView(QQuickView& view, const QUrl& source)
 {
     detachView();
     view_ = &view;
-    view.rootContext()->setContextProperty(QStringLiteral("parameters"), this);
+    view.rootContext()->setContextProperty(
+        QStringLiteral("plugin"),
+        this);
 
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     view.setTitle(QStringLiteral(PLUGIN_NAME));
@@ -99,38 +119,39 @@ void SingularityController::detachView()
     view_.clear();
 }
 
-// QObject* SingularityController::parameter(int id) const
-// {
-//     auto* object = parameters_.value(id, nullptr);
-//     qWarning() << "parameter ID:" << id;
-
-//     if (!object)
-//         qWarning() << "Unknown parameter ID:" << id;
-//     return object;
-// }
-
-
-
-// double SingularityController::value()
-// {
-//     return 0.0;
-// }
-
-// void SingularityController::setValue(double value)
-// {
-// }
-QObject* SingularityController::get(int id) const
+QmlParameterCollection* SingularityController::parameters()
 {
-    return qmlParameters_.value(id, nullptr);
+    return &parameterCollection_;
 }
 
-
-double SingularityController::getParameterValue(int id) const
+void SingularityController::sendAction(QString name)
 {
-    return parameterBackend_.getParameter(id);
+    sendAction(std::move(name), {});
 }
 
-void SingularityController::setParameterValue(int id, double value)
+void SingularityController::sendAction(QString name, QVariant value)
 {
-    parameterBackend_.setParameter(id, value);
+    const auto utf8Name = name.toUtf8();
+    QString text;
+
+    if (value.metaType() == QMetaType::fromType<QUrl>())
+    {
+        const auto url = value.toUrl();
+        text = url.isLocalFile()
+            ? url.toLocalFile()
+            : url.toString(QUrl::FullyEncoded);
+    }
+    else if (value.isValid() && !value.isNull())
+    {
+        text = value.toString();
+    }
+
+    const auto utf8Value = text.toUtf8();
+
+    if (actionCallback_)
+    {
+        actionCallback_(
+            std::string_view(utf8Name.constData(), utf8Name.size()),
+            std::string_view(utf8Value.constData(), utf8Value.size()));
+    }
 }

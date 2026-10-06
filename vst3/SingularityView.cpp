@@ -167,7 +167,12 @@ SingularityView::SingularityView(Vst::EditController* editController)
     ensureQtApplication();
 
     auto* vstController = static_cast<VST3Controller*>(editController);
-    controller_ = std::make_unique<SingularityController>(*vstController);
+    controller_ = std::make_unique<SingularityController>(
+        *vstController,
+        [vstController](std::string_view name, std::string_view payload)
+        {
+            vstController->sendAction(name, payload);
+        });
 
     view_ = std::make_unique<QQuickView>();
 #if defined(__linux__)

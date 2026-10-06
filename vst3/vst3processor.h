@@ -136,9 +136,9 @@ public:
 				attributes->getBinary("payload", payloadData, payloadSize) == kResultTrue)
 			{
 				if constexpr (requires(PluginType& plugin, std::string_view name,
-					std::string_view payload) { plugin.handleMessage(name, payload); })
+					std::string_view payload) { plugin.handleAction(name, payload); })
 				{
-					mPlugin.handleMessage(
+					mPlugin.handleAction(
 						std::string_view(static_cast<const char*>(nameData), nameSize),
 						std::string_view(static_cast<const char*>(payloadData), payloadSize));
 					publishPluginState();

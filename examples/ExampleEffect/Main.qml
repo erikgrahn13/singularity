@@ -20,7 +20,7 @@ PluginView {
     readonly property color panelBorderColor: "#33263d"
     readonly property color primaryTextColor: "#f4edf7"
     readonly property color secondaryTextColor: "#998da1"
-    readonly property QtObject gain: parameters.get(13)
+    readonly property var gain: plugin.parameters.get(13)
     property bool gainControlsEnabled: true
     property var activeFileDialog: null
     property var activeFolderDialog: null
@@ -382,7 +382,7 @@ PluginView {
                            "All files (*)" ]
 
             onAccepted: {
-                plugin.openFile("sample", selectedFile)
+                plugin.sendAction("loadSample", selectedFile)
                 root.releaseFileDialog(dialog)
             }
             onRejected: root.releaseFileDialog(dialog)

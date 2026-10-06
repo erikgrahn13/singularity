@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -40,11 +42,11 @@ PluginView {
     //     onMoved: parameter.value = value
     // }
 
-    readonly property QtObject gain: parameters.get(13)
+    readonly property var gain: plugin.parameters.get(13)
 
     Dial{
-        value: gain.value
+        value: window.gain.value
         inputMode: Dial.Vertical
-        onMoved: gain.value = value
+        onMoved: window.gain.value = value
     }
 }
