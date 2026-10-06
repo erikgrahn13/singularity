@@ -94,7 +94,6 @@ function(_singularity_create_plugin target)
 
     target_link_libraries(${target} PUBLIC
         Qt6::Quick
-        Qt6::QuickShapes
     )
 
     target_compile_definitions(${target} PUBLIC
@@ -120,7 +119,7 @@ function(_singularity_create_plugin target)
 endfunction()
 
 macro(singularity_create_plugin target)
-    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickShapes ShaderTools)
+    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick ShaderTools)
     qt_standard_project_setup(REQUIRES 6.10)
     _singularity_create_plugin(${target} ${ARGN})
 endmacro()
