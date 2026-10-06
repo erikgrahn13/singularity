@@ -335,6 +335,21 @@ PluginView {
             WidgetCard {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                title: "WAVEFORM"
+                valueText: "LIVE"
+
+                Waveform {
+                    anchors.fill: parent
+                    source: plugin.audioData
+                    gain: 2
+                    waveformColor: root.accentColor
+                    fillColor: root.accentColor
+                }
+            }
+
+            WidgetCard {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 title: " SHADER"
                 valueText: "ANIMATED"
 
@@ -353,17 +368,6 @@ PluginView {
                         running: true
                         onTriggered: shader.iTime += frameTime
                     }
-                }
-            }
-
-            WidgetCard {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                title: "BLOOM"
-                valueText: "MULTI-PASS"
-
-                BloomDemo {
-                    anchors.fill: parent
                 }
             }
         }

@@ -15,8 +15,10 @@
 struct AudioContext
 {
     PLUGIN_CLASS plugin;
+    Singularity::AudioDataExchange::AudioDataQueue audioDataQueue;
     SingularityQueue<ParameterChange, 256> parameterChanges;
     std::vector<std::pair<unsigned int, double>> parameters;
+    double sampleRate = 0.0;
     unsigned int inputChannels = 0;
     unsigned int outputChannels = 0;
 };
@@ -99,12 +101,17 @@ int audioCallback( void *outputBuffer, void *inputBuffer, unsigned int frameCoun
          ++channel)
         outputs[channel] = output + channel * frameCount;
 
-    processPluginAudio(
-        context.plugin,
-        std::span<const float* const>(inputs.data(), context.inputChannels),
-        std::span<float* const>(outputs.data(), context.outputChannels),
-        frameCount,
-        ParamList {context.parameters});
+    {
+        Singularity::AudioDataExchange::ScopedSendContext sendContext(
+            &context.audioDataQueue,
+            context.sampleRate);
+        processPluginAudio(
+            context.plugin,
+            std::span<const float* const>(inputs.data(), context.inputChannels),
+            std::span<float* const>(outputs.data(), context.outputChannels),
+            frameCount,
+            ParamList {context.parameters});
+    }
 
     return 0;
 }
@@ -207,6 +214,7 @@ int main(int argc, char *argv[])
         return 1;
 
     audioContext.plugin.prepare(sampleRate,static_cast<int>(bufferFrames));
+    audioContext.sampleRate = sampleRate;
 
     if (rtaudio.startStream() != RTAUDIO_NO_ERROR)
         return 1;
@@ -220,7 +228,8 @@ int main(int argc, char *argv[])
         [&audioContext](std::string_view name, std::string_view payload)
         {
             handlePluginAction(audioContext.plugin, name, payload);
-        });
+        },
+        &audioContext.audioDataQueue);
 
 
     // auto controller = std::make_unique<SingularityController>(getParameterContainer(), definitions);

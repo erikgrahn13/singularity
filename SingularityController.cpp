@@ -4,6 +4,7 @@
 #include <QQmlContext>
 #include <QQuickItem>
 
+#include <algorithm>
 #include <utility>
 
 QmlParameter::QmlParameter(
@@ -49,11 +50,103 @@ QmlParameter* QmlParameterCollection::get(int id) const
     return parameters_.value(id, nullptr);
 }
 
+QmlAudioData::QmlAudioData(
+    Singularity::AudioDataExchange::AudioDataQueue* queue,
+    QObject* parent)
+    : QObject(parent), queue_(queue)
+{
+}
+
+quint32 QmlAudioData::revision() const
+{
+    return revision_;
+}
+
+quint32 QmlAudioData::sampleRate() const
+{
+    return sampleRate_;
+}
+
+int QmlAudioData::numChannels() const
+{
+    return numChannels_;
+}
+
+QList<float> QmlAudioData::samples() const
+{
+    return samples_;
+}
+
+bool QmlAudioData::update()
+{
+    if (!queue_)
+        return false;
+
+    using Singularity::AudioDataExchange::AudioDataBlock;
+    using Singularity::AudioDataExchange::kMaxFloatSamples;
+
+    AudioDataBlock block;
+    QList<float> samples;
+    bool received = false;
+    quint32 sampleRate = sampleRate_;
+    int numChannels = numChannels_;
+
+    while (queue_->popAudioDataBlock(block))
+    {
+        const int channels = static_cast<int>(block.numChannels);
+        const int availableSamples = static_cast<int>(std::min<std::uint32_t>(
+            block.numSamples,
+            kMaxFloatSamples));
+        const int blockSamples = channels > 0
+            ? availableSamples - availableSamples % channels
+            : 0;
+        if (blockSamples <= 0 || block.sampleSize != sizeof(float))
+            continue;
+
+        const bool formatChanged = received &&
+            (sampleRate != block.sampleRate ||
+             numChannels != channels);
+        if (formatChanged)
+            samples.clear();
+
+        sampleRate = block.sampleRate;
+        numChannels = channels;
+
+        const int capacity = static_cast<int>(kMaxFloatSamples) -
+            static_cast<int>(kMaxFloatSamples) % channels;
+        const int currentSize = static_cast<int>(samples.size());
+        const int overflow = currentSize + blockSamples - capacity;
+        if (overflow > 0)
+            samples.remove(0, std::min(overflow, currentSize));
+
+        const int sourceOffset = static_cast<int>(block.numSamples) - blockSamples;
+        samples.reserve(std::min(
+            capacity,
+            static_cast<int>(samples.size()) + blockSamples));
+        for (int index = 0; index < blockSamples; ++index)
+            samples.append(block.samples[sourceOffset + index]);
+
+        received = true;
+    }
+
+    if (!received)
+        return false;
+
+    sampleRate_ = sampleRate;
+    numChannels_ = numChannels;
+    samples_ = std::move(samples);
+    ++revision_;
+    emit dataChanged();
+    return true;
+}
+
 SingularityController::SingularityController(
     IParameterBackend& parameterBackend,
-    ActionCallback actionCallback)
+    ActionCallback actionCallback,
+    Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
     : actionCallback_(std::move(actionCallback)),
-      parameterCollection_(parameterBackend, this)
+      parameterCollection_(parameterBackend, this),
+      audioData_(audioDataQueue, this)
 {
 }
 
@@ -122,6 +215,11 @@ void SingularityController::detachView()
 QmlParameterCollection* SingularityController::parameters()
 {
     return &parameterCollection_;
+}
+
+QmlAudioData* SingularityController::audioData()
+{
+    return &audioData_;
 }
 
 void SingularityController::sendAction(QString name)

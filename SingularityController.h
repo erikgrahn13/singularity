@@ -5,6 +5,7 @@
 #include "AudioDataExchange.h"
 
 #include <QHash>
+#include <QList>
 #include <QMetaObject>
 #include <QPointer>
 #include <QQuickView>
@@ -53,12 +54,47 @@ private:
     QHash<int, QmlParameter*> parameters_;
 };
 
+class QmlAudioData : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(quint32 revision READ revision NOTIFY dataChanged)
+    Q_PROPERTY(quint32 sampleRate READ sampleRate NOTIFY dataChanged)
+    Q_PROPERTY(int numChannels READ numChannels NOTIFY dataChanged)
+    Q_PROPERTY(QList<float> samples READ samples NOTIFY dataChanged)
+
+public:
+    explicit QmlAudioData(
+        Singularity::AudioDataExchange::AudioDataQueue* queue,
+        QObject* parent = nullptr);
+
+    quint32 revision() const;
+    quint32 sampleRate() const;
+    int numChannels() const;
+    QList<float> samples() const;
+
+    Q_INVOKABLE bool update();
+
+signals:
+    void dataChanged();
+
+private:
+    Singularity::AudioDataExchange::AudioDataQueue* queue_;
+    quint32 revision_ = 0;
+    quint32 sampleRate_ = 0;
+    int numChannels_ = 0;
+    QList<float> samples_;
+};
+
 class SingularityController : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(
         QmlParameterCollection* parameters
         READ parameters
+        CONSTANT)
+    Q_PROPERTY(
+        QmlAudioData* audioData
+        READ audioData
         CONSTANT)
 
 public:
@@ -67,13 +103,15 @@ public:
 
     SingularityController(
         IParameterBackend& parameterBackend,
-        ActionCallback actionCallback);
+        ActionCallback actionCallback,
+        Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue = nullptr);
     ~SingularityController();
 
     void attachToView(QQuickView& view, const QUrl& source = {});
     void detachView();
 
     QmlParameterCollection* parameters();
+    QmlAudioData* audioData();
 
     Q_INVOKABLE void sendAction(QString name);
     Q_INVOKABLE void sendAction(QString name, QVariant value);
@@ -83,4 +121,5 @@ private:
     QMetaObject::Connection statusConnection_;
     ActionCallback actionCallback_;
     QmlParameterCollection parameterCollection_;
+    QmlAudioData audioData_;
 };

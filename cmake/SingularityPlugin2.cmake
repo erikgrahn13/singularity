@@ -51,11 +51,17 @@ function(_singularity_create_plugin target)
     # )
 
     set(PLUGIN_VIEW "${SINGULARITY_ROOT_DIR}/PluginView.qml")
+    set(WAVEFORM_VIEW "${SINGULARITY_ROOT_DIR}/Waveform.qml")
 
     set_source_files_properties(
         "${PLUGIN_VIEW}"
         PROPERTIES
             QT_RESOURCE_ALIAS "PluginView.qml"
+    )
+    set_source_files_properties(
+        "${WAVEFORM_VIEW}"
+        PROPERTIES
+            QT_RESOURCE_ALIAS "Waveform.qml"
     )
 
     qt_add_qml_module(${target}
@@ -68,6 +74,7 @@ function(_singularity_create_plugin target)
             ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
         QML_FILES
             ${PLUGIN_VIEW}
+            ${WAVEFORM_VIEW}
             Main.qml
             ${PARAMS_QML_FILES}
         RESOURCES
@@ -87,6 +94,7 @@ function(_singularity_create_plugin target)
 
     target_link_libraries(${target} PUBLIC
         Qt6::Quick
+        Qt6::QuickShapes
     )
 
     target_compile_definitions(${target} PUBLIC
@@ -112,7 +120,7 @@ function(_singularity_create_plugin target)
 endfunction()
 
 macro(singularity_create_plugin target)
-    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick ShaderTools)
+    find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickShapes ShaderTools)
     qt_standard_project_setup(REQUIRES 6.10)
     _singularity_create_plugin(${target} ${ARGN})
 endmacro()
