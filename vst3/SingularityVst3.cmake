@@ -5,7 +5,6 @@ include_guard(GLOBAL)
 option(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES "Enable VST 3 Plug-in Examples" OFF)
 option(SMTG_ENABLE_VST3_HOSTING_EXAMPLES "Enable VST 3 Hosting Examples" OFF)
 option(SMTG_ENABLE_VSTGUI_SUPPORT "Enable VSTGUI Support" OFF)
-# option(SMTG_USE_STATIC_CRT "use static CRuntime on Windows (option /MT)" ON)
 
 FetchContent_Declare(
     vst3sdk
@@ -22,27 +21,7 @@ FetchContent_MakeAvailable(vst3sdk)
 
 smtg_enable_vst3_sdk()
 
-# The SDK's threadchecker_mac.mm uses std::terminate() without including
-# <exception>. Newer Xcode/macOS SDKs no longer provide it transitively.
-# if(APPLE AND TARGET sdk_common)
-#     target_compile_options(sdk_common PRIVATE "-include" "exception")
-# endif()
-
-# set(SINGULARITY_VST3SDK_SOURCE_DIR "${vst3sdk_SOURCE_DIR}" CACHE INTERNAL "" FORCE)
 set(SINGULARITY_VST3_PUBLIC_SDK_DIR "${vst3sdk_SOURCE_DIR}/public.sdk" CACHE INTERNAL "" FORCE)
-
-# if(WIN32 AND MSVC)
-#     # SMTG_PlatformToolset adds /MTd in Debug. Override it to match the
-#     # prebuilt Skia library, which always uses the static release runtime.
-#     foreach(_target IN ITEMS
-#             sdk base pluginterfaces sdk_common sdk_hosting moduleinfotool
-#             validator editorhost audiohost)
-#         if(TARGET ${_target})
-#             target_compile_options(${_target} PRIVATE $<$<CONFIG:Debug>:/MT>)
-#         endif()
-#     endforeach()
-#     add_compile_options($<$<CONFIG:Debug>:/MT>)
-# endif()
 
 function(singularity_create_vst3_plugin target)
     set(oneValueArgs
@@ -233,117 +212,35 @@ function(singularity_create_vst3_plugin target)
             message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
         endif()
 
+        add_custom_command(
+            TARGET ${target}_VST3 POST_BUILD
 
-        # if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE)
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
 
+            COMMAND "$<TARGET_FILE:Qt6::qmlimportscanner>"
+                -rootPath "${CMAKE_CURRENT_SOURCE_DIR}"
+                -importPath "${CMAKE_CURRENT_BINARY_DIR}"
+                -importPath "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}"
+                -cmake-output
+                -output-file "${qmlImportsFile}"
 
-
-
-            # add_custom_command(
-            #     OUTPUT "${qmlImportsFile}"
-            #     COMMAND "${CMAKE_COMMAND}" -E make_directory
-            #             "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
-            #     COMMAND "$<TARGET_FILE:Qt6::qmlimportscanner>"
-            #         -rootPath "${CMAKE_CURRENT_SOURCE_DIR}"
-            #         -importPath "${CMAKE_CURRENT_BINARY_DIR}"
-            #         -importPath "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}"
-            #         -cmake-output
-            #         -output-file "${qmlImportsFile}"
-            #     DEPENDS
-            #         "${PLUGIN_VIEW}"
-            #         "${CMAKE_CURRENT_SOURCE_DIR}/Main.qml"
-            #         ${PARAMS_QML_FILES}
-            #     VERBATIM
-            # )
-
-            # add_custom_target(${target}_VST3_qmlimportscan
-            #     DEPENDS "${qmlImportsFile}"
-            # )
-
-            # add_dependencies(${target}_VST3 ${target}_VST3_qmlimportscan)
-
-            add_custom_command(
-                TARGET ${target}_VST3 POST_BUILD
-
-                COMMAND "${CMAKE_COMMAND}" -E make_directory
-                    "${CMAKE_CURRENT_BINARY_DIR}/.qt/qml_imports"
-
-                COMMAND "$<TARGET_FILE:Qt6::qmlimportscanner>"
-                    -rootPath "${CMAKE_CURRENT_SOURCE_DIR}"
-                    -importPath "${CMAKE_CURRENT_BINARY_DIR}"
-                    -importPath "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}"
-                    -cmake-output
-                    -output-file "${qmlImportsFile}"
-
-                COMMAND "${CMAKE_COMMAND}"
-                    ${deployArguments}
-                    -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3.cmake"
-                
-                BYPRODUCTS
-                    "${qmlImportsFile}"
-                VERBATIM
-            )
-
-            if(WIN32 AND _create_module_info)
-                smtg_target_create_module_info_file(${target}_VST3)
-            endif()
-        # elseif(WIN32)
-        #     find_program(WINDEPLOYQT_EXECUTABLE
-        #         NAMES windeployqt
-        #         HINTS "${QT6_INSTALL_PREFIX}/bin"
-        #         REQUIRED
-        #     )
-
-        #     set(_windeployqt_input
-        #         "$<TARGET_FILE_DIR:${target}_VST3>/${target}_windeployqt.exe")
-
-        #     add_custom_command(
-        #         TARGET ${target}_VST3 POST_BUILD
-        #         COMMAND "${CMAKE_COMMAND}" -E copy
-        #             "$<TARGET_FILE:${target}_VST3>"
-        #             "${_windeployqt_input}"
-        #         COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-        #             "$<$<CONFIG:Debug>:--debug>"
-        #             "$<$<NOT:$<CONFIG:Debug>>:--release>"
-        #             --force
-        #             --no-translations
-        #             --no-system-d3d-compiler
-        #             --no-system-dxc-compiler
-        #             --no-opengl-sw
-        #             --skip-plugin-types qmltooling,tls
-        #             --verbose 1
-        #             --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
-        #             --dir "$<TARGET_FILE_DIR:${target}_VST3>"
-        #             "${_windeployqt_input}"
-        #         COMMAND "${CMAKE_COMMAND}" -E rm -f
-        #             "${_windeployqt_input}"
-        #         COMMAND "${CMAKE_COMMAND}" -E rm -rf
-        #             "$<TARGET_FILE_DIR:${target}_VST3>/qmltooling"
-        #             "$<TARGET_FILE_DIR:${target}_VST3>/tls"
-        #         COMMAND "${CMAKE_COMMAND}" -E rm -f
-        #             "$<TARGET_FILE_DIR:${target}_VST3>/d3dcompiler_47.dll"
-        #             "$<TARGET_FILE_DIR:${target}_VST3>/dxcompiler.dll"
-        #             "$<TARGET_FILE_DIR:${target}_VST3>/dxil.dll"
-        #             "$<TARGET_FILE_DIR:${target}_VST3>/opengl32sw.dll"
-        #         COMMAND_EXPAND_LISTS
-        #         VERBATIM
-        #     )
+            COMMAND "${CMAKE_COMMAND}"
+                ${deployArguments}
+                -P "${SINGULARITY_ROOT_DIR}/install/DeployVst3.cmake"
             
+            BYPRODUCTS
+                "${qmlImportsFile}"
+            VERBATIM
+        )
 
-        #     if(_create_module_info)
-        #         smtg_target_create_module_info_file(${target}_VST3)
-        #     endif()
-        #     if(_run_vst_validator)
-        #         smtg_target_run_vst_validator(${target}_VST3)
-        #     endif()
-        # endif()
+        if(WIN32 AND _create_module_info)
+            smtg_target_create_module_info_file(${target}_VST3)
+        endif()
     endif()
 
     target_include_directories(${target}_VST3 PRIVATE
-        # ${SINGULARITY_ROOT_DIR}/platform
         ${SINGULARITY_ROOT_DIR}
-        # ${VST3_BINARY_DIR}
-        # ${VST3_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 

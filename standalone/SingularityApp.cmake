@@ -1,97 +1,130 @@
 include_guard(GLOBAL)
 
-if(WIN32 AND NOT TARGET asio)
-    FetchContent_Declare(
-        asiosdk
-        URL https://www.steinberg.net/asiosdk
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
+set(RTAUDIO_BUILD_SHARED_LIBS OFF CACHE BOOL "Build RtAudio as a static library")
 
-    FetchContent_MakeAvailable(asiosdk)
-
-    add_library(asio STATIC
-        ${asiosdk_SOURCE_DIR}/common/asio.cpp
-        ${asiosdk_SOURCE_DIR}/host/asiodrivers.cpp
-        ${asiosdk_SOURCE_DIR}/host/pc/asiolist.cpp
-    )
-    target_include_directories(asio PUBLIC
-        ${asiosdk_SOURCE_DIR}/common
-        ${asiosdk_SOURCE_DIR}/host
-        ${asiosdk_SOURCE_DIR}/host/pc
-    )
-    # asiolist.cpp uses narrow-char APIs (CharLowerBuff etc.), while a combined
-    # APP/VST3 build can globally define UNICODE through the VST3 SDK.
-    target_compile_options(asio PRIVATE /UUNICODE /U_UNICODE)
-    target_compile_definitions(asio PRIVATE _MBCS)
+if(WIN32)
+    set(RTAUDIO_API_ASIO ON CACHE BOOL "Build RtAudio with ASIO support")
 endif()
 
-function(singularity_create_app_plugin target)
-    set(oneValueArgs
-        PLUGIN_CLASS
-        PLUGIN_CLASS_HEADER
-        BASE_TARGET
-        SOURCE_DIR
-        BINARY_DIR
-        GENERATED_RESOURCES
-        GENERATED_DATA_RESOURCES)
-    set(multiValueArgs RESOURCES DATA_RESOURCES)
-    cmake_parse_arguments(APP "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+if(MSVC)
+    set(RTAUDIO_STATIC_MSVCRT OFF CACHE BOOL "Use the dynamic MSVC runtime")
+endif()
 
-    add_executable(${target}_APP
+FetchContent_Declare(
+    rtaudio
+    GIT_REPOSITORY https://github.com/thestk/rtaudio.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+    EXCLUDE_FROM_ALL
+)
+
+FetchContent_MakeAvailable(rtaudio)
+
+function(singularity_create_app_plugin target)
+
+    qt_add_executable(${target}_APP
+        WIN32 MACOSX_BUNDLE
         ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
-        ${SINGULARITY_ROOT_DIR}/standalone/ISingularityAudio.cpp
+        ${SINGULARITY_ROOT_DIR}/standalone/APPController.cpp
     )
 
-    if(WIN32)
-        target_sources(${target}_APP PRIVATE
-            ${SINGULARITY_ROOT_DIR}/standalone/ASIO.cpp
-            ${SINGULARITY_ROOT_DIR}/standalone/WASAPI.cpp)
-        target_compile_definitions(${target}_APP PRIVATE NOMINMAX)
-        target_link_libraries(${target}_APP PRIVATE asio avrt ole32 uuid)
-    elseif(APPLE)
-        target_sources(${target}_APP PRIVATE
-            ${SINGULARITY_ROOT_DIR}/standalone/coreAudio.cpp)
-        target_link_libraries(${target}_APP PRIVATE
-            "-framework CoreAudio"
-            "-framework AudioToolbox"
-        )
-        set_target_properties(${target}_APP PROPERTIES MACOSX_BUNDLE TRUE)
-    elseif(UNIX)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
-        target_sources(${target}_APP PRIVATE
-            ${SINGULARITY_ROOT_DIR}/standalone/PipeWire.cpp)
-        target_include_directories(${target}_APP PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
-        target_link_libraries(${target}_APP PRIVATE ${PIPEWIRE_LIBRARIES})
-    endif()
+    target_link_libraries(${target}_APP PRIVATE
+        ${target}
+        rtaudio
+    )
+
+    target_compile_definitions(${target}_APP PRIVATE
+        $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
+    )
 
     target_include_directories(${target}_APP PRIVATE
         ${SINGULARITY_ROOT_DIR}
-        ${APP_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${rtaudio_SOURCE_DIR}
     )
-    target_compile_definitions(${target}_APP PRIVATE
-        SINGULARITY_STANDALONE=1
-        PLUGIN_CLASS=${APP_PLUGIN_CLASS}
-        PLUGIN_CLASS_HEADER="${APP_PLUGIN_CLASS_HEADER}"
-    )
-    target_link_libraries(${target}_APP PRIVATE ${APP_BASE_TARGET})
 
-    if(APP_RESOURCES)
-        target_compile_definitions(${target}_APP PRIVATE
-            SINGULARITY_HAS_EMBEDDED_RESOURCES=1)
-        target_sources(${target}_APP PRIVATE "${APP_GENERATED_RESOURCES}")
-        target_include_directories(${target}_APP PRIVATE ${APP_BINARY_DIR})
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(appComponent "${target}Standalone")
+        set(appDeployOptions 
+            NO_TRANSLATIONS
+
+            EXCLUDE_PLUGINS
+                qtvirtualkeyboardplugin
+
+            EXCLUDE_PLUGIN_TYPES
+                networkinformation
+                printsupport
+                qmltooling
+                tls
+                iconengines
+                imageformats
+                styles
+        )
+
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            list(APPEND appDeployOptions
+                EXCLUDE_PLUGIN_TYPES
+                    egldeviceintegrations
+                    generic
+                    platformthemes
+                    wayland-decoration-client
+                    wayland-graphics-integration-client
+                    wayland-shell-integration
+
+                POST_INCLUDE_REGEXES
+                    ".*/libQt6.*"
+                    ".*/libicu.*"
+            )
+
+            set(appLauncher "${CMAKE_CURRENT_BINARY_DIR}/${target}-launcher")
+
+            file(GENERATE
+                OUTPUT "${appLauncher}"
+                CONTENT
+        "#!/bin/sh
+
+        appDir=\$(CDPATH= cd \"\$(dirname \"\$0\")\" && pwd)
+
+        if [ -n \"\$LD_LIBRARY_PATH\" ]; then
+            export LD_LIBRARY_PATH=\"\$appDir/../${CMAKE_INSTALL_LIBDIR}:\$LD_LIBRARY_PATH\"
+        else
+            export LD_LIBRARY_PATH=\"\$appDir/../${CMAKE_INSTALL_LIBDIR}\"
+        fi
+
+        exec \"\$appDir/${target}_APP\" \"\$@\"
+        "
+            )
+
+            install(
+                PROGRAMS "${appLauncher}"
+                DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                RENAME "${target}"
+                COMPONENT "${appComponent}"
+            )
+        endif()
+
+        install(
+            TARGETS ${target}_APP
+
+            BUNDLE
+                DESTINATION .
+                COMPONENT "${appComponent}"
+
+            RUNTIME
+                DESTINATION "${CMAKE_INSTALL_BINDIR}"
+                COMPONENT "${appComponent}"
+        )
+
+        qt_generate_deploy_qml_app_script(
+            TARGET ${target}_APP
+            OUTPUT_SCRIPT appDeployScript
+            ${appDeployOptions}
+        )
+
+        install(
+            SCRIPT "${appDeployScript}"
+            COMPONENT "${appComponent}"
+        )
     endif()
-
-    if(APP_DATA_RESOURCES)
-        target_compile_definitions(${target}_APP PRIVATE
-            SINGULARITY_HAS_EMBEDDED_DATA_RESOURCES=1)
-        target_sources(${target}_APP PRIVATE "${APP_GENERATED_DATA_RESOURCES}")
-        target_include_directories(${target}_APP PRIVATE ${APP_BINARY_DIR})
-    endif()
-
-    set_target_properties(${target}_APP PROPERTIES
-        OUTPUT_NAME "${target}"
-        RUNTIME_OUTPUT_DIRECTORY "${APP_BINARY_DIR}/out/APP/$<CONFIG>"
-    )
 endfunction()

@@ -6,7 +6,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtCore
 import Singularity
-import "./example.mjs" as Hej
+import "./example.mjs" as ExampleUtils
 
 PluginView {
     id: root
@@ -270,7 +270,7 @@ PluginView {
                     WidgetCard {
                         id: counterCard
 
-                        property int counter: Hej.exampleSquareFunction(2)
+                        property int counter: ExampleUtils.exampleSquareFunction(2)
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -362,7 +362,7 @@ PluginView {
                     property real iTime: 0.0
                     property size iResolution: Qt.size(width, height)
 
-                    fragmentShader: "qrc:/shaders/ExampleEffect/test.frag.qsb"
+                    fragmentShader: "qrc:/shaders/ExampleEffect/fairy_smoke.frag.qsb"
 
                     FrameAnimation {
                         running: true
