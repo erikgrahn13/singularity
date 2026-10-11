@@ -3,7 +3,13 @@
 #include "SingularityPlugin.h"
 #include <algorithm>
 #include <cmath>
-// #include "embedded/ExampleEffect_generated.h"
+#include <cstddef>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 class ExampleEffect {
 public:
@@ -13,36 +19,13 @@ public:
     static auto getParameters()
     {
         return std::to_array<Parameter>({
-            {
+            Parameter::continuous({
                 .id = 13,
-                .name = "Output Volume",
-                .shortName = "Volume",
-                .units = "linear",
-                .type = ParamType::Float,
+                .name = "Volume",
                 .minValue = 0.0,
                 .maxValue = 1.0,
-                .defaultValue = 0.5,
-            },
-            {
-                .id = 14,
-                .name = "Character",
-                .shortName = "Char",
-                .type = ParamType::Choice,
-                .defaultValue = 0.0,
-                .steps = 3,
-                .choices = { "Clean", "Warm", "Bright" },
-            },
-            {
-                .id = 15,
-                .name = "Output Level",
-                .shortName = "Level",
-                .type = ParamType::Float,
-                .minValue = 0.0,
-                .maxValue = 1.0,
-                .defaultValue = 0.0,
-                .automatable = false,
-                .readOnly = true,
-            },
+                .defaultValue = 0.5
+            })
         });
     }
 
@@ -51,14 +34,13 @@ public:
     template<typename SampleType>
     void process(std::span<const SampleType* const> inputs,
                  std::span<SampleType* const> outputs,
-                 int numSamples,
-                 ParamList params)
+                 int numSamples, ParameterValues parameterValues)
     {
-        double peak = params.getValueAtSample (15, 0);
+        double peak = 0.0; // params.getValueAtSample (15, 0);
 
         for (int s = 0; s < numSamples; ++s)
         {
-            const double volume = params.getValueAtSample (13, s);
+            const double volume = parameterValues.get (13, s);
             for (int ch = 0; ch < (int)outputs.size(); ++ch)
             {
                 outputs[ch][s] = static_cast<SampleType>(inputs[0][s] * volume);
@@ -66,17 +48,31 @@ public:
             }
         }
 
-        params.set (15, std::clamp(peak, 0.0, 1.0));
+        // params.set (15, std::clamp(peak, 0.0, 1.0));
 
-        sendAudioDataToUI(outputs, numSamples);
+        sendToUI(0, outputs, numSamples);
     }
 
-    void handleAction(std::string_view name, std::string_view value)
+    ActionResult handleAction(std::string_view name, const ActionValue& value)
     {
-        if(name == "loadSample")
+        if (name == "loadSample")
         {
-            // Open file here for example
+            std::filesystem::path path{*std::get_if<std::string>(&value)};
+            std::ifstream file(path, std::ios::binary | std::ios::ate);
+            if (!file)
+                return {};
+
+            std::vector<std::byte> data(static_cast<std::size_t>(file.tellg()));
+
+            file.seekg(0);
+
+            if (!file.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(data.size())))
+                return {};
+
+            return {{"loadedFileName", path.filename().string()}};
         }
+
+        return std::nullopt;
     }
 };
 

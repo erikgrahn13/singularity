@@ -8,23 +8,23 @@
 #include <utility>
 
 QmlParameter::QmlParameter(
-    int id,
-    IParameterBackend& backend,
+    unsigned int id,
+    QmlParameterCollection& collection,
     QObject* parent)
-    : QObject(parent), id_(id), backend_(backend)
+    : QObject(parent), id_(id) , collection_(collection)
 {
 }
 
 double QmlParameter::value() const
 {
-    return backend_.getParameter(id_);
+    return collection_.value(id_);
 }
 
 void QmlParameter::setValue(double value)
 {
     if (this->value() == value)
         return;
-    backend_.setParameter(id_, value);
+    collection_.setValue(id_, value);
     emit valueChanged();
 }
 
@@ -34,119 +34,142 @@ void QmlParameter::notifyChanged()
 }
 
 QmlParameterCollection::QmlParameterCollection(
-    IParameterBackend& backend,
+    Getter getter,
+    Setter setter,
     QObject* parent)
-    : QObject(parent)
+    : getter_(std::move(getter)), setter_(std::move(setter)), QObject(parent)
 {
-    for (const auto& definition : backend.parameterDefinitions())
-    {
-        const int id = static_cast<int>(definition.id);
-        parameters_.insert(id, new QmlParameter(id, backend, this));
-    }
 }
 
-QmlParameter* QmlParameterCollection::get(int id) const
+QmlParameter* QmlParameterCollection::get(int id)
 {
-    return parameters_.value(id, nullptr);
+    if (id < 0)
+        return nullptr;
+
+    const auto parameterId = static_cast<unsigned int>(id);
+
+    if (auto* parameter = parameters_.value(parameterId, nullptr))
+        return parameter;
+
+    auto* parameter = new QmlParameter(parameterId, *this, this);
+
+    parameters_.insert(parameterId, parameter);
+    return parameter;
 }
 
-QmlAudioData::QmlAudioData(
-    Singularity::AudioDataExchange::AudioDataQueue* queue,
+QmlUiDataStream::QmlUiDataStream(
+    quint32 streamId,
+    QmlUiDataStreamCollection& collection,
+    QObject* parent)
+    : QObject(parent),
+      streamId_(streamId),
+      collection_(collection)
+{
+}
+
+quint32 QmlUiDataStream::revision() const
+{
+    return revision_;
+}
+
+double QmlUiDataStream::sampleRate() const
+{
+    return sampleRate_;
+}
+
+quint32 QmlUiDataStream::rows() const
+{
+    return rows_;
+}
+
+quint32 QmlUiDataStream::columns() const
+{
+    return columns_;
+}
+
+QList<float> QmlUiDataStream::values() const
+{
+    return values_;
+}
+
+bool QmlUiDataStream::update()
+{
+    collection_.update();
+    if (observedRevision_ == revision_)
+        return false;
+
+    observedRevision_ = revision_;
+    return true;
+}
+
+void QmlUiDataStream::apply(
+    const Singularity::UiDataExchange::DataBlock& block)
+{
+    sampleRate_ = block.sampleRate;
+    rows_ = block.rows;
+    columns_ = block.columns;
+    const auto valueCount = std::min(
+        block.valueCount,
+        Singularity::UiDataExchange::kMaxValues);
+    values_.clear();
+    values_.reserve(static_cast<qsizetype>(valueCount));
+    for (quint32 index = 0; index < valueCount; ++index)
+        values_.append(block.values[index]);
+
+    ++revision_;
+    emit dataChanged();
+}
+
+QmlUiDataStreamCollection::QmlUiDataStreamCollection(
+    Singularity::UiDataExchange::DataQueue* queue,
     QObject* parent)
     : QObject(parent), queue_(queue)
 {
 }
 
-quint32 QmlAudioData::revision() const
+QmlUiDataStream* QmlUiDataStreamCollection::get(int streamId)
 {
-    return revision_;
+    if (streamId < 0)
+        return nullptr;
+
+    const auto id = static_cast<quint32>(streamId);
+    auto* stream = streams_.value(id, nullptr);
+    if (stream)
+        return stream;
+
+    stream = new QmlUiDataStream(id, *this, this);
+    streams_.insert(id, stream);
+    return stream;
 }
 
-quint32 QmlAudioData::sampleRate() const
-{
-    return sampleRate_;
-}
-
-int QmlAudioData::numChannels() const
-{
-    return numChannels_;
-}
-
-QList<float> QmlAudioData::samples() const
-{
-    return samples_;
-}
-
-bool QmlAudioData::update()
+bool QmlUiDataStreamCollection::update()
 {
     if (!queue_)
         return false;
 
-    using Singularity::AudioDataExchange::AudioDataBlock;
-    using Singularity::AudioDataExchange::kMaxFloatSamples;
-
-    AudioDataBlock block;
-    QList<float> samples;
+    Singularity::UiDataExchange::DataBlock block;
     bool received = false;
-    quint32 sampleRate = sampleRate_;
-    int numChannels = numChannels_;
-
-    while (queue_->popAudioDataBlock(block))
+    while (queue_->popUiDataBlock(block))
     {
-        const int channels = static_cast<int>(block.numChannels);
-        const int availableSamples = static_cast<int>(std::min<std::uint32_t>(
-            block.numSamples,
-            kMaxFloatSamples));
-        const int blockSamples = channels > 0
-            ? availableSamples - availableSamples % channels
-            : 0;
-        if (blockSamples <= 0 || block.sampleSize != sizeof(float))
-            continue;
-
-        const bool formatChanged = received &&
-            (sampleRate != block.sampleRate ||
-             numChannels != channels);
-        if (formatChanged)
-            samples.clear();
-
-        sampleRate = block.sampleRate;
-        numChannels = channels;
-
-        const int capacity = static_cast<int>(kMaxFloatSamples) -
-            static_cast<int>(kMaxFloatSamples) % channels;
-        const int currentSize = static_cast<int>(samples.size());
-        const int overflow = currentSize + blockSamples - capacity;
-        if (overflow > 0)
-            samples.remove(0, std::min(overflow, currentSize));
-
-        const int sourceOffset = static_cast<int>(block.numSamples) - blockSamples;
-        samples.reserve(std::min(
-            capacity,
-            static_cast<int>(samples.size()) + blockSamples));
-        for (int index = 0; index < blockSamples; ++index)
-            samples.append(block.samples[sourceOffset + index]);
-
-        received = true;
+        auto* stream = streams_.value(block.streamId, nullptr);
+        if (stream)
+        {
+            stream->apply(block);
+            received = true;
+        }
     }
 
-    if (!received)
-        return false;
-
-    sampleRate_ = sampleRate;
-    numChannels_ = numChannels;
-    samples_ = std::move(samples);
-    ++revision_;
-    emit dataChanged();
-    return true;
+    return received;
 }
 
 SingularityController::SingularityController(
-    IParameterBackend& parameterBackend,
+    ParameterGetter getParameter,
+    ParameterSetter setParameter,
     ActionCallback actionCallback,
-    Singularity::AudioDataExchange::AudioDataQueue* audioDataQueue)
+    Singularity::UiDataExchange::DataQueue* uiDataQueue)
     : actionCallback_(std::move(actionCallback)),
-      parameterCollection_(parameterBackend, this),
-      audioData_(audioDataQueue, this)
+      parameterCollection_(std::move(getParameter), std::move(setParameter), this),
+      streamCollection_(uiDataQueue, this)
 {
 }
 
@@ -217,9 +240,43 @@ QmlParameterCollection* SingularityController::parameters()
     return &parameterCollection_;
 }
 
-QmlAudioData* SingularityController::audioData()
+QmlUiDataStreamCollection* SingularityController::streams()
 {
-    return &audioData_;
+    return &streamCollection_;
+}
+
+QVariantMap SingularityController::data() const
+{
+    return data_;
+}
+
+void SingularityController::setData(std::string_view name, const ActionValue& value)
+{
+    const auto key = QString::fromUtf8(name.data(), name.size());
+
+    const QVariant dataValue = std::visit(
+        [](const auto& payload) -> QVariant
+        {
+            using T = std::decay_t<decltype(payload)>;
+
+            if constexpr (std::is_same_v<T, std::monostate>)
+                return QVariant{};
+            else if constexpr (std::is_same_v<T, bool>)
+                return payload;
+            else if constexpr (std::is_same_v<T, std::int64_t>)
+                return QVariant::fromValue(static_cast<qlonglong>(payload));
+            else if constexpr (std::is_same_v<T, double>)
+                return payload;
+            else if constexpr (std::is_same_v<T, std::string>)
+                return QString::fromUtf8(payload.data(), payload.size());
+        }, 
+        value);
+
+        if (data_.value(key) == dataValue)
+            return;
+
+        data_.insert(key, dataValue);
+        emit dataChanged();
 }
 
 void SingularityController::sendAction(QString name)
@@ -229,27 +286,104 @@ void SingularityController::sendAction(QString name)
 
 void SingularityController::sendAction(QString name, QVariant value)
 {
-    const auto utf8Name = name.toUtf8();
-    QString text;
+    std::optional<ActionValue> actionValue;
 
-    if (value.metaType() == QMetaType::fromType<QUrl>())
+    if(value.isNull())
+        actionValue = std::monostate{};
+
+    const auto type = value.metaType();
+
+    if(type == QMetaType::fromType<bool>())
+        actionValue = value.toBool();
+
+    if(type == QMetaType::fromType<int>() || type == QMetaType::fromType<unsigned int>() || type == QMetaType::fromType<qlonglong>())
+        actionValue = value.toLongLong();
+
+    if(type == QMetaType::fromType<double>() || type == QMetaType::fromType<float>())
+        actionValue = value.toDouble();
+    
+    if(type == QMetaType::fromType<QString>())
+    {
+        const auto utf8 = value.toString().toUtf8();
+        actionValue = std::string{utf8.constData(), static_cast<std::size_t>(utf8.size())};
+    }
+
+    if(type == QMetaType::fromType<QUrl>())
     {
         const auto url = value.toUrl();
-        text = url.isLocalFile()
-            ? url.toLocalFile()
-            : url.toString(QUrl::FullyEncoded);
-    }
-    else if (value.isValid() && !value.isNull())
-    {
-        text = value.toString();
+        QString text = url.isLocalFile() ? url.toLocalFile() : url.toString(QUrl::FullyEncoded);
+        const auto utf8 = text.toUtf8();
+        actionValue = std::string{utf8.constData(), static_cast<std::size_t>(utf8.size())};
     }
 
-    const auto utf8Value = text.toUtf8();
+    if(actionCallback_)
+    {
+        const auto utf8Name = name.toUtf8();
+        const auto result = actionCallback_(std::string_view(utf8Name.constData(), utf8Name.size()), *actionValue);
+
+        if(result)
+        {
+            const auto key = QString::fromUtf8(result->first.data(), result->first.size());
+
+            const QVariant dataValue = std::visit(
+                [](const auto& payload) -> QVariant
+                {
+                    using T = std::decay_t<decltype(payload)>;
+
+                    if constexpr (std::is_same_v<T, std::monostate>)
+                        return QVariant{};
+                    else if constexpr (std::is_same_v<T, bool>)
+                        return payload;
+                    else if constexpr (std::is_same_v<T, std::int64_t>)
+                        return QVariant::fromValue(static_cast<qlonglong>(payload));
+                    else if constexpr (std::is_same_v<T, double>)
+                        return payload;
+                    else if constexpr (std::is_same_v<T, std::string>)
+                        return QString::fromUtf8(payload.data(), payload.size());
+                }, 
+                result->second);
+
+                if (data_.value(key) == dataValue)
+                    return;
+
+                data_.insert(key, dataValue);
+                emit dataChanged();
+        }
+            // setData(result->first, result->second);
+        // const auto result = actionCallback_(
+        //     std::string_view(utf8Name.constData(), utf8Name.size()),
+        //     std::string_view(utf8Value.constData(), utf8Value.size()));
+
+        // if (result)
+        //     setData(result->first, result->second);
+    }
+
+
+
+    // const auto utf8Name = name.toUtf8();
+    // QString text;
+
+    // if (value.metaType() == QMetaType::fromType<QUrl>())
+    // {
+    //     const auto url = value.toUrl();
+    //     text = url.isLocalFile()
+    //         ? url.toLocalFile()
+    //         : url.toString(QUrl::FullyEncoded);
+    // }
+    // else if (value.isValid() && !value.isNull())
+    // {
+    //     text = value.toString();
+    // }
+
+    // const auto utf8Value = text.toUtf8();
 
     if (actionCallback_)
     {
-        actionCallback_(
-            std::string_view(utf8Name.constData(), utf8Name.size()),
-            std::string_view(utf8Value.constData(), utf8Value.size()));
+        // const auto result = actionCallback_(
+        //     std::string_view(utf8Name.constData(), utf8Name.size()),
+        //     std::string_view(utf8Value.constData(), utf8Value.size()));
+
+        // if (result)
+        //     setData(result->first, result->second);
     }
 }

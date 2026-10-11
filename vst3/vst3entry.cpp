@@ -1,5 +1,5 @@
-#include "vst3processor.h"
-#include "vst3controller.h"
+#include "processor.h"
+#include "controller.h"
 #include "plugincids.h"
 #include "vst3version.h"
 #include PLUGIN_CLASS_HEADER

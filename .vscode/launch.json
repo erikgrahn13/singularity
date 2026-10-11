@@ -5,6 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "AudioHost Linux ExampleEffect",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/audiohost",
+            "args": ["${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/${command:cmake.buildType}/Example Effect.vst3"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/examples/ExampleEffect",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "VST3PluginTestHost Mac",
             "type": "cppdbg",
             "request": "launch",
@@ -212,6 +236,6 @@
                     "value": "qml.debug=true;js.debug=true;singularity.*.debug=true"
                 }
            ]
-        }
+        },
     ]
 }

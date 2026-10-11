@@ -310,6 +310,12 @@ PluginView {
                     onClicked: root.openFileDialog()
                 }
 
+                Label {
+                    text: plugin.data.loadedFileName
+                          ? "Selected file: " + plugin.data.loadedFileName
+                          : "No file selected"
+                }
+
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
@@ -340,7 +346,7 @@ PluginView {
 
                 Waveform {
                     anchors.fill: parent
-                    source: plugin.audioData
+                    source: plugin.streams.get(0)
                     gain: 2
                     waveformColor: root.accentColor
                     fillColor: root.accentColor
@@ -380,7 +386,7 @@ PluginView {
             id: dialog
 
             title: "Choose a file"
-            popupType: Popup.Window
+            popupType: Popup.Item
             currentFolder: StandardPaths.writableLocation(StandardPaths.PicturesLocation)
             nameFilters: [ "Audio and image files (*.wav *.aiff *.flac *.png *.jpg)",
                            "All files (*)" ]

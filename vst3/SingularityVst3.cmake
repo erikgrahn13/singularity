@@ -78,7 +78,7 @@ function(singularity_create_vst3_plugin target)
     endif()
 
     # Validation is performed by pluginval in CI.
-    set(SMTG_RUN_VST_VALIDATOR OFF)
+    set(SMTG_RUN_VST_VALIDATOR ON)
 
     # The SDK uses CMAKE_CONFIGURATION_TYPES to assign the Windows bundle's
     # per-configuration output directory, even with single-config generators.
@@ -90,14 +90,14 @@ function(singularity_create_vst3_plugin target)
     smtg_add_vst3plugin(${target}_VST3
         PACKAGE_NAME "${VST3_PLUGIN_TITLE}"
         ${SINGULARITY_ROOT_DIR}/vst3/vst3version.h
-        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ComponentState.h
-        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ParameterSupport.h
-        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramData.h
-        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramLayout.h
-        ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramModel.h
-        ${SINGULARITY_ROOT_DIR}/vst3/vst3processor.h
-        ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.h
-        ${SINGULARITY_ROOT_DIR}/vst3/vst3controller.cpp
+        # ${SINGULARITY_ROOT_DIR}/vst3/Vst3ComponentState.h
+        # ${SINGULARITY_ROOT_DIR}/vst3/Vst3ParameterSupport.h
+        # ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramData.h
+        # ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramLayout.h
+        # ${SINGULARITY_ROOT_DIR}/vst3/Vst3ProgramModel.h
+        ${SINGULARITY_ROOT_DIR}/vst3/processor.h
+        ${SINGULARITY_ROOT_DIR}/vst3/controller.h
+        ${SINGULARITY_ROOT_DIR}/vst3/controller.cpp
         ${SINGULARITY_ROOT_DIR}/vst3/vst3entry.cpp
         ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.h
         ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp

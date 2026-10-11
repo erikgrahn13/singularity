@@ -1,5 +1,5 @@
 #include "SingularityView.h"
-#include "vst3controller.h"
+#include "controller.h"
 
 #include <QCoreApplication>
 #include <QEventLoop>
@@ -162,18 +162,38 @@ void ensureQtApplication()
 namespace Steinberg {
 
 SingularityView::SingularityView(Vst::EditController* editController)
-    : Vst::EditorView(editController)
+    : Vst::EditorView(editController),
+      editController_(editController)
 {
     ensureQtApplication();
 
     auto* vstController = static_cast<VST3Controller*>(editController);
     controller_ = std::make_unique<SingularityController>(
-        *vstController,
-        [vstController](std::string_view name, std::string_view payload)
+        [vstController](unsigned int id)
         {
-            vstController->sendAction(name, payload);
+            return vstController->getParameter(id);
         },
-        &vstController->audioDataQueue());
+        [vstController](unsigned int id, double value)
+        {
+            vstController->setParameter(id, value);
+        },
+        [vstController](std::string_view name, const ActionValue& value)
+        {
+            vstController->sendAction(name, value);
+            return std::nullopt;
+        }, nullptr);
+    vstController->setActionResultCallback([controller = controller_.get()](
+        std::string_view name, const ActionValue& value){
+            controller->setData(name, value);
+    });
+
+    // vstController->setUiDataCallback(
+    //     [controller = controller_.get()](
+    //         std::string_view name,
+    //         std::string_view value)
+    //     {
+    //         controller->setData(name, value);
+    //     });
 
     view_ = std::make_unique<QQuickView>();
 #if defined(__linux__)
@@ -219,6 +239,11 @@ SingularityView::SingularityView(Vst::EditController* editController)
         static_cast<int32>(size.width()),
         static_cast<int32>(size.height())
     });
+}
+
+SingularityView::~SingularityView()
+{
+    // static_cast<VST3Controller*>(editController_)->setUiDataCallback({});
 }
 
 tresult PLUGIN_API SingularityView::isPlatformTypeSupported(FIDString type)

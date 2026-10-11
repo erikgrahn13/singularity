@@ -17,7 +17,7 @@ class SingularityView : public Vst::EditorView
 {
 public:
     explicit SingularityView(Vst::EditController* controller);
-    ~SingularityView() override = default;
+    ~SingularityView() override;
 
     tresult PLUGIN_API isPlatformTypeSupported(FIDString type) override;
     tresult PLUGIN_API onSize(ViewRect* newSize) override;
@@ -40,6 +40,7 @@ protected:
 #endif
 
 private:
+    Vst::EditController* editController_;
     std::unique_ptr<QQuickView> view_;
     std::unique_ptr<QWindow> parentWindow_;
     std::unique_ptr<SingularityController> controller_;
