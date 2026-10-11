@@ -1,6 +1,6 @@
 #pragma once
 
-#include "UiDataExchange.h"
+// #include "UiDataExchange.h"
 #include "SingularityPlugin.h"
 
 #include <QHash>

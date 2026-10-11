@@ -27,19 +27,13 @@ public:
     {
         setControllerClass(kVST3ControllerUID);
 
-        parameters_[0].setParamID(Steinberg::Vst::kMaxParamId);
-        parameters_[0].setValue(0.0);
-
-        const auto parameters = PluginType::getParameters();
-
-        for(int i = 1; i < kParameterCount; ++i)
+        for(auto& parameter : parameterDefinitions_)
         {
-            const auto& parameter = parameters[i - 1];
-            const auto& definition = std::get<ContinuousParameter>(parameter.definition);
-
-            parameters_[i].setParamID(parameter.id);
-            parameters_[i].setValue(definition.defaultValue);
-            parameterIds_[i - 1] = parameters_[i].getParamID();
+            if(parameter.direction == ParameterDirection::input)
+            {
+                const auto& definition = std::get<ContinuousParameter>(parameter.definition);
+                inputParameters_.push_back({parameter.id, definition.defaultValue});
+            }
         }
     }
 
@@ -102,7 +96,7 @@ public:
         bypassProcessor32_.setup(*this, newSetup, getLatencySamples());
         bypassProcessor64_.setup(*this, newSetup, getLatencySamples());
 
-        for(auto& parameterBuffer : parameterSampleBuffers_)
+        for(auto& parameterBuffer : parameterBuffers_)
         {
             parameterBuffer.resize(static_cast<std::size_t>(newSetup.maxSamplesPerBlock));
         }
@@ -121,16 +115,43 @@ public:
     {
         Vst::Algo::foreach(inputParameterChanges, [&](Vst::IParamValueQueue& queue)
         {
-            for(auto& parameter : parameters_)
+            if(queue.getParameterId() == bypassParameter_.getParamID())
+            {
+                bypassParameter_.beginChanges(&queue);
+                return;
+            }
+
+            for(auto& parameter : inputParameters_)
             {
                 if(parameter.getParamID() == queue.getParameterId())
                 {
                     parameter.beginChanges(&queue);
-                    break;
+                    return;
                 }
             }
         });
     }
+
+    void publishOutputParameterChanges(Vst::ProcessData& data)
+    {
+        if(data.outputParameterChanges)
+        {
+            for(int i = 0; i < parameterDefinitions_.size(); ++i)
+            {
+                if(parameterDefinitions_[i].direction != ParameterDirection::output || !outputParameterWasSet_[i])
+                    continue;
+
+                const auto& definition = std::get<ContinuousParameter>(parameterDefinitions_[i].definition);
+
+                int32 queueIndex{0};
+                auto queue = data.outputParameterChanges->addParameterData(parameterDefinitions_[i].id, queueIndex);
+
+                int32 pointIndex{0};
+                queue->addPoint(data.numSamples - 1, parameterBuffers_[i][0], pointIndex);
+            }
+        }
+    }
+
 
     /** Here we go...the process call */
     Steinberg::tresult PLUGIN_API process (Steinberg::Vst::ProcessData& data) SMTG_OVERRIDE
@@ -139,7 +160,13 @@ public:
         {
             for(const auto& [id, value] : stateChanges)
             {
-                for(auto& parameter : parameters_)
+                if(id == bypassParameter_.getParamID())
+                {
+                    bypassParameter_.setValue(value);
+                    continue;
+                }
+
+                for(auto& parameter : inputParameters_)
                 {
                     if(parameter.getParamID() == id)
                     {
@@ -153,21 +180,29 @@ public:
         handleParameterChanges(data.inputParameterChanges);
 
         // Bypass is processed at block granularity.
-        const bool bypassed = parameters_[0].advance(data.numSamples) >= 0.5;
-
+        const bool bypassed = bypassParameter_.advance(data.numSamples) >= 0.5;
         bypassProcessor32_.setActive(bypassed);
         bypassProcessor64_.setActive(bypassed);
 
-        // Generate sample-accurate buffers for plugin parameters only.
-        for(int i = 1; i < kParameterCount; ++i)
+        for (auto& inputParameter : inputParameters_)
         {
-            for(int sample = 0; sample < data.numSamples; ++sample)
-            {
-                parameterSampleBuffers_[i - 1][sample] = parameters_[i].advance(1);
-            }
+            const auto definition = std::ranges::find(
+                parameterDefinitions_,
+                inputParameter.getParamID(),
+                &Parameter::id
+            );
+
+            const auto parameterIndex =
+                static_cast<std::size_t>(
+                    std::distance(parameterDefinitions_.begin(), definition)
+                );
+
+            for (int sample = 0; sample < data.numSamples; ++sample)
+                parameterBuffers_[parameterIndex][sample] = inputParameter.advance(1);
         }
 
-        ParameterValues parameterValues{ parameterIds_, parameterSampleBuffers_};
+        outputParameterWasSet_.fill(false);
+        ParameterValues parameterValues {parameterDefinitions_, parameterBuffers_, outputParameterWasSet_};
 
         // process audio here
         if (data.numInputs > 0 || data.numOutputs > 0)
@@ -178,10 +213,13 @@ public:
                 processAudio<Vst::kSample64>(data, parameterValues);
         }
 
-        for(auto& parameter : parameters_)
+        bypassParameter_.endChanges();
+        for(auto& parameter : inputParameters_)
         {
             parameter.endChanges();
         }
+        
+        publishOutputParameterChanges(data);
 
         return kResultOk;
     }
@@ -245,12 +283,18 @@ public:
                 break;
             if(!streamer.readDouble(value))
                 break;
+
+            if(paramID == bypassParameter_.getParamID())
+            {
+                paramChanges->emplace_back(paramID, value);
+                continue;
+            }
             
-            for(auto& parameter : parameters_)
+            for(auto& parameter : inputParameters_)
             {
                 if(parameter.getParamID() == paramID)
                 {
-                    paramChanges->emplace_back(std::make_pair(paramID, value));
+                    paramChanges->emplace_back(paramID, value);
                     break;
                 }
             }
@@ -265,12 +309,23 @@ public:
     {
         IBStreamer streamer(state, kLittleEndian);
 
-        streamer.writeInt32u(parameters_.size());
-        for(auto& parameter : parameters_)
+        streamer.writeInt32u(1 + inputParameters_.size());
+        streamer.writeInt32u(bypassParameter_.getParamID());
+        streamer.writeDouble(bypassParameter_.getValue());
+
+        for(auto& parameter : inputParameters_)
         {
             streamer.writeInt32u(parameter.getParamID());
             streamer.writeDouble(parameter.getValue());
         }
+
+
+        // streamer.writeInt32u(parameters_.size());
+        // for(auto& parameter : parameters_)
+        // {
+        //     streamer.writeInt32u(parameter.getParamID());
+        //     streamer.writeDouble(parameter.getValue());
+        // }
         return kResultOk;
     }
 
@@ -347,13 +402,19 @@ public:
 
 //------------------------------------------------------------------------
 protected:
-    static constexpr std::size_t kParameterCount = 1 + std::tuple_size_v<decltype(PluginType::getParameters())>; // +1 is for the bypass
     PluginType plugin_;
-    std::array<unsigned int, kParameterCount - 1> parameterIds_;
-    std::array<std::vector<double>, kParameterCount - 1> parameterSampleBuffers_;
     Vst::BypassProcessor<Vst::Sample32> bypassProcessor32_;
     Vst::BypassProcessor<Vst::Sample64> bypassProcessor64_;
-    std::array<Vst::SampleAccurate::Parameter, kParameterCount> parameters_; 
+
+    using ParameterDefinitions = std::remove_cvref_t<decltype(PluginType::getParameters())>;
+    static constexpr std::size_t kPluginParameterCount = std::tuple_size_v<ParameterDefinitions>;
+    ParameterDefinitions parameterDefinitions_ = PluginType::getParameters();
+    std::array<std::vector<double>, kPluginParameterCount> parameterBuffers_;
+    std::array<bool, kPluginParameterCount> outputParameterWasSet_{};
+
+    // Vst::Sampl
+    std::vector<Vst::SampleAccurate::Parameter> inputParameters_;
+    Vst::SampleAccurate::Parameter bypassParameter_{Vst::kMaxParamId, 0.0};
 
     using ParameterVector = std::vector<std::pair<Vst::ParamID, Vst::ParamValue>>;
     Vst::RTTransferT<ParameterVector> stateTransfer;

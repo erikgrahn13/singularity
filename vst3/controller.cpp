@@ -38,13 +38,19 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
     {
         const auto& definition = std::get<ContinuousParameter>(parameter.definition);
 
+        auto test = parameter.direction;
+
+        const auto flags = parameter.direction == ParameterDirection::output ? Vst::ParameterInfo::kIsReadOnly : Vst::ParameterInfo::kCanAutomate;
+
         parameters.addParameter(new Vst::RangeParameter(
             Vst::StringConvert::convert(parameter.name).c_str(),
             parameter.id,
             nullptr,
             definition.minValue,
             definition.maxValue,
-            definition.defaultValue
+            definition.defaultValue,
+            0, // stepCount: continuous
+            flags
         ));
     }
 
@@ -144,6 +150,12 @@ tresult PLUGIN_API VST3Controller::notify (Steinberg::Vst::IMessage* message)
     }
     return EditControllerEx1::notify(message);
 }
+
+tresult PLUGIN_API VST3Controller::setParamNormalized (Steinberg::Vst::ParamID tag, Steinberg::Vst::ParamValue value)
+{
+    return EditControllerEx1::setParamNormalized(tag, value);
+}
+
 
 //------------------------------------------------------------------------
 IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)

@@ -25,7 +25,14 @@ public:
                 .minValue = 0.0,
                 .maxValue = 1.0,
                 .defaultValue = 0.5
-            })
+            }),
+            Parameter::continuous({
+                .id = 14,
+                .name = "Meter",
+                .minValue = 0.0,
+                .maxValue = 1.0,
+                .defaultValue = 0.0
+            }).asOutput()
         });
     }
 
@@ -48,9 +55,9 @@ public:
             }
         }
 
-        // params.set (15, std::clamp(peak, 0.0, 1.0));
+        parameterValues.set (14, std::clamp(peak, 0.0, 1.0));
 
-        sendToUI(0, outputs, numSamples);
+        // sendToUI(0, outputs, numSamples);
     }
 
     ActionResult handleAction(std::string_view name, const ActionValue& value)
