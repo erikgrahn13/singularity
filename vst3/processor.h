@@ -231,37 +231,45 @@ public:
 
         Vst::AudioBusBuffers* outputs = data.outputs;
         auto outputBuffers = Vst::getChannelBuffers<SampleSize>(*outputs);
-
-        // Effect
-        Vst::AudioBusBuffers* inputs = data.inputs;
-        auto inputBuffers = Vst::getChannelBuffers<SampleSize>(*inputs);
-
-        if(inputs->silenceFlags == Vst::getChannelMask(inputs->numChannels))
-        {
-            outputs->silenceFlags = inputs->silenceFlags;
-            for(int i = 0; i < inputs->numChannels; ++i)
-                if(inputBuffers[i] != outputBuffers[i])
-                    std::memset(outputBuffers[i], 0, data.numSamples * sizeof(SampleT));
-            return;
-        }
-
-        if(bypassProcessor32_.isActive())
-        {
-            if constexpr (SampleSize == Vst::kSample32)
-                bypassProcessor32_.process(data);
-            else
-                bypassProcessor64_.process(data);
-
-            outputs->silenceFlags = inputs->silenceFlags;
-            return;
-        }
-
-        outputs->silenceFlags = 0;
-
         auto outputSpan = std::span<SampleT* const>(outputBuffers, outputs->numChannels);
-        auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
 
-        plugin_.template process<SampleT>(inputSpan, outputSpan, data.numSamples, parameterValues);
+        if constexpr(PluginType::isInstrument)
+        {
+            outputs->silenceFlags = 0;
+
+            std::span<const MidiEvent> midiEvents{};
+
+            plugin_.template process<SampleT>(outputSpan, data.numSamples, midiEvents, parameterValues);
+        }
+        else
+        {
+            Vst::AudioBusBuffers* inputs = data.inputs;
+            auto inputBuffers = Vst::getChannelBuffers<SampleSize>(*inputs);
+    
+            if(inputs->silenceFlags == Vst::getChannelMask(inputs->numChannels))
+            {
+                outputs->silenceFlags = inputs->silenceFlags;
+                for(int i = 0; i < inputs->numChannels; ++i)
+                    if(inputBuffers[i] != outputBuffers[i])
+                        std::memset(outputBuffers[i], 0, data.numSamples * sizeof(SampleT));
+                return;
+            }
+    
+            if(bypassProcessor32_.isActive())
+            {
+                if constexpr (SampleSize == Vst::kSample32)
+                    bypassProcessor32_.process(data);
+                else
+                    bypassProcessor64_.process(data);
+    
+                outputs->silenceFlags = inputs->silenceFlags;
+                return;
+            }
+
+            outputs->silenceFlags = 0;
+            auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
+            plugin_.template process<SampleT>(inputSpan, outputSpan, data.numSamples, parameterValues);
+        }
     }
 
     /** For persistence */

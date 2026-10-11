@@ -9,16 +9,16 @@ APPController::APPController(
     : parameters_(parameters.begin(), parameters.end()),
       callback_(std::move(callback))
 {
-    for (const auto& parameter : parameters_)
-        values_.emplace(static_cast<int>(parameter.id), parameter.defaultValue);
+    // for (const auto& parameter : parameters_)
+    //     values_.emplace(static_cast<int>(parameter.id), parameter.defaultValue);
 }
 
-std::span<const Parameter> APPController::parameterDefinitions() const
-{
-    return parameters_;
-}
+// std::span<const Parameter> APPController::parameterDefinitions() const
+// {
+//     return parameters_;
+// }
 
-double APPController::getParameter(int id)
+double APPController::getParameter(unsigned int id)
 {
     const auto parameter = values_.find(id);
     if (parameter == values_.end())
@@ -27,7 +27,7 @@ double APPController::getParameter(int id)
     return parameter->second;
 }
 
-void APPController::setParameter(int id, double value)
+void APPController::setParameter(unsigned int id, double value)
 {
     const auto parameter = values_.find(id);
     if (parameter == values_.end() || parameter->second == value)

@@ -181,19 +181,11 @@ SingularityView::SingularityView(Vst::EditController* editController)
         {
             vstController->sendAction(name, value);
             return std::nullopt;
-        }, nullptr);
+        });
     vstController->setActionResultCallback([controller = controller_.get()](
         std::string_view name, const ActionValue& value){
             controller->setData(name, value);
     });
-
-    // vstController->setUiDataCallback(
-    //     [controller = controller_.get()](
-    //         std::string_view name,
-    //         std::string_view value)
-    //     {
-    //         controller->setData(name, value);
-    //     });
 
     view_ = std::make_unique<QQuickView>();
 #if defined(__linux__)

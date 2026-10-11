@@ -1,12 +1,14 @@
 #pragma once
 
-#include "../IParameterBackend.h"
+// #include "../IParameterBackend.h"
 
 #include <functional>
 #include <unordered_map>
 #include <vector>
 
-class APPController : public IParameterBackend {
+#include "SingularityPlugin.h"
+
+class APPController  {
 public:
     using ParameterCallback = std::function<void(int, double)>;
 
@@ -14,9 +16,9 @@ public:
         std::span<const Parameter> parameters,
         ParameterCallback callback);
 
-    std::span<const Parameter> parameterDefinitions() const override;
-    double getParameter(int id) override;
-    void setParameter(int id, double value) override;
+    // std::span<const Parameter> parameterDefinitions() const override;
+    double getParameter(unsigned int id);
+    void setParameter(unsigned int id, double value);
 
 private:
     std::vector<Parameter> parameters_;

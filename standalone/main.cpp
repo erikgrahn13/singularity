@@ -5,18 +5,19 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <type_traits>
 
 #include "../SingularityController.h"
 #include "APPController.h"
 #include "RtAudio.h"
+#include "../utilities/SingularityQueue.h"
 
 #include PLUGIN_CLASS_HEADER
 
 struct AudioContext
 {
     PLUGIN_CLASS plugin;
-    Singularity::AudioDataExchange::AudioDataQueue audioDataQueue;
-    SingularityQueue<ParameterChange, 256> parameterChanges;
+    SingularityQueue<Parameter, 256> parameterChanges;
     std::vector<std::pair<unsigned int, double>> parameters;
     double sampleRate = 0.0;
     unsigned int inputChannels = 0;
@@ -30,13 +31,13 @@ void processPluginAudio(
     std::span<const float* const>,
     std::span<float* const> outputs,
     unsigned int frameCount,
-    ParamList params)
+    ParameterValues& parameterValues)
 {
     plugin.template process<float>(
         outputs,
         static_cast<int>(frameCount),
         std::span<const MidiEvent>{},
-        params);
+        parameterValues);
 }
 
 template <typename PluginType>
@@ -46,44 +47,52 @@ void processPluginAudio(
     std::span<const float* const> inputs,
     std::span<float* const> outputs,
     unsigned int frameCount,
-    ParamList params)
+    ParameterValues& parameterValues)
 {
     plugin.template process<float>(
         inputs,
         outputs,
         static_cast<int>(frameCount),
-        params);
+        parameterValues);
 }
 
-template <typename PluginType>
-void handlePluginAction(
-    PluginType& plugin,
-    std::string_view name,
-    std::string_view payload)
-{
-    if constexpr (requires {
-        plugin.handleAction(name, payload);
-    })
-        plugin.handleAction(name, payload);
-}
+// template <typename PluginType>
+// SingularityController::ActionResult handlePluginAction(
+//     PluginType& plugin,
+//     std::string_view name,
+//     std::string_view payload)
+// {
+//     if constexpr (requires {
+//         plugin.handleAction(name, payload);
+//     })
+//     {
+//         using Result = decltype(plugin.handleAction(name, payload));
+//         if constexpr (std::is_void_v<Result>)
+//             plugin.handleAction(name, payload);
+//         else
+//             return plugin.handleAction(name, payload);
+//     }
+
+//     return std::nullopt;
+// }
 
 int audioCallback( void *outputBuffer, void *inputBuffer, unsigned int frameCount,
            double streamTime, RtAudioStreamStatus status, void *userData )
 {
     auto& context = *static_cast<AudioContext*>(userData);
 
-    ParameterChange change;
-    while (context.parameterChanges.pop(change))
-    {
-        for (auto& [id, value] : context.parameters)
-        {
-            if (id == static_cast<unsigned int>(change.id))
-            {
-                value = change.value;
-                break;
-            }
-        }
-    }
+    // ParameterChange change;
+    // while (context.parameterChanges.pop(change))
+    // {
+    //     for (auto& [id, value] : context.parameters)
+    //     {
+    //         if (id == static_cast<unsigned int>(change.id))
+    //         {
+    //             value = change.value;
+    //             break;
+    //         }
+    //     }
+    // }
 
     auto* input = static_cast<float*>(inputBuffer);
     auto* output = static_cast<float*>(outputBuffer);
@@ -102,15 +111,17 @@ int audioCallback( void *outputBuffer, void *inputBuffer, unsigned int frameCoun
         outputs[channel] = output + channel * frameCount;
 
     {
-        Singularity::AudioDataExchange::ScopedSendContext sendContext(
-            &context.audioDataQueue,
-            context.sampleRate);
+        // Singularity::UiDataExchange::ScopedSendContext sendContext(
+        //     &context.uiDataQueue,
+        //     context.sampleRate);
+        ParameterValues parameterValues{{},{},{}};
+
         processPluginAudio(
             context.plugin,
             std::span<const float* const>(inputs.data(), context.inputChannels),
             std::span<float* const>(outputs.data(), context.outputChannels),
             frameCount,
-            ParamList {context.parameters});
+            parameterValues);
     }
 
     return 0;
@@ -127,10 +138,10 @@ int main(int argc, char *argv[])
 
     for (const auto& definition : definitions)
     {
-        audioContext.parameters.push_back({
-            definition.id,
-            definition.defaultValue
-        });
+        // audioContext.parameters.push_back({
+        //     definition.id,
+        //     definition.defaultValue
+        // });
     }
 
     RtAudio rtaudio;
@@ -220,16 +231,23 @@ int main(int argc, char *argv[])
         return 1;
 
     APPController appController(definitions, [&audioContext](int id, double value) {
-        audioContext.parameterChanges.push({id, value});
+        // audioContext.parameterChanges.push({id, value});
     });
 
     SingularityController controller(
-        appController,
-        [&audioContext](std::string_view name, std::string_view payload)
+        [&](unsigned int id)
         {
-            handlePluginAction(audioContext.plugin, name, payload);
+            return appController.getParameter(id);
         },
-        &audioContext.audioDataQueue);
+        [&](unsigned int id, double value)
+        {
+            appController.setParameter(id, value);
+        },
+        [&](std::string_view name, const ActionValue& value)
+        {
+            // appController.sendAction(name, value);
+            return std::nullopt;
+        });
 
     QQuickView view;
     view.setResizeMode(QQuickView::SizeViewToRootObject);

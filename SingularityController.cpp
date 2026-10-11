@@ -57,119 +57,12 @@ QmlParameter* QmlParameterCollection::get(int id)
     return parameter;
 }
 
-QmlUiDataStream::QmlUiDataStream(
-    quint32 streamId,
-    QmlUiDataStreamCollection& collection,
-    QObject* parent)
-    : QObject(parent),
-      streamId_(streamId),
-      collection_(collection)
-{
-}
-
-quint32 QmlUiDataStream::revision() const
-{
-    return revision_;
-}
-
-double QmlUiDataStream::sampleRate() const
-{
-    return sampleRate_;
-}
-
-quint32 QmlUiDataStream::rows() const
-{
-    return rows_;
-}
-
-quint32 QmlUiDataStream::columns() const
-{
-    return columns_;
-}
-
-QList<float> QmlUiDataStream::values() const
-{
-    return values_;
-}
-
-bool QmlUiDataStream::update()
-{
-    collection_.update();
-    if (observedRevision_ == revision_)
-        return false;
-
-    observedRevision_ = revision_;
-    return true;
-}
-
-void QmlUiDataStream::apply(
-    const Singularity::UiDataExchange::DataBlock& block)
-{
-    sampleRate_ = block.sampleRate;
-    rows_ = block.rows;
-    columns_ = block.columns;
-    const auto valueCount = std::min(
-        block.valueCount,
-        Singularity::UiDataExchange::kMaxValues);
-    values_.clear();
-    values_.reserve(static_cast<qsizetype>(valueCount));
-    for (quint32 index = 0; index < valueCount; ++index)
-        values_.append(block.values[index]);
-
-    ++revision_;
-    emit dataChanged();
-}
-
-QmlUiDataStreamCollection::QmlUiDataStreamCollection(
-    Singularity::UiDataExchange::DataQueue* queue,
-    QObject* parent)
-    : QObject(parent), queue_(queue)
-{
-}
-
-QmlUiDataStream* QmlUiDataStreamCollection::get(int streamId)
-{
-    if (streamId < 0)
-        return nullptr;
-
-    const auto id = static_cast<quint32>(streamId);
-    auto* stream = streams_.value(id, nullptr);
-    if (stream)
-        return stream;
-
-    stream = new QmlUiDataStream(id, *this, this);
-    streams_.insert(id, stream);
-    return stream;
-}
-
-bool QmlUiDataStreamCollection::update()
-{
-    if (!queue_)
-        return false;
-
-    Singularity::UiDataExchange::DataBlock block;
-    bool received = false;
-    while (queue_->popUiDataBlock(block))
-    {
-        auto* stream = streams_.value(block.streamId, nullptr);
-        if (stream)
-        {
-            stream->apply(block);
-            received = true;
-        }
-    }
-
-    return received;
-}
-
 SingularityController::SingularityController(
     ParameterGetter getParameter,
     ParameterSetter setParameter,
-    ActionCallback actionCallback,
-    Singularity::UiDataExchange::DataQueue* uiDataQueue)
+    ActionCallback actionCallback)
     : actionCallback_(std::move(actionCallback)),
-      parameterCollection_(std::move(getParameter), std::move(setParameter), this),
-      streamCollection_(uiDataQueue, this)
+      parameterCollection_(std::move(getParameter), std::move(setParameter), this)
 {
 }
 
@@ -238,11 +131,6 @@ void SingularityController::detachView()
 QmlParameterCollection* SingularityController::parameters()
 {
     return &parameterCollection_;
-}
-
-QmlUiDataStreamCollection* SingularityController::streams()
-{
-    return &streamCollection_;
 }
 
 QVariantMap SingularityController::data() const
