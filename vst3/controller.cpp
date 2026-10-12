@@ -36,22 +36,33 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 
     for(auto& parameter : PLUGIN_CLASS::getParameters())
     {
-        const auto& definition = std::get<ContinuousParameter>(parameter.definition);
-
-        auto test = parameter.direction;
-
+        // const auto& definition = std::get<ContinuousParameter>(parameter.definition);
         const auto flags = parameter.direction == ParameterDirection::output ? Vst::ParameterInfo::kIsReadOnly : Vst::ParameterInfo::kCanAutomate;
 
-        parameters.addParameter(new Vst::RangeParameter(
-            Vst::StringConvert::convert(parameter.name).c_str(),
-            parameter.id,
-            nullptr,
-            definition.minValue,
-            definition.maxValue,
-            definition.defaultValue,
-            0, // stepCount: continuous
-            flags
-        ));
+        if(const auto continuous =  std::get_if<ContinuousParameter>(&parameter.definition))
+        {
+            parameters.addParameter(new Vst::RangeParameter(
+                Vst::StringConvert::convert(parameter.name).c_str(),
+                parameter.id,
+                nullptr,
+                continuous->minValue,
+                continuous->maxValue,
+                continuous->defaultValue,
+                0, // stepCount: continuous
+                flags
+            ));
+        }
+        else if(const auto boolean = std::get_if<BooleanParameter>(&parameter.definition))
+        {
+            parameters.addParameter(new Vst::Parameter(
+                Vst::StringConvert::convert(parameter.name).c_str(),
+                parameter.id,
+                nullptr, 
+                boolean->defaultValue,
+                1, // stepCount: toggle,
+                flags
+            ));
+        }
     }
 
     return result;

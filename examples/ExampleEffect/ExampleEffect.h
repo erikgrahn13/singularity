@@ -26,6 +26,11 @@ public:
                 .maxValue = 1.0,
                 .defaultValue = 0.5
             }),
+            Parameter::boolean({
+                .id = 15,
+                .name = "Toggle",
+                .defaultValue = false
+            }),
             Parameter::continuous({
                 .id = 14,
                 .name = "Meter",

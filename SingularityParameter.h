@@ -13,8 +13,14 @@ struct ContinuousParameter
     double defaultValue;
 };
 
+struct BooleanParameter
+{
+    bool defaultValue;
+};
+
 using ParameterDefinition = std::variant<
-    ContinuousParameter
+    ContinuousParameter,
+    BooleanParameter
 >;
 
 enum class ParameterDirection
@@ -36,7 +42,16 @@ struct Parameter
         double defaultValue;
     };
 
+    struct BooleanOptions
+    {
+        unsigned int id;
+        std::string name;
+
+        bool defaultValue;
+    };
+
     static Parameter continuous(ContinuousOptions options);
+    static Parameter boolean(BooleanOptions options);
     Parameter asOutput() &&;
 
     unsigned int id;
@@ -59,6 +74,17 @@ inline Parameter Parameter::continuous(ContinuousOptions options)
         .definition = ContinuousParameter{
             .minValue = options.minValue,
             .maxValue = options.maxValue,
+            .defaultValue = options.defaultValue
+        }
+    };
+}
+
+inline Parameter Parameter::boolean(BooleanOptions options)
+{
+    return {
+        .id = options.id,
+        .name = std::move(options.name),
+        .definition = BooleanParameter{
             .defaultValue = options.defaultValue
         }
     };

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <concepts>
+
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "base/source/fstreamer.h"
 #include "public.sdk/source/vst/vstbypassprocessor.h"
@@ -31,8 +33,22 @@ public:
         {
             if(parameter.direction == ParameterDirection::input)
             {
-                const auto& definition = std::get<ContinuousParameter>(parameter.definition);
-                inputParameters_.push_back({parameter.id, definition.defaultValue});
+               const auto initialValue = std::visit(
+                [](const auto& definition) -> Vst::ParamValue
+                {
+                    using Type = std::remove_cvref_t<decltype(definition)>;
+
+                    if constexpr(std::same_as<Type, ContinuousParameter>)
+                    {
+                        return definition.defaultValue;
+                    }
+                    else if constexpr (std::same_as<Type, BooleanParameter>)
+                    {
+                        return definition.defaultValue ? 1.0 : 0.0;
+                    }
+                }, parameter.definition);
+
+                inputParameters_.emplace_back(parameter.id, initialValue);
             }
         }
     }
