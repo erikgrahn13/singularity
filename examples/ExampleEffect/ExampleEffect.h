@@ -38,6 +38,12 @@ public:
                 .maxValue = 8,
                 .defaultValue = 5
             }),
+            Parameter::choice({
+                .id = 17,
+                .name = "Choices",
+                .choices = {"Choice 1", "Choice 2", "Choice 3"},
+                .defaultIndex = 0
+            }),
             Parameter::continuous({
                 .id = 14,
                 .name = "Meter",
@@ -51,8 +57,8 @@ public:
     void prepare(double sampleRate, int maxBlockSize) {}
 
     template<typename SampleType>
-    void process(std::span<const SampleType* const> inputs,
-                 std::span<SampleType* const> outputs,
+    void process(AudioInputBuffer<SampleType> inputs,
+                 AudioOutputBuffer<SampleType> outputs,
                  int numSamples, ParameterValues parameterValues)
     {
         double peak = 0.0; // params.getValueAtSample (15, 0);
@@ -62,7 +68,7 @@ public:
             const double volume = parameterValues.get (13, s);
             for (int ch = 0; ch < (int)outputs.size(); ++ch)
             {
-                outputs[ch][s] = static_cast<SampleType>(inputs[0][s] * volume);
+                outputs[ch][s] = inputs[0][s] * volume;
                 peak = std::max(peak, std::abs(static_cast<double>(outputs[ch][s])));
             }
         }

@@ -76,6 +76,21 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
                 flags
             ));
         }
+        else if(const auto choice = std::get_if<ChoiceParameter>(&parameter.definition))
+        {
+            auto choiceParameter = new Vst::StringListParameter(Vst::StringConvert::convert(parameter.name).c_str(), parameter.id);
+            
+            for(auto& choiceString : choice->choices)
+            {
+                choiceParameter->appendString(Vst::StringConvert::convert(choiceString).c_str());
+            }
+
+            const auto defaultNormalized = choiceParameter->toNormalized(choice->defaultIndex);
+            choiceParameter->getInfo().defaultNormalizedValue = defaultNormalized;
+            choiceParameter->setNormalized(defaultNormalized);
+
+            parameters.addParameter(choiceParameter);
+        }
     }
 
     return result;

@@ -50,6 +50,10 @@ public:
                     {
                         return (definition.defaultValue - definition.minValue) / (definition.maxValue - definition.minValue);
                     }
+                    else if constexpr (std::same_as<Type, ChoiceParameter>)
+                    {
+                        return definition.defaultIndex / (definition.choices.size() - 1);
+                    }
                 }, parameter.definition);
 
                 inputParameters_.emplace_back(parameter.id, initialValue);

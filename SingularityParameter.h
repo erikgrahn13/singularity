@@ -25,10 +25,17 @@ struct SteppedParameter
     int defaultValue;
 };
 
+struct ChoiceParameter
+{
+    std::vector<std::string> choices;
+    unsigned int defaultIndex;
+};
+
 using ParameterDefinition = std::variant<
     ContinuousParameter,
     BooleanParameter,
-    SteppedParameter
+    SteppedParameter,
+    ChoiceParameter
 >;
 
 enum class ParameterDirection
@@ -68,9 +75,19 @@ struct Parameter
         int defaultValue;
     };
 
+    struct ChoiceOptions
+    {
+        unsigned int id;
+        std::string name;
+
+        std::vector<std::string> choices;
+        unsigned int defaultIndex;
+    };
+
     static Parameter continuous(ContinuousOptions options);
     static Parameter boolean(BooleanOptions options);
     static Parameter stepped(SteppedOptions options);
+    static Parameter choice(ChoiceOptions options);
     Parameter asOutput() &&;
 
     unsigned int id;
@@ -118,6 +135,18 @@ inline Parameter Parameter::stepped(SteppedOptions options)
             .minValue = options.minValue,
             .maxValue = options.maxValue,
             .defaultValue = options.defaultValue
+        }
+    };
+}
+
+inline Parameter Parameter::choice(ChoiceOptions options)
+{
+    return {
+        .id = options.id,
+        .name = std::move(options.name),
+        .definition = ChoiceParameter {
+            .choices = std::move(options.choices),
+            .defaultIndex = options.defaultIndex
         }
     };
 }

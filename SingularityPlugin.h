@@ -7,11 +7,17 @@
 using ActionValue = std::variant< std::monostate, bool, std::int64_t, double, std::string>;
 using ActionResult = std::optional<std::pair<std::string, ActionValue>>;
 
+template<typename SampleType>
+using AudioInputBuffer = std::span<const SampleType* const>;
+
+template<typename SampleType>
+using AudioOutputBuffer = std::span<SampleType* const>;
+
 template<typename P>
 concept SingularityFxPlugin =
     requires(P& plugin,
-        std::span<const float* const>  fin,  std::span<float* const>  fout,
-        std::span<const double* const> din,  std::span<double* const> dout,
+        AudioInputBuffer<float> fin, AudioOutputBuffer<float> fout,
+        AudioInputBuffer<double> din, AudioOutputBuffer<double> dout,
         int n, ParameterValues params,
         double sampleRate, int maxBlockSize,
         std::string_view name, const ActionValue& value)
@@ -27,8 +33,8 @@ concept SingularityFxPlugin =
 template<typename P>
 concept SingularityInstrumentPlugin =
     requires(P& plugin,
-        std::span<float* const>  fout,
-        std::span<double* const> dout,
+        AudioOutputBuffer<float>  fout,
+        AudioOutputBuffer<float> dout,
         int n, std::span<const MidiEvent> events,
         ParameterValues params,
         double sampleRate, int maxBlockSize,
