@@ -46,6 +46,10 @@ public:
                     {
                         return definition.defaultValue ? 1.0 : 0.0;
                     }
+                    else if constexpr (std::same_as<Type, SteppedParameter>)
+                    {
+                        return (definition.defaultValue - definition.minValue) / (definition.maxValue - definition.minValue);
+                    }
                 }, parameter.definition);
 
                 inputParameters_.emplace_back(parameter.id, initialValue);

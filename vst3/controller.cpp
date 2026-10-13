@@ -63,6 +63,19 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
                 flags
             ));
         }
+        else if(const auto stepped = std::get_if<SteppedParameter>(&parameter.definition))
+        {
+            parameters.addParameter(new Vst::RangeParameter(
+                Vst::StringConvert::convert(parameter.name).c_str(),
+                parameter.id,
+                nullptr,
+                stepped->minValue,
+                stepped->maxValue,
+                stepped->defaultValue,
+                stepped->maxValue - stepped->minValue, // stepCount: stepped
+                flags
+            ));
+        }
     }
 
     return result;

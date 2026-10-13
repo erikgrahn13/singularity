@@ -31,6 +31,13 @@ public:
                 .name = "Toggle",
                 .defaultValue = false
             }),
+            Parameter::stepped({
+                .id = 16,
+                .name = "Stepped",
+                .minValue = 1,
+                .maxValue = 8,
+                .defaultValue = 5
+            }),
             Parameter::continuous({
                 .id = 14,
                 .name = "Meter",

@@ -18,9 +18,17 @@ struct BooleanParameter
     bool defaultValue;
 };
 
+struct SteppedParameter
+{
+    int minValue;
+    int maxValue;
+    int defaultValue;
+};
+
 using ParameterDefinition = std::variant<
     ContinuousParameter,
-    BooleanParameter
+    BooleanParameter,
+    SteppedParameter
 >;
 
 enum class ParameterDirection
@@ -50,8 +58,19 @@ struct Parameter
         bool defaultValue;
     };
 
+    struct SteppedOptions
+    {
+        unsigned int id;
+        std::string name;
+
+        int minValue;
+        int maxValue;
+        int defaultValue;
+    };
+
     static Parameter continuous(ContinuousOptions options);
     static Parameter boolean(BooleanOptions options);
+    static Parameter stepped(SteppedOptions options);
     Parameter asOutput() &&;
 
     unsigned int id;
@@ -85,6 +104,19 @@ inline Parameter Parameter::boolean(BooleanOptions options)
         .id = options.id,
         .name = std::move(options.name),
         .definition = BooleanParameter{
+            .defaultValue = options.defaultValue
+        }
+    };
+}
+
+inline Parameter Parameter::stepped(SteppedOptions options)
+{
+    return {
+        .id = options.id,
+        .name = std::move(options.name),
+        .definition = SteppedParameter {
+            .minValue = options.minValue,
+            .maxValue = options.maxValue,
             .defaultValue = options.defaultValue
         }
     };
