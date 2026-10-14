@@ -34,7 +34,7 @@ template<typename P>
 concept SingularityInstrumentPlugin =
     requires(P& plugin,
         AudioOutputBuffer<float>  fout,
-        AudioOutputBuffer<float> dout,
+        AudioOutputBuffer<double> dout,
         int n, std::span<const MidiEvent> events,
         ParameterValues params,
         double sampleRate, int maxBlockSize,

@@ -124,7 +124,7 @@ public:
     void prepare(double sampleRate, int maxBlockSize) {}
 
     template<typename SampleType>
-    void process(std::span<SampleType* const> outputs,
+    void process(AudioOutputBuffer<SampleType> outputs,
                  int numSamples,
                  std::span<const MidiEvent>,
                  ParameterValues parameterValues)
