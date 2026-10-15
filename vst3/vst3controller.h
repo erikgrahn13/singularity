@@ -8,7 +8,7 @@
 #include "public.sdk/source/vst/vstparameters.h"
 #include "public.sdk/source/vst/utility/dataexchange.h"
 #include "public.sdk/source/vst/utility/stringconvert.h"
-#include "AudioDataExchange.h"
+#include "UiDataExchange.h"
 #include "Vst3ParameterSupport.h"
 #include "Vst3ProgramData.h"
 #include "Vst3ProgramLayout.h"
@@ -18,11 +18,13 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace Steinberg {
 
@@ -32,7 +34,7 @@ namespace Steinberg {
 class VST3Controller : public Steinberg::Vst::EditControllerEx1,
                        public Steinberg::Vst::IDataExchangeReceiver,
                        public IParameterBackend,
-                       public Singularity::AudioDataExchange::IDataSink
+                       public Singularity::UiDataExchange::IDataSink
 {
 public:
 //------------------------------------------------------------------------
@@ -154,8 +156,15 @@ public:
     void PLUGIN_API queueClosed (Steinberg::Vst::DataExchangeUserContextID userContextID) SMTG_OVERRIDE;
     void PLUGIN_API onDataExchangeBlocksReceived (Steinberg::Vst::DataExchangeUserContextID userContextID, Steinberg::uint32 numBlocks, Steinberg::Vst::DataExchangeBlock* blocks, Steinberg::TBool onBackgroundThread) SMTG_OVERRIDE;
 
-    Singularity::AudioDataExchange::AudioDataQueue& audioDataQueue() { return audioDataQueue_; }
-    void pushAudioDataBlock(const Singularity::AudioDataExchange::AudioDataBlock& block) override { audioDataQueue_.pushAudioDataBlock(block); }
+    Singularity::UiDataExchange::DataQueue& uiDataQueue()
+    {
+        return uiDataQueue_;
+    }
+    bool pushUiDataBlock(
+        const Singularity::UiDataExchange::DataBlock& block) override
+    {
+        return uiDataQueue_.pushUiDataBlock(block);
+    }
 
     // IParameterBackend
 
@@ -200,7 +209,15 @@ public:
         ComponentBase::sendMessage(message);
     }
 
+    void setUiDataCallback(
+        std::function<void(std::string_view, std::string_view)> callback)
+    {
+        uiDataCallback_ = std::move(callback);
+    }
+
 private:
+    std::function<void(std::string_view, std::string_view)> uiDataCallback_;
+
     struct ControllerProgramBank
         : SingularityVst3::ProgramModelBank
     {
@@ -260,7 +277,7 @@ private:
 
 
     Vst::DataExchangeReceiverHandler dataExchange_ {this};
-    Singularity::AudioDataExchange::AudioDataQueue audioDataQueue_;
+    Singularity::UiDataExchange::DataQueue uiDataQueue_;
     // std::atomic<double> sampleRate_{0.0};
     // mutable std::mutex pluginStateMutex_;
     // std::string pluginState_;

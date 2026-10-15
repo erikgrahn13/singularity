@@ -103,6 +103,7 @@ public:
     {
         if(state)
         {
+            plugin_.prepare(processSetup.sampleRate, processSetup.maxSamplesPerBlock);
             bypassProcessor32_.setup(*this, processSetup, getLatencySamples());
             bypassProcessor64_.setup(*this, processSetup, getLatencySamples());
         }
@@ -117,14 +118,16 @@ public:
     /** Will be called before any process call */
     Steinberg::tresult PLUGIN_API setupProcessing (Steinberg::Vst::ProcessSetup& newSetup) SMTG_OVERRIDE
     {
-        bypassProcessor32_.setup(*this, newSetup, getLatencySamples());
-        bypassProcessor64_.setup(*this, newSetup, getLatencySamples());
+        const auto result = AudioEffect::setupProcessing(newSetup);
+        if(result != kResultOk)
+            return result;
 
         for(auto& parameterBuffer : parameterBuffers_)
         {
             parameterBuffer.resize(static_cast<std::size_t>(newSetup.maxSamplesPerBlock));
         }
-        return AudioEffect::setupProcessing (newSetup);
+
+        return kResultOk;
     }
     
     /** Asks if a given sample size is supported see SymbolicSampleSizes. */

@@ -1,4 +1,4 @@
-#include "SingularityController.h"
+#include "SingularityEditor.h"
 
 #include <QDebug>
 #include <QQmlContext>
@@ -57,24 +57,30 @@ QmlParameter* QmlParameterCollection::get(int id)
     return parameter;
 }
 
-SingularityController::SingularityController(
-    ParameterGetter getParameter,
-    ParameterSetter setParameter,
-    ActionCallback actionCallback)
-    : actionCallback_(std::move(actionCallback)),
-      parameterCollection_(std::move(getParameter), std::move(setParameter), this)
+// SingularityEditor::SingularityEditor(
+//     ParameterGetter getParameter,
+//     ParameterSetter setParameter,
+//     ActionCallback actionCallback)
+//     : actionCallback_(std::move(actionCallback)),
+//       parameterCollection_(std::move(getParameter), std::move(setParameter), this)
+// {
+// }
+
+SingularityEditor::SingularityEditor()
+
 {
+
 }
 
-SingularityController::~SingularityController()
+SingularityEditor::~SingularityEditor()
 {
     detachView();
 }
 
-void SingularityController::attachToView(QQuickView& view, const QUrl& source)
+void SingularityEditor::attachToView(QQuickView& view, const QUrl& source)
 {
     detachView();
-    view_ = &view;
+    // view_ = std::move(view);
     view.rootContext()->setContextProperty(
         QStringLiteral("plugin"),
         this);
@@ -121,24 +127,24 @@ void SingularityController::attachToView(QQuickView& view, const QUrl& source)
         view.setSource(source);
 }
 
-void SingularityController::detachView()
+void SingularityEditor::detachView()
 {
     QObject::disconnect(statusConnection_);
     statusConnection_ = {};
-    view_.clear();
+    // view_->clear();
 }
 
-QmlParameterCollection* SingularityController::parameters()
+QmlParameterCollection* SingularityEditor::parameters()
 {
     return &parameterCollection_;
 }
 
-QVariantMap SingularityController::data() const
+QVariantMap SingularityEditor::data() const
 {
     return data_;
 }
 
-void SingularityController::setData(std::string_view name, const ActionValue& value)
+void SingularityEditor::setData(std::string_view name, const ActionValue& value)
 {
     const auto key = QString::fromUtf8(name.data(), name.size());
 
@@ -167,12 +173,12 @@ void SingularityController::setData(std::string_view name, const ActionValue& va
         emit dataChanged();
 }
 
-void SingularityController::sendAction(QString name)
+void SingularityEditor::sendAction(QString name)
 {
     sendAction(std::move(name), {});
 }
 
-void SingularityController::sendAction(QString name, QVariant value)
+void SingularityEditor::sendAction(QString name, QVariant value)
 {
     std::optional<ActionValue> actionValue;
 

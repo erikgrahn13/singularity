@@ -204,6 +204,29 @@ tresult PLUGIN_API VST3Controller::getParamValueByString (Vst::ParamID tag, Vst:
 
 tresult PLUGIN_API VST3Controller::notify (Vst::IMessage* message)
 {
+    if (message && message->getMessageID() &&
+        std::strcmp(message->getMessageID(), "Singularity.UIData") == 0)
+    {
+        const void* nameData = nullptr;
+        const void* valueData = nullptr;
+        uint32 nameSize = 0;
+        uint32 valueSize = 0;
+        auto* attributes = message->getAttributes();
+        if (attributes && uiDataCallback_ &&
+            attributes->getBinary(
+                "name", nameData, nameSize) == kResultTrue &&
+            attributes->getBinary(
+                "value", valueData, valueSize) == kResultTrue)
+        {
+            uiDataCallback_(
+                std::string_view(
+                    static_cast<const char*>(nameData), nameSize),
+                std::string_view(
+                    static_cast<const char*>(valueData), valueSize));
+            return kResultTrue;
+        }
+    }
+
     // if (message && message->getMessageID() &&
     //     std::strcmp(message->getMessageID(), "Singularity.PluginState") == 0)
     // {
@@ -499,8 +522,8 @@ tresult PLUGIN_API VST3Controller::setUnitProgramData(
 
 void PLUGIN_API VST3Controller::queueOpened (Vst::DataExchangeUserContextID userContextID, uint32, TBool& dispatchOnBackgroundThread)
 {
-    if (userContextID == Singularity::AudioDataExchange::kDefaultContextID)
-        dispatchOnBackgroundThread = false;
+    if (userContextID == Singularity::UiDataExchange::kDataExchangeContextID)
+        dispatchOnBackgroundThread = true;
 }
 
 void PLUGIN_API VST3Controller::queueClosed (Vst::DataExchangeUserContextID)
@@ -509,12 +532,13 @@ void PLUGIN_API VST3Controller::queueClosed (Vst::DataExchangeUserContextID)
 
 void PLUGIN_API VST3Controller::onDataExchangeBlocksReceived (Vst::DataExchangeUserContextID userContextID, uint32 numBlocks, Vst::DataExchangeBlock* blocks, TBool)
 {
-    if (userContextID != Singularity::AudioDataExchange::kDefaultContextID)
+    if (userContextID != Singularity::UiDataExchange::kDataExchangeContextID)
         return;
 
     for (uint32 index = 0; index < numBlocks; ++index)
         if (blocks[index].data)
-            pushAudioDataBlock(*Singularity::AudioDataExchange::toAudioDataBlock(blocks[index].data));
+            pushUiDataBlock(
+                *Singularity::UiDataExchange::toDataBlock(blocks[index].data));
 }
 
 //------------------------------------------------------------------------

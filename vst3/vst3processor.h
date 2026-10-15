@@ -7,19 +7,19 @@
 #include "public.sdk/source/vst/utility/processdataslicer.h"
 #include "public.sdk/source/vst/vstaudioprocessoralgo.h"
 #include "public.sdk/source/vst/utility/dataexchange.h"
-#include "AudioDataExchange.h"
-#include "base/source/fstreamer.h"
+#include "UiDataExchange.h"
+// #include "base/source/fstreamer.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "pluginterfaces/vst/ivstevents.h"
 #include "pluginterfaces/vst/ivstunits.h"
 #include "plugincids.h"
 #include PLUGIN_CLASS_HEADER
 #include "SingularityPlugin.h"
-#include "Vst3ComponentState.h"
-#include "Vst3ParameterSupport.h"
-#include "Vst3ProgramData.h"
-#include "Vst3ProgramLayout.h"
-#include "Vst3ProgramModel.h"
+// #include "Vst3ComponentState.h"
+// #include "Vst3ParameterSupport.h"
+// #include "Vst3ProgramData.h"
+// #include "Vst3ProgramLayout.h"
+// #include "Vst3ProgramModel.h"
 #include <atomic>
 #include <span>
 #include <vector>
@@ -36,7 +36,7 @@ namespace Steinberg {
 template<::SingularityPlugin PluginType>
 class VST3Processor : public Steinberg::Vst::AudioEffect,
                       public Steinberg::Vst::IProgramListData,
-                      public Singularity::AudioDataExchange::IDataSink
+                      public Singularity::UiDataExchange::IDataSink
 {
 public:
 	VST3Processor () { setControllerClass (kVST3ControllerUID); }
@@ -97,10 +97,10 @@ public:
 		if (result == kResultTrue)
 		{
 			auto configCallback = [] (Vst::DataExchangeHandler::Config& config, const Vst::ProcessSetup&) {
-				config.blockSize = sizeof(Singularity::AudioDataExchange::AudioDataBlock);
+				config.blockSize = sizeof(Singularity::UiDataExchange::DataBlock);
 				config.numBlocks = 8;
 				config.alignment = 32;
-				config.userContextID = Singularity::AudioDataExchange::kDefaultContextID;
+				config.userContextID = Singularity::UiDataExchange::kDataExchangeContextID;
 				return true;
 			};
 			mDataExchange = std::make_unique<Vst::DataExchangeHandler>(this, configCallback);
@@ -138,9 +138,22 @@ public:
 				if constexpr (requires(PluginType& plugin, std::string_view name,
 					std::string_view payload) { plugin.handleAction(name, payload); })
 				{
-					mPlugin.handleAction(
-						std::string_view(static_cast<const char*>(nameData), nameSize),
-						std::string_view(static_cast<const char*>(payloadData), payloadSize));
+					const auto name = std::string_view(
+						static_cast<const char*>(nameData), nameSize);
+					const auto payload = std::string_view(
+						static_cast<const char*>(payloadData), payloadSize);
+					using Result = decltype(mPlugin.handleAction(name, payload));
+
+					if constexpr (std::is_void_v<Result>)
+					{
+						mPlugin.handleAction(name, payload);
+					}
+					else
+					{
+						const auto result = mPlugin.handleAction(name, payload);
+						if (result)
+							publishUiData(result->first, result->second);
+					}
 					publishPluginState();
 				}
 				return kResultTrue;
@@ -218,6 +231,22 @@ public:
 				"payload", payload.data(), static_cast<uint32>(payload.size()));
 			ComponentBase::sendMessage(message);
 		}
+	}
+
+	void publishUiData(
+		std::string_view name,
+		std::string_view value)
+	{
+		auto message = owned(allocateMessage());
+		if (!message)
+			return;
+
+		message->setMessageID("Singularity.UIData");
+		message->getAttributes()->setBinary(
+			"name", name.data(), static_cast<uint32>(name.size()));
+		message->getAttributes()->setBinary(
+			"value", value.data(), static_cast<uint32>(value.size()));
+		ComponentBase::sendMessage(message);
 	}
 
 	tresult PLUGIN_API canProcessSampleSize (int32 symbolicSampleSize) SMTG_OVERRIDE
@@ -473,111 +502,121 @@ public:
 	template<typename SampleT>
 	void processInstrumentPlugin(std::span<SampleT* const> outputs, int numSamples, std::span<const MidiEvent> midiEvents, ParamList params)
 	{
-		Singularity::AudioDataExchange::ScopedSendContext sendContext(this, processSetup.sampleRate);
+		Singularity::UiDataExchange::ScopedSendContext sendContext(this, processSetup.sampleRate);
 		mPlugin.template process<SampleT>(outputs, numSamples, midiEvents, params);
 	}
 
 	template<typename SampleT>
 	void processEffectPlugin(std::span<const SampleT* const> inputs, std::span<SampleT* const> outputs, int numSamples, ParamList params)
 	{
-		Singularity::AudioDataExchange::ScopedSendContext sendContext(this, processSetup.sampleRate);
+		Singularity::UiDataExchange::ScopedSendContext sendContext(this, processSetup.sampleRate);
 		mPlugin.template process<SampleT>(inputs, outputs, numSamples, params);
 	}
 
-	void pushAudioDataBlock(const Singularity::AudioDataExchange::AudioDataBlock& block) override
+	bool pushUiDataBlock(const Singularity::UiDataExchange::DataBlock& block) override
 	{
 		if (!mDataExchange)
-			return;
+			return false;
 
 		auto exchangeBlock = mDataExchange->getCurrentOrNewBlock();
 		if (exchangeBlock.blockID != Vst::InvalidDataExchangeBlockID && exchangeBlock.data)
 		{
-			*Singularity::AudioDataExchange::toAudioDataBlock(exchangeBlock.data) = block;
-			mDataExchange->sendCurrentBlock();
+			*Singularity::UiDataExchange::toDataBlock(exchangeBlock.data) = block;
+			return mDataExchange->sendCurrentBlock();
 		}
+
+		return false;
 	}
 
 	tresult PLUGIN_API setState (IBStream* state) SMTG_OVERRIDE
 	{
+        IBStreamer streamer(state, kLittleEndian);
+
 		const auto pluginParameters = PluginType::getParameters();
-		SingularityVst3::ComponentState restored;
-		if (!SingularityVst3::readComponentState(
-				state, pluginParameters, restored))
-			return kResultFalse;
 
-		if constexpr (requires(PluginType& plugin, std::string_view payload) {
-			plugin.restoreState(payload);
-		})
-		{
-			const auto payload = restored.pluginPayload.empty()
-				? std::string_view{}
-				: std::string_view(
-					reinterpret_cast<const char*>(restored.pluginPayload.data()),
-					restored.pluginPayload.size());
-			mPlugin.restoreState(payload);
-		}
+        int32 bypass = 0;
+        if(!streamer.readInt32(bypass))
+            return kResultFalse;
 
-		for (auto& bank : mProgramBanks)
-		{
-			for (auto& program : bank->programs)
-				program->resetToFactory();
-			bank->currentProgram.store(0, std::memory_order_release);
-			bank->pendingProgram.store(0, std::memory_order_release);
-		}
 
-		for (auto& saved : restored.modifiedPrograms)
-		{
-			auto* bank = findProgramBank(saved.listId);
-			if (!bank || saved.programIndex < 0 ||
-				saved.programIndex >=
-					static_cast<int32>(bank->programs.size()))
-				continue;
+		// SingularityVst3::ComponentState restored;
+		// if (!SingularityVst3::readComponentState(
+		// 		state, pluginParameters, restored))
+		// 	return kResultFalse;
 
-			auto& program =
-				*bank->programs[
-					static_cast<std::size_t>(saved.programIndex)];
-			const auto* current = program.snapshotForUi();
-			if (!current)
-				return kResultFalse;
-			auto updated =
-				std::make_unique<SingularityVst3::ProgramData>(*current);
-			for (const auto& [id, value] : saved.data.parameters)
-			{
-				const auto parameter = std::find_if(
-					updated->parameters.begin(),
-					updated->parameters.end(),
-					[id](const auto& candidate)
-					{
-						return candidate.first == id;
-					});
-				if (parameter == updated->parameters.end())
-					continue;
-				parameter->second = value;
-			}
-			updated->payload = std::move(saved.data.payload);
-			program.replaceSnapshot(std::move(updated), true);
-		}
+		// if constexpr (requires(PluginType& plugin, std::string_view payload) {
+		// 	plugin.restoreState(payload);
+		// })
+		// {
+		// 	const auto payload = restored.pluginPayload.empty()
+		// 		? std::string_view{}
+		// 		: std::string_view(
+		// 			reinterpret_cast<const char*>(restored.pluginPayload.data()),
+		// 			restored.pluginPayload.size());
+		// 	mPlugin.restoreState(payload);
+		// }
 
-		for (const auto& selection : restored.programSelections)
-		{
-			auto* bank = selection.listId == Vst::kNoProgramListId
-				? (mProgramBanks.empty() ? nullptr : mProgramBanks.front().get())
-				: findProgramBank(selection.listId);
-			if (!bank || selection.programIndex < 0 ||
-				selection.programIndex >=
-					static_cast<int32>(bank->programs.size()))
-				continue;
-			bank->currentProgram.store(
-				selection.programIndex, std::memory_order_release);
-			bank->pendingProgram.store(
-				selection.programIndex, std::memory_order_release);
-		}
+		// for (auto& bank : mProgramBanks)
+		// {
+		// 	for (auto& program : bank->programs)
+		// 		program->resetToFactory();
+		// 	bank->currentProgram.store(0, std::memory_order_release);
+		// 	bank->pendingProgram.store(0, std::memory_order_release);
+		// }
 
-		auto pending = std::make_unique<PendingProcessorState>();
-		pending->bypass = restored.bypass;
-		pending->parameterValues = std::move(restored.parameterValues);
-		const auto* pendingState = queueProcessorState(std::move(pending));
-		publishRestoredProcessorState(*pendingState);
+		// for (auto& saved : restored.modifiedPrograms)
+		// {
+		// 	auto* bank = findProgramBank(saved.listId);
+		// 	if (!bank || saved.programIndex < 0 ||
+		// 		saved.programIndex >=
+		// 			static_cast<int32>(bank->programs.size()))
+		// 		continue;
+
+		// 	auto& program =
+		// 		*bank->programs[
+		// 			static_cast<std::size_t>(saved.programIndex)];
+		// 	const auto* current = program.snapshotForUi();
+		// 	if (!current)
+		// 		return kResultFalse;
+		// 	auto updated =
+		// 		std::make_unique<SingularityVst3::ProgramData>(*current);
+		// 	for (const auto& [id, value] : saved.data.parameters)
+		// 	{
+		// 		const auto parameter = std::find_if(
+		// 			updated->parameters.begin(),
+		// 			updated->parameters.end(),
+		// 			[id](const auto& candidate)
+		// 			{
+		// 				return candidate.first == id;
+		// 			});
+		// 		if (parameter == updated->parameters.end())
+		// 			continue;
+		// 		parameter->second = value;
+		// 	}
+		// 	updated->payload = std::move(saved.data.payload);
+		// 	program.replaceSnapshot(std::move(updated), true);
+		// }
+
+		// for (const auto& selection : restored.programSelections)
+		// {
+		// 	auto* bank = selection.listId == Vst::kNoProgramListId
+		// 		? (mProgramBanks.empty() ? nullptr : mProgramBanks.front().get())
+		// 		: findProgramBank(selection.listId);
+		// 	if (!bank || selection.programIndex < 0 ||
+		// 		selection.programIndex >=
+		// 			static_cast<int32>(bank->programs.size()))
+		// 		continue;
+		// 	bank->currentProgram.store(
+		// 		selection.programIndex, std::memory_order_release);
+		// 	bank->pendingProgram.store(
+		// 		selection.programIndex, std::memory_order_release);
+		// }
+
+		// auto pending = std::make_unique<PendingProcessorState>();
+		// pending->bypass = restored.bypass;
+		// pending->parameterValues = std::move(restored.parameterValues);
+		// const auto* pendingState = queueProcessorState(std::move(pending));
+		// publishRestoredProcessorState(*pendingState);
 		return kResultOk;
 	}
 

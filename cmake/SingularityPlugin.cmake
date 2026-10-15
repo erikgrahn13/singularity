@@ -59,8 +59,8 @@ function(_singularity_create_plugin target)
         OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Singularity"
         NO_PLUGIN
         SOURCES
-            ${SINGULARITY_ROOT_DIR}/SingularityController.h
-            ${SINGULARITY_ROOT_DIR}/SingularityController.cpp
+            ${SINGULARITY_ROOT_DIR}/SingularityEditor.h
+            ${SINGULARITY_ROOT_DIR}/SingularityEditor.cpp
         QML_FILES
             ${PLUGIN_VIEW}
             Main.qml

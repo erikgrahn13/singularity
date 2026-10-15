@@ -73,7 +73,7 @@ private:
     QHash<unsigned int, QmlParameter*> parameters_;
 };
 
-class SingularityController : public QObject
+class SingularityEditor : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(
@@ -90,11 +90,12 @@ public:
     using ParameterGetter = std::function<double(unsigned int)>;
     using ParameterSetter = std::function<void(unsigned int, double)>;
 
-    SingularityController(
-        ParameterGetter getParameter,
-        ParameterSetter setParameter,
-        ActionCallback actionCallback);
-    ~SingularityController();
+    // SingularityEditor(
+    //     ParameterGetter getParameter,
+    //     ParameterSetter setParameter,
+    //     ActionCallback actionCallback);
+    SingularityEditor();
+    ~SingularityEditor();
 
     void attachToView(QQuickView& view, const QUrl& source = {});
     void detachView();
@@ -110,7 +111,8 @@ signals:
     void dataChanged();
 
 private:
-    QPointer<QQuickView> view_;
+    // QPointer<QQuickView> view_;
+    std::unique_ptr<QQuickView> view_;
     QMetaObject::Connection statusConnection_;
     ActionCallback actionCallback_;
     ActionCallback resultCallback_;

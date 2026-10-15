@@ -6,7 +6,7 @@
 
 #include "controller.h"
 #include "plugincids.h"
-#include "SingularityView.h"
+#include "SingularityVST3Editor.h"
 #include PLUGIN_CLASS_HEADER
 
 
@@ -203,7 +203,7 @@ IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)
     if (FIDStringsEqual (name, Vst::ViewType::kEditor))
     {
         // create your editor here and return a IPlugView ptr of it
-        return new SingularityView(this);
+        return new SingularityEditor(this);
     }
     return nullptr;
 }

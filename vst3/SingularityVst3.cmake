@@ -99,8 +99,10 @@ function(singularity_create_vst3_plugin target)
         ${SINGULARITY_ROOT_DIR}/vst3/controller.h
         ${SINGULARITY_ROOT_DIR}/vst3/controller.cpp
         ${SINGULARITY_ROOT_DIR}/vst3/vst3entry.cpp
-        ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.h
-        ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
+        ${SINGULARITY_ROOT_DIR}/vst3/SingularityVST3Editor.h
+        ${SINGULARITY_ROOT_DIR}/vst3/SingularityVST3Editor.cpp
+        # ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.h
+        # ${SINGULARITY_ROOT_DIR}/vst3/SingularityView.cpp
     )
 
     if(WIN32)
