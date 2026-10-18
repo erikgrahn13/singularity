@@ -59,8 +59,8 @@ function(_singularity_create_plugin target)
         OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Singularity"
         NO_PLUGIN
         SOURCES
-            ${SINGULARITY_ROOT_DIR}/SingularityEditor.h
-            ${SINGULARITY_ROOT_DIR}/SingularityEditor.cpp
+            ${SINGULARITY_ROOT_DIR}/SingularityEditor2.h
+            ${SINGULARITY_ROOT_DIR}/SingularityEditor2.cpp
         QML_FILES
             ${PLUGIN_VIEW}
             Main.qml
@@ -88,6 +88,8 @@ function(_singularity_create_plugin target)
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
         SINGULARITY_QML_MODULE_URI="Singularity"
+        $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)

@@ -203,7 +203,7 @@ IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)
     if (FIDStringsEqual (name, Vst::ViewType::kEditor))
     {
         // create your editor here and return a IPlugView ptr of it
-        return new SingularityEditor(this);
+        return new SingularityVST3Editor(this);
     }
     return nullptr;
 }
