@@ -1,4 +1,5 @@
 #include "SingularityVST3Editor.h"
+#include PLUGIN_CLASS_HEADER
 
 #include "pluginterfaces/base/funknownimpl.h"
 
@@ -6,46 +7,66 @@
 
 #if defined(__linux__)
 #include <xcb/xcb.h>
+#elif defined(__APPLE__) && defined(QT_QML_DEBUG)
+#include <crt_externs.h>
 #endif
 
 
 std::string hotReload()
 {
+#if defined(__linux__)
     std::ifstream commandLine("/proc/self/cmdline", std::ios::binary);
 
     for(std::string argument; std::getline(commandLine, argument, '\0');)
     {
         if(argument.starts_with("-qmljsdebugger="))
+        return argument;
+    }
+#elif defined(__APPLE__)
+    const int argumentCount = *_NSGetArgc();
+    char** arguments = *_NSGetArgv();
+
+    for(int i = 1; i < argumentCount; ++i)
+    {
+        std::string argument = arguments[i];
+        if(argument.starts_with("-qmljsdebugger="))
             return argument;
     }
-
+#endif
     return {};
 }
 
 
 SingularityVST3Editor::SingularityVST3Editor(Steinberg::Vst::EditController* controller)
     : Steinberg::Vst::EditorView(controller),
-#if defined (__linux__)
     SingularityEditor(
-        [controller](unsigned int id)
-        {
-            return controller->normalizedParamToPlain(id, controller->getParamNormalized(id));
-        },
-        [controller](unsigned int id, double value)
-        {
-            const double normalized = controller->plainParamToNormalized(id, value);
-
-            controller->beginEdit(id);
-            controller->setParamNormalized(id, normalized);
-            controller->performEdit(id, normalized);
-            controller->endEdit(id);
-        },
-        "xcb", hotReload())
+#if defined (__linux__)
+        "xcb",
+#else 
+        nullptr,
 #endif
+         hotReload())
 
 {
+    initializeView();
+
     const auto size = getView().initialSize();
     setRect({0, 0, size.width(), size.height()});
+}
+
+double SingularityVST3Editor::getParameter(unsigned int id)
+{
+    return controller->normalizedParamToPlain(id, controller->getParamNormalized(id));
+}
+
+void SingularityVST3Editor::setParameter(unsigned int id, double value)
+{
+    const double normalized = controller->plainParamToNormalized(id, value);
+    
+    controller->beginEdit(id);
+    controller->setParamNormalized(id, normalized);
+    controller->performEdit(id, normalized);
+    controller->endEdit(id);
 }
 
 void SingularityVST3Editor::attachedToParent()
@@ -57,10 +78,12 @@ void SingularityVST3Editor::attachedToParent()
 
 void SingularityVST3Editor::removedFromParent()
 {
+#if defined(__linux__)
     if(auto runLoop = Steinberg::U::cast<Steinberg::Linux::IRunLoop>(plugFrame))
     {
         runLoop->unregisterEventHandler(this);
     }
+#endif
     Steinberg::Vst::EditorView::removedFromParent();
 }
 
@@ -75,7 +98,7 @@ Steinberg::tresult PLUGIN_API SingularityVST3Editor::isPlatformTypeSupported(Ste
         if(strcmp(type, Steinberg::kPlatformTypeHWND) == 0)
             return Steinberg::kResultTrue;
     #elif SMTG_OS_MACOS
-        if(strcmp(type, kPlatformTypeNSView) == 0)
+        if(strcmp(type, Steinberg::kPlatformTypeNSView) == 0)
             return Steinberg::kResultTrue;
     #elif SMTG_OS_LINUX
         if(strcmp(type, Steinberg::kPlatformTypeX11EmbedWindowID) == 0)
@@ -86,6 +109,26 @@ Steinberg::tresult PLUGIN_API SingularityVST3Editor::isPlatformTypeSupported(Ste
 
     return Steinberg::kInvalidArgument;
 }
+
+Steinberg::tresult PLUGIN_API SingularityVST3Editor::canResize() 
+{ 
+    return PLUGIN_CLASS::isResizable ? Steinberg::kResultTrue : Steinberg::kResultFalse; 
+}
+
+Steinberg::tresult PLUGIN_API SingularityVST3Editor::checkSizeConstraint(Steinberg::ViewRect* rectToCheck)
+{
+    // TODO: investigate this function a little more and what constraints should exist
+    return Steinberg::kResultTrue;
+}
+
+Steinberg::tresult PLUGIN_API SingularityVST3Editor::onSize(Steinberg::ViewRect* newSize)
+{
+    getView().resize(newSize->right - newSize->left, newSize->bottom - newSize->top);
+    return EditorView::onSize (newSize);
+}
+
+
+
 
 #if defined(__linux__)
 Steinberg::tresult PLUGIN_API SingularityVST3Editor::setFrame(Steinberg::IPlugFrame* frame)

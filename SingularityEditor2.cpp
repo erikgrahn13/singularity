@@ -3,8 +3,7 @@
 #include "QGuiApplication"
 #include <QQmlContext>
 
-SingularityEditor::SingularityEditor(QmlParameter::Getter getter, QmlParameter::Setter setter, const char* platform, std::string hotReloadArgument)
-    : getter_(std::move(getter)), setter_(std::move(setter))
+SingularityEditor::SingularityEditor(const char* platform, std::string hotReloadArgument)
 {
     if (platform)
         qputenv("QT_QPA_PLATFORM", QByteArray(platform));
@@ -19,6 +18,15 @@ SingularityEditor::SingularityEditor(QmlParameter::Getter getter, QmlParameter::
     view_ = std::make_unique<QQuickView>();
     view_->rootContext()->setContextProperty("plugin", this);
 
+}
+
+SingularityEditor::~SingularityEditor()
+{
+
+}
+
+void SingularityEditor::initializeView()
+{
 #if defined(SINGULARITY_QML_SOURCE_FILE)
     view_->setSource(
         QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
@@ -27,12 +35,6 @@ SingularityEditor::SingularityEditor(QmlParameter::Getter getter, QmlParameter::
 #endif
     view_->setResizeMode(QQuickView::SizeRootObjectToView);
     view_->setTitle(QStringLiteral(PLUGIN_NAME));
-
-}
-
-SingularityEditor::~SingularityEditor()
-{
-
 }
 
 void SingularityEditor::showWindow()
@@ -45,7 +47,11 @@ QmlParameter* SingularityEditor::parameter(int id)
     if(auto it = parameters_.find(id); it != parameters_.end())
         return it->second;
 
-    auto* parameter = new QmlParameter(id, getter_, setter_, this);
+    auto* parameter = new QmlParameter(
+        id, 
+        [this](unsigned int id){ return getParameter(id); }, 
+        [this](unsigned int id, double value){ setParameter(id, value); }, 
+        this);
     parameters_.emplace(id, parameter);
     return parameter;
 }

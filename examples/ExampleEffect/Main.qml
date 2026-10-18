@@ -344,13 +344,13 @@ PluginView {
                 title: "WAVEFORM"
                 valueText: "LIVE"
 
-                Waveform {
-                    anchors.fill: parent
-                    source: plugin.streams.get(0)
-                    gain: 2
-                    waveformColor: root.accentColor
-                    fillColor: root.accentColor
-                }
+                // Waveform {
+                //     anchors.fill: parent
+                //     source: plugin.streams.get(0)
+                //     gain: 2
+                //     waveformColor: root.accentColor
+                //     fillColor: root.accentColor
+                // }
             }
 
             WidgetCard {

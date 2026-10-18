@@ -10,16 +10,23 @@
 
 class SingularityVST3Editor : public Steinberg::Vst::EditorView, 
                               public Steinberg::IPlugViewContentScaleSupport,
-                              public SingularityEditor,
+                              public SingularityEditor
 #if defined(__linux__)
-                              public Steinberg::Linux::IEventHandler
+                              , public Steinberg::Linux::IEventHandler
 #endif
 {
     public:
     explicit SingularityVST3Editor(Steinberg::Vst::EditController* controller); 
 
+    double getParameter(unsigned int id) override;
+    void setParameter(unsigned int id, double value) override;
+
     Steinberg::tresult PLUGIN_API setContentScaleFactor(ScaleFactor factor) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API isPlatformTypeSupported(Steinberg::FIDString type) SMTG_OVERRIDE;
+    Steinberg::tresult PLUGIN_API canResize() SMTG_OVERRIDE;
+    Steinberg::tresult PLUGIN_API checkSizeConstraint(Steinberg::ViewRect* rectToCheck) SMTG_OVERRIDE;
+    Steinberg::tresult PLUGIN_API onSize(Steinberg::ViewRect* newSize) SMTG_OVERRIDE;
+    
 
 #if defined(__linux__)
     Steinberg::tresult PLUGIN_API setFrame(Steinberg::IPlugFrame* frame) SMTG_OVERRIDE;

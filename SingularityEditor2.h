@@ -28,13 +28,16 @@ class SingularityEditor : public QObject
 {
     Q_OBJECT
     public:
-    explicit SingularityEditor(QmlParameter::Getter getter, QmlParameter::Setter setter, const char* platform = nullptr, std::string hotReloadArgument = {});
-    ~SingularityEditor();
+    explicit SingularityEditor(const char* platform = nullptr, std::string hotReloadArgument = {});
+    ~SingularityEditor() override;
+
+    virtual double getParameter(unsigned int ) = 0;
+    virtual void setParameter(unsigned int id, double value) = 0;
 
     Q_INVOKABLE QmlParameter* parameter(int id);
 
     protected:
-    // QmlParameter* parameter(int id);
+    void initializeView();
     void showWindow();
     QQuickView& getView() { return *view_; }
 
@@ -42,6 +45,4 @@ class SingularityEditor : public QObject
     static QGuiApplication  application;
     std::unique_ptr<QQuickView> view_;
     std::unordered_map<int, QmlParameter*> parameters_;
-    QmlParameter::Getter getter_;
-    QmlParameter::Setter setter_;
 };
