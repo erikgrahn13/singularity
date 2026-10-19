@@ -1,0 +1,14 @@
+#include "SingularityAPPEditor.h"
+
+double SingularityAPPEditor::getParameter(unsigned int id)
+{
+    return 0.0;
+}
+
+void SingularityAPPEditor::setParameter(unsigned int id, double value)
+{
+}
+
+void SingularityAPPEditor::requestResize(int width, int height)
+{
+}

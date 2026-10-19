@@ -7,8 +7,10 @@
 #include <iostream>
 #include <type_traits>
 
-#include "../SingularityController.h"
-#include "APPController.h"
+// #include "../SingularityController.h"
+#include "SingularityAPPEditor.h"
+
+// #include "APPController.h"
 #include "RtAudio.h"
 #include "../utilities/SingularityQueue.h"
 
@@ -230,33 +232,34 @@ int main(int argc, char *argv[])
     if (rtaudio.startStream() != RTAUDIO_NO_ERROR)
         return 1;
 
-    APPController appController(definitions, [&audioContext](int id, double value) {
-        // audioContext.parameterChanges.push({id, value});
-    });
+    // APPController appController(definitions, [&audioContext](int id, double value) {
+    //     // audioContext.parameterChanges.push({id, value});
+    // });
+    SingularityAPPEditor editor;
 
-    SingularityController controller(
-        [&](unsigned int id)
-        {
-            return appController.getParameter(id);
-        },
-        [&](unsigned int id, double value)
-        {
-            appController.setParameter(id, value);
-        },
-        [&](std::string_view name, const ActionValue& value)
-        {
-            // appController.sendAction(name, value);
-            return std::nullopt;
-        });
+    // SingularityController controller(
+    //     [&](unsigned int id)
+    //     {
+    //         return appController.getParameter(id);
+    //     },
+    //     [&](unsigned int id, double value)
+    //     {
+    //         appController.setParameter(id, value);
+    //     },
+    //     [&](std::string_view name, const ActionValue& value)
+    //     {
+    //         // appController.sendAction(name, value);
+    //         return std::nullopt;
+    //     });
 
     QQuickView view;
     view.setResizeMode(QQuickView::SizeViewToRootObject);
 #if defined(SINGULARITY_QML_SOURCE_FILE)
-    controller.attachToView(
-        view,
-        QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
+    // controller.attachToView(
+    //     view,
+    //     QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
 #else
-    controller.attachToView(view);
+    // controller.attachToView(view);
 #endif
     view.show();
     view.requestActivate();

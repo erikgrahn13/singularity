@@ -25,7 +25,9 @@ function(singularity_create_app_plugin target)
     qt_add_executable(${target}_APP
         WIN32 MACOSX_BUNDLE
         ${SINGULARITY_ROOT_DIR}/standalone/main.cpp
-        ${SINGULARITY_ROOT_DIR}/standalone/APPController.cpp
+        # ${SINGULARITY_ROOT_DIR}/standalone/APPController.cpp
+        ${SINGULARITY_ROOT_DIR}/standalone/SingularityAPPEditor.h
+        ${SINGULARITY_ROOT_DIR}/standalone/SingularityAPPEditor.cpp
     )
 
     target_link_libraries(${target}_APP PRIVATE
