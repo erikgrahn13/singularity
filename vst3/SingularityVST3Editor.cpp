@@ -12,6 +12,7 @@
 #endif
 
 
+#if defined(QT_QML_DEBUG)
 std::string hotReload()
 {
 #if defined(__linux__)
@@ -36,16 +37,21 @@ std::string hotReload()
     return {};
 }
 
+#endif
+
 
 SingularityVST3Editor::SingularityVST3Editor(Steinberg::Vst::EditController* controller)
     : Steinberg::Vst::EditorView(controller),
     SingularityEditor(
 #if defined (__linux__)
-        "xcb",
+        "xcb"
 #else 
-        nullptr,
+        nullptr
 #endif
-         hotReload())
+#if defined(QT_QML_DEBUG)
+        , hotReload()
+#endif
+    )
 
 {
     initializeView();
