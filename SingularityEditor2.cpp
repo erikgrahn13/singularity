@@ -2,6 +2,9 @@
 
 #include "QGuiApplication"
 #include <QQmlContext>
+#include <QQuickItem>
+
+#include <iostream>
 
 SingularityEditor::SingularityEditor(const char* platform, std::string hotReloadArgument)
 {
@@ -17,6 +20,27 @@ SingularityEditor::SingularityEditor(const char* platform, std::string hotReload
 
     view_ = std::make_unique<QQuickView>();
     view_->rootContext()->setContextProperty("plugin", this);
+
+    QObject::connect(view_->contentItem(), &QQuickItem::childrenChanged, view_.get(),
+    [this]
+    {
+        auto* root = view_->rootObject();
+
+        if(!root)
+            return;
+
+        const auto version = root->property("singularityPluginViewVersion");
+        if(!version.isValid() || version.toInt() != 1)
+        {
+            std::cerr << "[Singularity] ERROR: Main.qml must use PluginView as its root component" << std::endl;
+            view_->setSource({});
+            return;
+        }
+
+        const auto size = view_->initialSize();
+        requestResize(size.width(), size.height());
+
+    }, Qt::QueuedConnection);
 
 }
 

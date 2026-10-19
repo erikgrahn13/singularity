@@ -37,6 +37,7 @@ class SingularityEditor : public QObject
     Q_INVOKABLE QmlParameter* parameter(int id);
 
     protected:
+    virtual void requestResize(int width, int height) = 0;
     void initializeView();
     void showWindow();
     QQuickView& getView() { return *view_; }

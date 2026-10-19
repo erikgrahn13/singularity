@@ -127,7 +127,11 @@ Steinberg::tresult PLUGIN_API SingularityVST3Editor::onSize(Steinberg::ViewRect*
     return EditorView::onSize (newSize);
 }
 
-
+void SingularityVST3Editor::requestResize(int width, int height)
+{
+    Steinberg::ViewRect requested{0, 0, width, height};
+    plugFrame->resizeView(this, &requested);
+}
 
 
 #if defined(__linux__)
