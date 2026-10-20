@@ -41,6 +41,7 @@ class SingularityVST3Editor : public Steinberg::Vst::EditorView,
 
     protected:
     void requestResize(int width, int height) override;
+    void dispatchAction(std::string_view name, const ActionValue& value) override;
     void attachedToParent() SMTG_OVERRIDE;
     void removedFromParent() SMTG_OVERRIDE;
 };

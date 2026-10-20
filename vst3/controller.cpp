@@ -183,7 +183,7 @@ tresult PLUGIN_API VST3Controller::notify (Steinberg::Vst::IMessage* message)
             value = std::string(static_cast<const char*>(stringData), stringSize);
             
         const std::string_view name{static_cast<const char*>(nameData), nameSize};
-        actionResultCallback_(name, value);
+        editor_->setData(name, value);
 
         return kResultTrue;
     }
@@ -195,7 +195,6 @@ tresult PLUGIN_API VST3Controller::setParamNormalized (Steinberg::Vst::ParamID t
     return EditControllerEx1::setParamNormalized(tag, value);
 }
 
-
 //------------------------------------------------------------------------
 IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)
 {
@@ -203,10 +202,18 @@ IPlugView* PLUGIN_API VST3Controller::createView (FIDString name)
     if (FIDStringsEqual (name, Vst::ViewType::kEditor))
     {
         // create your editor here and return a IPlugView ptr of it
-        return new SingularityVST3Editor(this);
+        editor_ = new SingularityVST3Editor(this);
+        return editor_;
     }
     return nullptr;
 }
+
+void VST3Controller::editorDestroyed (Steinberg::Vst::EditorView* editor)
+{
+    if(editor_ == editor)
+        editor_ = nullptr;
+}
+
 
 double VST3Controller::getParameter(unsigned int id)
 {
@@ -260,10 +267,4 @@ void VST3Controller::sendAction(std::string_view name, const ActionValue& value)
 
     ComponentBase::sendMessage(message);
 }
-
-void VST3Controller::setActionResultCallback(ActionResultCallback callback)
-{
-    actionResultCallback_ = std::move(callback);
-}
-
 //------------------------------------------------------------------------

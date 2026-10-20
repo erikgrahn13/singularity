@@ -9,6 +9,8 @@
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "SingularityPlugin.h"
 
+class SingularityVST3Editor;
+
 //------------------------------------------------------------------------
 //  VST3Controller
 //------------------------------------------------------------------------
@@ -36,11 +38,9 @@ public:
     Steinberg::tresult PLUGIN_API getState (Steinberg::IBStream* state) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API notify (Steinberg::Vst::IMessage* message) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API setParamNormalized (Steinberg::Vst::ParamID tag, Steinberg::Vst::ParamValue value) SMTG_OVERRIDE;
+	void editorDestroyed (Steinberg::Vst::EditorView* editor) SMTG_OVERRIDE;
 
 
-    using ActionResultCallback = std::function<void(std::string_view, const ActionValue&)>;
-
-    void setActionResultCallback(ActionResultCallback callback);
     double getParameter(unsigned int id);
     void setParameter(unsigned int id, double value);
     void sendAction(std::string_view name, const ActionValue& value);
@@ -53,8 +53,8 @@ public:
     DELEGATE_REFCOUNT (EditController)
 
 //------------------------------------------------------------------------
-protected:
-    ActionResultCallback actionResultCallback_;
+private:
+    SingularityVST3Editor* editor_{nullptr};
 };
 
 //------------------------------------------------------------------------

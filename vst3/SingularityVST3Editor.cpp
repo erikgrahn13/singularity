@@ -1,7 +1,9 @@
 #include "SingularityVST3Editor.h"
 #include PLUGIN_CLASS_HEADER
+#include "controller.h"
 
 #include "pluginterfaces/base/funknownimpl.h"
+
 
 #include <fstream>
 
@@ -137,6 +139,14 @@ void SingularityVST3Editor::requestResize(int width, int height)
 {
     Steinberg::ViewRect requested{0, 0, width, height};
     plugFrame->resizeView(this, &requested);
+}
+
+void SingularityVST3Editor::dispatchAction(std::string_view name, const ActionValue& value)
+{
+    int hej;
+    hej = 3;
+    auto* vst3Controller = static_cast<VST3Controller*>(getController());
+    vst3Controller->sendAction(name, value);
 }
 
 
