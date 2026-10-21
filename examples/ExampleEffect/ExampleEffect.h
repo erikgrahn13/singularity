@@ -22,9 +22,9 @@ public:
             Parameter::continuous({
                 .id = 13,
                 .name = "Volume",
-                .minValue = 0.0,
-                .maxValue = 1.0,
-                .defaultValue = 0.5
+                .minValue = -10.0,
+                .maxValue = 10.0,
+                .defaultValue = 0.0
             }),
             Parameter::boolean({
                 .id = 15,

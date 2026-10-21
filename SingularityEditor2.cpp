@@ -1,9 +1,13 @@
-#include "SingularityEditor2.h"
 
 #include "QGuiApplication"
 #include <QQmlContext>
 #include <QQuickItem>
 
+
+#include PLUGIN_CLASS_HEADER
+#include "SingularityEditor2.h"
+#include <type_traits>
+#include <utility>
 #include <iostream>
 
 SingularityEditor::SingularityEditor(const char* platform, std::string hotReloadArgument)
@@ -137,38 +141,79 @@ void SingularityEditor::sendAction(QString name, QVariant value)
     dispatchAction(std::string_view{utf8Name.constData(), static_cast<std::size_t>(utf8Name.size())}, *actionValue);
 }
 
-
-
 QmlParameter* SingularityEditor::parameter(int id)
 {
-    if(auto it = parameters_.find(id); it != parameters_.end())
+    if (auto it = parameters_.find(id); it != parameters_.end())
         return it->second;
 
-    auto* parameter = new QmlParameter(
-        id, 
-        [this](unsigned int id){ return getParameter(id); }, 
-        [this](unsigned int id, double value){ setParameter(id, value); }, 
-        this);
-    parameters_.emplace(id, parameter);
-    return parameter;
+    for (const auto& parameter : PLUGIN_CLASS::getParameters())
+    {
+        if (parameter.id != id)
+            continue;
+
+        const auto [minValue, maxValue] = std::visit(
+            [](const auto& definition) -> std::pair<double, double>
+            {
+                using Type = std::remove_cvref_t<decltype(definition)>;
+
+                if constexpr (
+                    std::is_same_v<Type, ContinuousParameter> ||
+                    std::is_same_v<Type, SteppedParameter>)
+                {
+                    return {definition.minValue, definition.maxValue};
+                }
+                else if constexpr (std::is_same_v<Type, BooleanParameter>)
+                {
+                    return {0.0, 1.0};
+                }
+                else if constexpr (std::is_same_v<Type, ChoiceParameter>)
+                {
+                    return {
+                        0.0,
+                        definition.choices.empty()
+                            ? 0.0
+                            : static_cast<double>(definition.choices.size() - 1)
+                    };
+                }
+            },
+            parameter.definition);
+
+        auto* result = new QmlParameter(
+            id, minValue, maxValue, *this, this);
+
+        parameters_.emplace(id, result);
+        return result;
+    }
+
+    return nullptr;
 }
 
-QmlParameter::QmlParameter(unsigned int id, Getter getter, Setter setter, QObject* parent)
-    : QObject(parent), id_(id), getter_(std::move(getter)), setter_(std::move(setter))
+QmlParameter::QmlParameter(unsigned int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent)
+    : QObject(parent), id_(id), minValue_(minValue), maxValue_(maxValue), editor_(editor)
 {
 
+}
+
+double QmlParameter::minValue() const
+{
+    return minValue_;
+}
+
+double QmlParameter::maxValue() const
+{
+    return maxValue_;;
 }
 
 double QmlParameter::value() const
 {
-    return getter_(id_);
+    return editor_.getParameter(id_);
 }
 
 void QmlParameter::setValue(double value)
 {
     const double previous = this->value();
 
-    setter_(id_, value);
+    editor_.setParameter(id_, value);
 
     if(this->value() != previous)
         emit valueChanged();

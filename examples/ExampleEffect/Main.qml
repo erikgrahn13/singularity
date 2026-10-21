@@ -212,13 +212,15 @@ PluginView {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         title: "GAIN DIAL"
-                        valueText: "%1%".arg(Math.round(root.gain.value * 100))
+                        valueText: "%1dB".arg(root.gain.value.toFixed(1))
 
                         Dial {
                             anchors.centerIn: parent
                             width: 58
                             height: width
                             enabled: root.gainControlsEnabled
+                            from: root.gain.minValue
+                            to: root.gain.maxValue
                             value: root.gain.value
                             inputMode: Dial.Vertical
                             wheelEnabled: true
@@ -233,9 +235,11 @@ PluginView {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         title: "GAIN SLIDER"
-                        valueText: root.gain.value.toFixed(2)
+                        valueText: "%1dB".arg(root.gain.value.toFixed(1))
 
                         Slider {
+                            from: root.gain.minValue
+                            to: root.gain.maxValue
                             anchors.centerIn: parent
                             width: parent.width - 12
                             enabled: root.gainControlsEnabled

@@ -90,6 +90,7 @@ void SingularityVST3Editor::removedFromParent()
     if(auto runLoop = Steinberg::U::cast<Steinberg::Linux::IRunLoop>(plugFrame))
     {
         runLoop->unregisterEventHandler(this);
+        runLoop->unregisterTimer(this);
     }
 #endif
     Steinberg::Vst::EditorView::removedFromParent();
@@ -159,11 +160,17 @@ Steinberg::tresult PLUGIN_API SingularityVST3Editor::setFrame(Steinberg::IPlugFr
         auto x11 = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
         auto x11FileDescriptor = xcb_get_file_descriptor(x11->connection());
         runLoop->registerEventHandler(this, x11FileDescriptor);
+        runLoop->registerTimer(this, 4);
     }
     return result;
 }
 
 void PLUGIN_API SingularityVST3Editor::onFDIsSet(Steinberg::Linux::FileDescriptor fd)
+{
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
+}
+
+void PLUGIN_API SingularityVST3Editor::onTimer()
 {
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 }

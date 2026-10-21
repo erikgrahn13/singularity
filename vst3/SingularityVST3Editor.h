@@ -13,6 +13,7 @@ class SingularityVST3Editor : public Steinberg::Vst::EditorView,
                               public SingularityEditor
 #if defined(__linux__)
                               , public Steinberg::Linux::IEventHandler
+                              , public Steinberg::Linux::ITimerHandler
 #endif
 {
     public:
@@ -31,7 +32,7 @@ class SingularityVST3Editor : public Steinberg::Vst::EditorView,
 #if defined(__linux__)
     Steinberg::tresult PLUGIN_API setFrame(Steinberg::IPlugFrame* frame) SMTG_OVERRIDE;
     void PLUGIN_API onFDIsSet(Steinberg::Linux::FileDescriptor fd) SMTG_OVERRIDE;
-    // Steinberg::tresult PLUGIN_API setContextHost(Steinberg::FUnknown* context) SMTG_OVERRIDE;
+    void PLUGIN_API onTimer() SMTG_OVERRIDE;
 #endif
     DEFINE_INTERFACES
         DEF_INTERFACE(Steinberg::IPlugViewContentScaleSupport)

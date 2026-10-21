@@ -40,7 +40,7 @@ public:
 
                     if constexpr(std::same_as<Type, ContinuousParameter>)
                     {
-                        return definition.defaultValue;
+                        return (definition.defaultValue - definition.minValue) / (definition.maxValue - definition.minValue);
                     }
                     else if constexpr (std::same_as<Type, BooleanParameter>)
                     {
@@ -179,6 +179,34 @@ public:
         }
     }
 
+    inline double toPlain(const ParameterDefinition& definition, double normalized)
+    {
+        // normalized = std::clamp(normalized, 0.0, 1.0);
+
+        return std::visit(
+            [normalized](const auto& parameter) -> Vst::ParamValue
+            {
+                using Type = std::remove_cvref_t<decltype(parameter)>;
+
+                if constexpr(std::same_as<Type, ContinuousParameter>)
+                {
+                    return parameter.minValue + normalized * (parameter.maxValue - parameter.minValue);
+                }
+                else if constexpr (std::same_as<Type, BooleanParameter>)
+                {
+                    return normalized >= 0.5 ? 1.0 : 0.0;
+                }
+                else if constexpr (std::same_as<Type, SteppedParameter>)
+                {
+                    return (parameter.defaultValue - parameter.minValue) / (parameter.maxValue - parameter.minValue);
+                }
+                else if constexpr (std::same_as<Type, ChoiceParameter>)
+                {
+                    return parameter.defaultIndex / (parameter.choices.size() - 1);
+                }
+            }, definition);
+    }
+
 
     /** Here we go...the process call */
     Steinberg::tresult PLUGIN_API process (Steinberg::Vst::ProcessData& data) SMTG_OVERRIDE
@@ -225,7 +253,9 @@ public:
                 );
 
             for (int sample = 0; sample < data.numSamples; ++sample)
-                parameterBuffers_[parameterIndex][sample] = inputParameter.advance(1);
+            {
+                parameterBuffers_[parameterIndex][sample] = toPlain(definition->definition, inputParameter.advance(1));
+            }
         }
 
         outputParameterWasSet_.fill(false);

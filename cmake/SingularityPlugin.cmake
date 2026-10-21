@@ -83,6 +83,10 @@ function(_singularity_create_plugin target)
         Qt6::Quick
     )
 
+    target_include_directories(${target} PUBLIC
+        "${SINGULARITY_ROOT_DIR}"
+    )
+
     target_compile_definitions(${target} PUBLIC
         PLUGIN_NAME="${pluginTitle}"
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
