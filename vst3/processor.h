@@ -6,16 +6,19 @@
 
 #include <concepts>
 
+#include "pluginterfaces/base/futils.h"
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "base/source/fstreamer.h"
 #include "public.sdk/source/vst/vstbypassprocessor.h"
 #include "public.sdk/source/vst/vstaudioprocessoralgo.h"
 #include "public.sdk/source/vst/utility/sampleaccurate.h"
+#include "public.sdk/source/vst/vstparameters.h"
 #include "public.sdk/source/vst/utility/audiobuffers.h"
 #include "public.sdk/source/vst/utility/rttransfer.h"
 
 #include "plugincids.h"
 #include "SingularityPlugin.h"
+#include "SingularityVST3ParameterFactory.h"
 
 using namespace Steinberg;
 //------------------------------------------------------------------------
@@ -29,34 +32,14 @@ public:
     {
         setControllerClass(kVST3ControllerUID);
 
-        for(auto& parameter : parameterDefinitions_)
+        for(const auto& definition : parameterDefinitions_)
         {
-            if(parameter.direction == ParameterDirection::input)
+            auto* mapping = createVst3Parameter(definition);
+            parameterMappings_.addParameter(mapping);
+
+            if (definition.direction == ParameterDirection::input)
             {
-               const auto initialValue = std::visit(
-                [](const auto& definition) -> Vst::ParamValue
-                {
-                    using Type = std::remove_cvref_t<decltype(definition)>;
-
-                    if constexpr(std::same_as<Type, ContinuousParameter>)
-                    {
-                        return (definition.defaultValue - definition.minValue) / (definition.maxValue - definition.minValue);
-                    }
-                    else if constexpr (std::same_as<Type, BooleanParameter>)
-                    {
-                        return definition.defaultValue ? 1.0 : 0.0;
-                    }
-                    else if constexpr (std::same_as<Type, SteppedParameter>)
-                    {
-                        return (definition.defaultValue - definition.minValue) / (definition.maxValue - definition.minValue);
-                    }
-                    else if constexpr (std::same_as<Type, ChoiceParameter>)
-                    {
-                        return definition.defaultIndex / (definition.choices.size() - 1);
-                    }
-                }, parameter.definition);
-
-                inputParameters_.emplace_back(parameter.id, initialValue);
+                inputParameters_.emplace_back(definition.id, mapping->getInfo().defaultNormalizedValue);
             }
         }
     }
@@ -168,45 +151,16 @@ public:
                 if(parameterDefinitions_[i].direction != ParameterDirection::output || !outputParameterWasSet_[i])
                     continue;
 
-                const auto& definition = std::get<ContinuousParameter>(parameterDefinitions_[i].definition);
-
                 int32 queueIndex{0};
                 auto queue = data.outputParameterChanges->addParameterData(parameterDefinitions_[i].id, queueIndex);
 
                 int32 pointIndex{0};
-                queue->addPoint(data.numSamples - 1, parameterBuffers_[i][0], pointIndex);
+                const auto* mapping = parameterMappings_.getParameter(parameterDefinitions_[i].id);
+                const double normalized = mapping->toNormalized(parameterBuffers_[i][0]);
+                queue->addPoint(data.numSamples - 1, normalized, pointIndex);
             }
         }
     }
-
-    inline double toPlain(const ParameterDefinition& definition, double normalized)
-    {
-        // normalized = std::clamp(normalized, 0.0, 1.0);
-
-        return std::visit(
-            [normalized](const auto& parameter) -> Vst::ParamValue
-            {
-                using Type = std::remove_cvref_t<decltype(parameter)>;
-
-                if constexpr(std::same_as<Type, ContinuousParameter>)
-                {
-                    return parameter.minValue + normalized * (parameter.maxValue - parameter.minValue);
-                }
-                else if constexpr (std::same_as<Type, BooleanParameter>)
-                {
-                    return normalized >= 0.5 ? 1.0 : 0.0;
-                }
-                else if constexpr (std::same_as<Type, SteppedParameter>)
-                {
-                    return (parameter.defaultValue - parameter.minValue) / (parameter.maxValue - parameter.minValue);
-                }
-                else if constexpr (std::same_as<Type, ChoiceParameter>)
-                {
-                    return parameter.defaultIndex / (parameter.choices.size() - 1);
-                }
-            }, definition);
-    }
-
 
     /** Here we go...the process call */
     Steinberg::tresult PLUGIN_API process (Steinberg::Vst::ProcessData& data) SMTG_OVERRIDE
@@ -241,20 +195,15 @@ public:
 
         for (auto& inputParameter : inputParameters_)
         {
-            const auto definition = std::ranges::find(
-                parameterDefinitions_,
-                inputParameter.getParamID(),
-                &Parameter::id
-            );
+            const auto id = inputParameter.getParamID();
+            const auto definition = std::ranges::find(parameterDefinitions_, id, &Parameter::id);
+            const auto parameterIndex = static_cast<std::size_t>(std::distance(parameterDefinitions_.begin(), definition));
 
-            const auto parameterIndex =
-                static_cast<std::size_t>(
-                    std::distance(parameterDefinitions_.begin(), definition)
-                );
+            const auto* mapping = parameterMappings_.getParameter(id);
 
             for (int sample = 0; sample < data.numSamples; ++sample)
             {
-                parameterBuffers_[parameterIndex][sample] = toPlain(definition->definition, inputParameter.advance(1));
+                parameterBuffers_[parameterIndex][sample] = mapping->toPlain(inputParameter.advance(1));
             }
         }
 
@@ -384,13 +333,6 @@ public:
             streamer.writeDouble(parameter.getValue());
         }
 
-
-        // streamer.writeInt32u(parameters_.size());
-        // for(auto& parameter : parameters_)
-        // {
-        //     streamer.writeInt32u(parameter.getParamID());
-        //     streamer.writeDouble(parameter.getValue());
-        // }
         return kResultOk;
     }
 
@@ -480,6 +422,7 @@ protected:
     // Vst::Sampl
     std::vector<Vst::SampleAccurate::Parameter> inputParameters_;
     Vst::SampleAccurate::Parameter bypassParameter_{Vst::kMaxParamId, 0.0};
+    Vst::ParameterContainer parameterMappings_;
 
     using ParameterVector = std::vector<std::pair<Vst::ParamID, Vst::ParamValue>>;
     Vst::RTTransferT<ParameterVector> stateTransfer;
