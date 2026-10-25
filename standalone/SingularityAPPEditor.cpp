@@ -17,3 +17,8 @@ void SingularityAPPEditor::dispatchAction(std::string_view name, const ActionVal
 {
     
 }
+
+bool SingularityAPPEditor::popUiAudioBlock(UiAudioBlock &block)
+{
+    return false;
+}

@@ -9,5 +9,6 @@ public:
     void setParameter(unsigned int id, double value) override;
     void requestResize(int width, int height) override;
     void dispatchAction(std::string_view name, const ActionValue& value) override;
+    bool popUiAudioBlock(UiAudioBlock& block) override;
 
 };
