@@ -8,6 +8,8 @@
 #include "plugincids.h"
 #include "SingularityVST3Editor.h"
 #include "SingularityVST3ParameterFactory.h"
+
+#include <print>
 #include PLUGIN_CLASS_HEADER
 
 
@@ -102,6 +104,9 @@ tresult PLUGIN_API VST3Controller::notify (Steinberg::Vst::IMessage* message)
 {
     if(!message)
         return kInvalidArgument;
+
+    if(dataExchange.onMessage(message))
+        return kResultTrue;
 
     if(!std::strcmp(message->getMessageID(), "Singularity.ActionResult"))
     {
@@ -214,4 +219,43 @@ void VST3Controller::sendAction(std::string_view name, const ActionValue& value)
 
     ComponentBase::sendMessage(message);
 }
+
+bool VST3Controller::popUiAudioBlock(UiAudioBlock &block)
+{
+    return queue_.pop(block);
+}
+
+void PLUGIN_API VST3Controller::queueOpened(Steinberg::Vst::DataExchangeUserContextID userContextID, uint32_t blockSize, Steinberg::TBool& dispatchOnBackgroundThread)
+{
+    dispatchOnBackgroundThread = userContextID == SampleBufferQueueID;
+}
+
+void PLUGIN_API VST3Controller::queueClosed(Steinberg::Vst::DataExchangeUserContextID userContextID)
+{
+}
+
+void PLUGIN_API VST3Controller::onDataExchangeBlocksReceived(Steinberg::Vst::DataExchangeUserContextID userContextID, uint32_t numBlocks, Steinberg::Vst::DataExchangeBlock* blocks, Steinberg::TBool onBackgroundThread)
+{
+    if(userContextID == SampleBufferQueueID)
+    {
+        for(auto index = 0u; index < numBlocks; ++index)
+        {
+            auto dataBlock = toDataBlock(blocks[index]);
+
+            const auto count = dataBlock->numSamples * dataBlock->numChannels;
+            
+            UiAudioBlock packet{};
+            packet.sampleRate = dataBlock->sampleRate;
+            packet.numChannels = dataBlock->numChannels;
+            packet.numSamples = dataBlock->numSamples;
+            
+            std::copy_n(dataBlock->samples, count, packet.samples.data());
+            queue_.push(packet);
+        }
+    }
+}
+
+
+
+
 //------------------------------------------------------------------------

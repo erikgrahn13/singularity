@@ -21,6 +21,7 @@ class SingularityVST3Editor : public Steinberg::Vst::EditorView,
 
     double getParameter(unsigned int id) override;
     void setParameter(unsigned int id, double value) override;
+    bool popUiAudioBlock(UiAudioBlock& block) override;
 
     Steinberg::tresult PLUGIN_API setContentScaleFactor(ScaleFactor factor) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API isPlatformTypeSupported(Steinberg::FIDString type) SMTG_OVERRIDE;

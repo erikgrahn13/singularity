@@ -48,5 +48,41 @@ concept SingularityInstrumentPlugin =
         requires P::isInstrument;
     };
 
+class UiSender
+{
+public:
+    template<typename Backend>
+    void connect(Backend &backend)
+    {
+        instance_ = &backend;
+
+        sendFloat_ = [](void* instance, AudioInputBuffer<float> data, int numSamples)
+        {
+            static_cast<Backend*>(instance)->sendUiData(data, numSamples);
+        };
+
+        sendDouble_ = [](void* instance, AudioInputBuffer<double> data, int numSamples)
+        {
+            static_cast<Backend*>(instance)->sendUiData(data, numSamples);
+        };
+    }
+
+    void operator()(AudioInputBuffer<float> data, int numSamples) const
+    {
+        sendFloat_(instance_, data, numSamples);
+    }
+
+    void operator()(AudioInputBuffer<double> data, int numSamples) const
+    {
+        sendDouble_(instance_, data, numSamples);
+    }
+
+private:
+    void* instance_{nullptr};
+
+    void (*sendFloat_)(void*, AudioInputBuffer<float>, int) = nullptr;
+    void (*sendDouble_)(void*, AudioInputBuffer<double>, int) = nullptr;
+};
+
 template<typename P>
 concept SingularityPlugin = SingularityFxPlugin<P> || SingularityInstrumentPlugin<P>;

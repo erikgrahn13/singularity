@@ -15,12 +15,19 @@
 #include "public.sdk/source/vst/vstparameters.h"
 #include "public.sdk/source/vst/utility/audiobuffers.h"
 #include "public.sdk/source/vst/utility/rttransfer.h"
+#include "public.sdk/source/vst/utility/dataexchange.h"
+
 
 #include "plugincids.h"
 #include "SingularityPlugin.h"
 #include "SingularityVST3ParameterFactory.h"
+#include "dataexchange.h"
 
 using namespace Steinberg;
+
+static constexpr Steinberg::Vst::DataExchangeBlock InvalidDataExchangeBlock = {nullptr, 0,
+                                                               Steinberg::Vst::InvalidDataExchangeBlockID};
+
 //------------------------------------------------------------------------
 //  VST3Processor
 //------------------------------------------------------------------------
@@ -41,6 +48,11 @@ public:
             {
                 inputParameters_.emplace_back(definition.id, mapping->getInfo().defaultNormalizedValue);
             }
+        }
+
+        if constexpr (requires { plugin_.sendToUI.connect(*this); })
+        {
+            plugin_.sendToUI.connect(*this);
         }
     }
 
@@ -73,6 +85,46 @@ public:
 
         return kResultOk;
     }
+
+    Steinberg::tresult PLUGIN_API connect (Vst::IConnectionPoint* other) SMTG_OVERRIDE
+    {
+        auto result = Vst::AudioEffect::connect(other);
+        if(result == kResultTrue)
+        {
+            auto configCallback = [this](Vst::DataExchangeHandler::Config& config, const Vst::ProcessSetup& setup)
+            {
+                Vst::SpeakerArrangement arr;
+                getBusArrangement(Vst::BusDirections::kInput, 0, arr);
+                numChannels = static_cast<uint16_t>(Vst::SpeakerArr::getChannelCount(arr));
+                auto sampleSize = sizeof(float);
+                numSamplesToSend = setup.sampleRate / 60.0; // 60Hz
+
+                // config.blockSize = sizeof(DataBlock) + (sizeof(float) * setup.sampleRate / 60) * 2;
+                config.blockSize = sizeof(DataBlock) + sizeof(float) * numSamplesToSend * 2;
+                config.numBlocks = 32;
+                config.alignment = 32;
+                config.userContextID = SampleBufferQueueID;
+                return true;
+            };
+
+            // sizeof(DataBlock) + (sizeof(float) * samplerate / 60) * 2
+
+            dataExchange = std::make_unique<Vst::DataExchangeHandler>(this, configCallback);
+            dataExchange->onConnect(other, getHostContext());
+        }
+        return result;
+    }
+
+    Steinberg::tresult PLUGIN_API disconnect (Vst::IConnectionPoint* other) SMTG_OVERRIDE
+    {
+        if(dataExchange)
+        {
+            dataExchange->onDisconnect(other);
+            dataExchange.reset();
+        }
+        return AudioEffect::disconnect(other);
+    }
+
     
     /** Called at the end before destructor */
     Steinberg::tresult PLUGIN_API terminate () SMTG_OVERRIDE
@@ -89,11 +141,13 @@ public:
             plugin_.prepare(processSetup.sampleRate, processSetup.maxSamplesPerBlock);
             bypassProcessor32_.setup(*this, processSetup, getLatencySamples());
             bypassProcessor64_.setup(*this, processSetup, getLatencySamples());
+            dataExchange->onActivate(processSetup);
         }
         else
         {
             bypassProcessor32_.reset();
             bypassProcessor64_.reset();
+            dataExchange->onDeactivate();
         }
         return AudioEffect::setActive(state);
     }
@@ -406,6 +460,53 @@ public:
         return AudioEffect::notify (message);
     }
 
+    void acquireNewExchangeBlock(uint16_t channelCount)
+    {
+        currentExchangeBlock = dataExchange->getCurrentOrNewBlock();
+        if(auto block = toDataBlock(currentExchangeBlock))
+        {
+            block->sampleRate = static_cast<uint32_t>(processSetup.sampleRate);
+            block->numChannels = channelCount;
+            block->sampleSize = sizeof(float);
+            block->numSamples = 0;
+        }
+    }
+
+    template<typename SampleType>
+    void sendUiData(AudioInputBuffer<SampleType> data, int numSamples)
+    {
+        if(currentExchangeBlock.blockID == Vst::InvalidDataExchangeBlockID)
+        acquireNewExchangeBlock(data.size());
+        
+        auto totalSamples = numSamples;
+        if(auto block = toDataBlock(currentExchangeBlock))
+        {
+            while (totalSamples > 0)
+            {
+                uint32_t numSamplesFreeInBlock = numSamplesToSend - block->numSamples;
+                uint32_t numSamplesToCopy = std::min<uint32_t>(numSamplesFreeInBlock, totalSamples);
+                for(auto channel = 0; channel < data.size(); ++channel)
+                {
+                    auto blockChannelData = block->samples + channel * static_cast<std::size_t>(numSamplesToSend)+ block->numSamples;
+                    auto inputChannel = data[channel] + (numSamples - totalSamples);
+                    std::copy_n(inputChannel, numSamplesToCopy, blockChannelData);
+                }
+                block->numSamples += numSamplesToCopy;
+                if(block->numSamples == numSamplesToSend)
+                {
+                    dataExchange->sendCurrentBlock();
+                    acquireNewExchangeBlock(data.size());
+                    block = toDataBlock(currentExchangeBlock);
+                    if(block == nullptr)
+                        break;
+                }
+                totalSamples -= numSamplesToCopy;
+            }
+        }
+    }
+
+
+
 
 //------------------------------------------------------------------------
 protected:
@@ -426,6 +527,10 @@ protected:
 
     using ParameterVector = std::vector<std::pair<Vst::ParamID, Vst::ParamValue>>;
     Vst::RTTransferT<ParameterVector> stateTransfer;
+    std::unique_ptr<Vst::DataExchangeHandler> dataExchange;
+    Vst::DataExchangeBlock currentExchangeBlock { InvalidDataExchangeBlock };
+    uint16_t numChannels{0};
+    uint32 numSamplesToSend{0};
 };
 
 //------------------------------------------------------------------------

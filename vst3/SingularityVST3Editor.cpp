@@ -77,6 +77,12 @@ void SingularityVST3Editor::setParameter(unsigned int id, double value)
     controller->endEdit(id);
 }
 
+bool SingularityVST3Editor::popUiAudioBlock(UiAudioBlock &block)
+{
+    
+    return static_cast<VST3Controller*>(getController())->popUiAudioBlock(block);
+}
+
 void SingularityVST3Editor::attachedToParent()
 {
     getView().setParent(QWindow::fromWinId(reinterpret_cast<WId>(systemWindow)));

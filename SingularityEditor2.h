@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SingularityPlugin.h"
+#include "utilities/SingularityCommunication.h"
 
 #include <QQuickView>
 #include <QObject>
@@ -38,6 +39,8 @@ class SingularityEditor : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QVariantMap data READ data NOTIFY dataChanged)
+    Q_PROPERTY(QVariantList audioSamples READ audioSamples NOTIFY audioChanged)
+
 
     public:
     explicit SingularityEditor(const char* platform = nullptr, std::string hotReloadArgument = {});
@@ -46,18 +49,23 @@ class SingularityEditor : public QObject
     QVariantMap data() const;
     void setData(std::string_view name, const ActionValue& value);
 
+    QVariantList audioSamples() const;
+
     virtual double getParameter(unsigned int ) = 0;
     virtual void setParameter(unsigned int id, double value) = 0;
+    virtual bool popUiAudioBlock(UiAudioBlock& block) = 0;
 
     Q_INVOKABLE QmlParameter* parameter(int id);
     Q_INVOKABLE void sendAction(QString name, QVariant value);
 
     signals:
     void dataChanged();
+    void audioChanged();
 
     protected:
     virtual void requestResize(int width, int height) = 0;
     virtual void dispatchAction(std::string_view name, const ActionValue& value) = 0;
+    void updateAudio();
     void initializeView();
     void showWindow();
     QQuickView& getView() { return *view_; }
@@ -67,4 +75,5 @@ class SingularityEditor : public QObject
     std::unique_ptr<QQuickView> view_;
     std::unordered_map<int, QmlParameter*> parameters_;
     QVariantMap data_;
+    QVariantList audioSamples_;
 };

@@ -2,6 +2,7 @@
 #include "QGuiApplication"
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QTimer>
 
 
 #include PLUGIN_CLASS_HEADER
@@ -53,6 +54,26 @@ SingularityEditor::~SingularityEditor()
 
 }
 
+void SingularityEditor::updateAudio()
+{
+    UiAudioBlock packet;
+
+    while(popUiAudioBlock(packet))
+    {
+        const auto count = packet.numSamples * packet.numChannels;
+
+        // if(count > packet.samples.size
+        audioSamples_.clear();
+        audioSamples_.reserve(count);
+
+        for(int i = 0; i < count; ++i)
+        {
+            audioSamples_.append(packet.samples[i]);
+        }
+        emit audioChanged();
+    }
+}
+
 void SingularityEditor::initializeView()
 {
 #if defined(SINGULARITY_QML_SOURCE_FILE)
@@ -63,6 +84,11 @@ void SingularityEditor::initializeView()
 #endif
     view_->setResizeMode(QQuickView::SizeRootObjectToView);
     view_->setTitle(QStringLiteral(PLUGIN_NAME));
+
+    auto* timer = new QTimer(this);
+
+    connect(timer, &QTimer::timeout, this, &SingularityEditor::updateAudio);
+    timer->start(16);
 }
 
 void SingularityEditor::showWindow()
@@ -217,4 +243,9 @@ void QmlParameter::setValue(double value)
 
     if(this->value() != previous)
         emit valueChanged();
+}
+
+QVariantList SingularityEditor::audioSamples() const
+{
+    return audioSamples_;
 }
