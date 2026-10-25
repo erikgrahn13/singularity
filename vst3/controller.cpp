@@ -248,6 +248,9 @@ void PLUGIN_API VST3Controller::onDataExchangeBlocksReceived(Steinberg::Vst::Dat
             packet.sampleRate = dataBlock->sampleRate;
             packet.numChannels = dataBlock->numChannels;
             packet.numSamples = dataBlock->numSamples;
+
+            if(count > packet.samples.size())
+                continue;
             
             std::copy_n(dataBlock->samples, count, packet.samples.data());
             queue_.push(packet);

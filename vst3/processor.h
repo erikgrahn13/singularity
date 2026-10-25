@@ -141,6 +141,7 @@ public:
             plugin_.prepare(processSetup.sampleRate, processSetup.maxSamplesPerBlock);
             bypassProcessor32_.setup(*this, processSetup, getLatencySamples());
             bypassProcessor64_.setup(*this, processSetup, getLatencySamples());
+            currentExchangeBlock = InvalidDataExchangeBlock;
             dataExchange->onActivate(processSetup);
         }
         else
@@ -148,6 +149,7 @@ public:
             bypassProcessor32_.reset();
             bypassProcessor64_.reset();
             dataExchange->onDeactivate();
+            currentExchangeBlock = InvalidDataExchangeBlock;
         }
         return AudioEffect::setActive(state);
     }
