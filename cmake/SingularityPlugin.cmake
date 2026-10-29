@@ -53,10 +53,13 @@ function(_singularity_create_plugin target)
             QT_RESOURCE_ALIAS "PluginView.qml"
     )
 
+    set(qmlModuleUri "Singularity.${target}")
+    string(REPLACE "." "/" qmlModulePath "${qmlModuleUri}")
+
     qt_add_qml_module(${target}
         STATIC
-        URI Singularity
-        OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Singularity"
+        URI "${qmlModuleUri}"
+        OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${qmlModulePath}"
         NO_PLUGIN
         SOURCES
             ${SINGULARITY_ROOT_DIR}/SingularityEditor2.h
@@ -79,6 +82,14 @@ function(_singularity_create_plugin target)
         )
     endif()
 
+    if(PARAMS_DATA_RESOURCES)
+        message("erik1 ${PARAMS_DATA_RESOURCES}")
+        qt_add_resources(${PROJECT_NAME} "${PROJECT_NAME}DataResources"
+            PREFIX "/data_resources"
+            FILES ${PARAMS_DATA_RESOURCES}
+        )
+    endif()
+
     target_link_libraries(${target} PUBLIC
         Qt6::Quick
     )
@@ -91,7 +102,7 @@ function(_singularity_create_plugin target)
         PLUGIN_NAME="${pluginTitle}"
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
-        SINGULARITY_QML_MODULE_URI="Singularity"
+        SINGULARITY_QML_MODULE_URI="${qmlModuleUri}"
         $<$<CONFIG:Debug>:QT_QML_DEBUG>
         $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )

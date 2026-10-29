@@ -48,6 +48,8 @@ concept SingularityInstrumentPlugin =
         requires P::isInstrument;
     };
 
+std::vector<std::byte> getResource(std::string_view name);
+
 class UiSender
 {
 public:

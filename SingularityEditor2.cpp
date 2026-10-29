@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QTimer>
+#include <QFile>
 
 
 #include PLUGIN_CLASS_HEADER
@@ -10,6 +11,30 @@
 #include <type_traits>
 #include <utility>
 #include <iostream>
+
+std::vector<std::byte> getResource(std::string_view name)
+{
+    const auto path = QStringLiteral(":/data_resources/")
+        + QString::fromUtf8(name.data(), name.size());
+
+    QFile file(path);
+
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+
+    const auto data = file.readAll();
+
+    if (file.error() != QFileDevice::NoError)
+        return {};
+
+    std::vector<std::byte> bytes(
+        static_cast<std::size_t>(data.size()));
+
+    if (!bytes.empty())
+        std::memcpy(bytes.data(), data.constData(), bytes.size());
+
+    return bytes;
+}
 
 SingularityEditor::SingularityEditor(const char* platform, std::string hotReloadArgument)
 {
