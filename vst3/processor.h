@@ -310,10 +310,9 @@ public:
     
             if(inputs->silenceFlags == Vst::getChannelMask(inputs->numChannels))
             {
-                outputs->silenceFlags = inputs->silenceFlags;
-                for(int i = 0; i < inputs->numChannels; ++i)
-                    if(inputBuffers[i] != outputBuffers[i])
-                        std::memset(outputBuffers[i], 0, data.numSamples * sizeof(SampleT));
+                outputs->silenceFlags = Vst::getChannelMask(outputs->numChannels);
+                for(int i = 0; i < outputs->numChannels; ++i)
+                    std::memset(outputBuffers[i], 0, data.numSamples * sizeof(SampleT));
                 return;
             }
     
