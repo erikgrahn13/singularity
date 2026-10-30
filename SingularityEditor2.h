@@ -48,6 +48,7 @@ class SingularityEditor : public QObject
 
     QVariantMap data() const;
     void setData(std::string_view name, const ActionValue& value);
+    void notifyParameterChanged(unsigned int id);
 
     QVariantList audioSamples() const;
 

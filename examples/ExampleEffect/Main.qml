@@ -21,6 +21,7 @@ PluginView {
     readonly property color primaryTextColor: "#f4edf7"
     readonly property color secondaryTextColor: "#998da1"
     readonly property var gain: plugin.parameter(13)
+    readonly property var meter: plugin.parameter(14)
     property bool gainControlsEnabled: true
     property var activeFileDialog: null
     property var activeFolderDialog: null
@@ -294,6 +295,46 @@ PluginView {
                             Material.foreground: "white"
 
                             onClicked: counterCard.counter++
+                        }
+                    }
+
+                    WidgetCard {
+                        id: meterCard
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        title: "Meter"
+
+                        Rectangle {
+                            id: meterBackground
+                            radius: 4
+                            anchors.centerIn: parent
+                            color: "transparent"
+                            width: parent.width - 160
+                            height: parent.height
+                            border{
+                                color: "white"
+                                width: 1
+                            }
+
+                            Rectangle {
+                                // radius: 4
+                                id: meterFill
+                                anchors.margins: 2
+                                anchors.left: parent.left 
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: (parent.height - 4) * root.meter.value
+                                color: root.accentColor
+
+                                Behavior on height {
+                                    id: meterBehavior
+
+                                    NumberAnimation {
+                                        duration: meterBehavior.targetValue < meterFill.height ? 180 : 0
+                                        easing.type: Easing.Linear
+                                    }
+                                }
+                            }
                         }
                     }
                 }

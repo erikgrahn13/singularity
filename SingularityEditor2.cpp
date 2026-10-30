@@ -247,6 +247,12 @@ QmlParameter* SingularityEditor::parameter(int id)
     return nullptr;
 }
 
+void SingularityEditor::notifyParameterChanged(unsigned int id)
+{
+    if(auto it = parameters_.find(id); it != parameters_.end())
+        emit it->second->valueChanged();
+}
+
 QmlParameter::QmlParameter(unsigned int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent)
     : QObject(parent), id_(id), minValue_(minValue), maxValue_(maxValue), editor_(editor)
 {

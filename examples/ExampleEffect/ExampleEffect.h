@@ -73,7 +73,7 @@ public:
             }
         }
 
-        parameterValues.set (14, std::clamp(peak, 0.0, 1.0));
+        parameterValues.set (14, peak);
 
         sendToUI(outputs.first(1), numSamples);
         // sendToUI(0, outputs, numSamples);

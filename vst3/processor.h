@@ -38,6 +38,18 @@ public:
     VST3Processor ()
     {
         setControllerClass(kVST3ControllerUID);
+        processContextRequirements
+            .needBarPositionMusic()
+            .needChord()
+            .needContinousTimeSamples()
+            .needCycleMusic()
+            .needFrameRate()
+            .needProjectTimeMusic()
+            .needSamplesToNextClock()
+            .needSystemTime()
+            .needTempo()
+            .needTimeSignature()
+            .needTransportState();
 
         for(const auto& definition : parameterDefinitions_)
         {
