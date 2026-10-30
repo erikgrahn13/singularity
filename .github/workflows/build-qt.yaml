@@ -47,12 +47,12 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSINGULARITY_BUILD_EXAMPLES=ON
 
       - name: Build
-        run: cmake --build build --config Release --target ExampleEffect_APP ExampleEffect_VST3 ExampleInstrument_APP ExampleInstrument_VST3
+        run: cmake --build build --config Release --target ExampleEffect_VST3 ExampleInstrument_VST3
 
-      - name: Install
-        run:  |
-          cmake --install build --config Release --component ExampleEffectStandalone --prefix "$PWD/build/examples/ExampleEffect/out/APP"
-          cmake --install build --config Release --component ExampleInstrumentStandalone --prefix "$PWD/build/examples/ExampleInstrument/out/APP"
+      # - name: Install
+      #   run:  |
+      #     cmake --install build --config Release --component ExampleEffectStandalone --prefix "$PWD/build/examples/ExampleEffect/out/APP"
+      #     cmake --install build --config Release --component ExampleInstrumentStandalone --prefix "$PWD/build/examples/ExampleInstrument/out/APP"
 
       - name: Archive Unix artifacts
         if: runner.os != 'Windows'
