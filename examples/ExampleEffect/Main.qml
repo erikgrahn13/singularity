@@ -5,7 +5,7 @@ import QtQuick.Controls.Material
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtCore
-import Singularity
+import Singularity.ExampleEffect
 import "./example.mjs" as ExampleUtils
 
 PluginView {

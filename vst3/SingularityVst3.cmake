@@ -168,7 +168,7 @@ function(singularity_create_vst3_plugin target)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
-        target_link_libraries(${target}_VST3 PRIVATE PkgConfig::XCB)
+        target_link_libraries(${target}_VST3 PRIVATE PkgConfig::XCB ${CMAKE_DL_LIBS})
     endif()
 
     if(CMAKE_BUILD_TYPE STREQUAL "Release")

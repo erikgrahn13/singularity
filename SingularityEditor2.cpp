@@ -46,7 +46,15 @@ SingularityEditor::SingularityEditor(const char* platform, std::string hotReload
     static char name[] = "singularity";
 
     static char* argv[] = { name, argument.empty() ? nullptr : argument.data(), nullptr};
-    static QGuiApplication application(argc, argv);
+
+    if (!QCoreApplication::instance())
+    {
+        QCoreApplication::setAttribute(Qt::AA_PluginApplication, true);
+        // The plugin-created application belongs to the host process. Avoid a
+        // static QObject destructor running after Qt's own shutdown routines.
+        static auto* const application = new QGuiApplication(argc, argv);
+        application->setQuitOnLastWindowClosed(false);
+    }
 
     view_ = std::make_unique<QQuickView>();
     view_->rootContext()->setContextProperty("plugin", this);

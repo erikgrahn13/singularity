@@ -7,11 +7,46 @@
 
 #include <fstream>
 
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
 #if defined(__linux__)
 #include <xcb/xcb.h>
 #elif defined(__APPLE__) && defined(QT_QML_DEBUG)
 #include <crt_externs.h>
 #endif
+
+namespace {
+
+void retainModuleForQml()
+{
+    // Qt's process-wide QML registry can retain pointers into this module after
+    // its last editor is destroyed. Keep its code and resources mapped until
+    // process exit, including when the host releases its own module handle.
+    [[maybe_unused]] static void* const retainedModule = []
+    {
+        static const char moduleAnchor = 0;
+#if defined(_WIN32)
+        HMODULE module{};
+        GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+            reinterpret_cast<LPCWSTR>(&moduleAnchor), &module);
+#else
+        Dl_info moduleInfo{};
+        dladdr(&moduleAnchor, &moduleInfo);
+
+        void* module = dlopen(moduleInfo.dli_fname, RTLD_NOW | RTLD_LOCAL | RTLD_NOLOAD | RTLD_NODELETE);
+#endif
+
+        // Deliberately retain this loader reference for the process lifetime.
+        return module;
+    }();
+}
+
+} // namespace
 
 
 #if defined(QT_QML_DEBUG)
@@ -56,6 +91,7 @@ SingularityVST3Editor::SingularityVST3Editor(Steinberg::Vst::EditController* con
     )
 
 {
+    retainModuleForQml();
     initializeView();
 
     const auto size = getView().initialSize();
