@@ -129,6 +129,20 @@ void SingularityEditor::showWindow()
     view_->show();
 }
 
+QVariantMap SingularityEditor::parameterIds() const
+{
+    QVariantMap result;
+
+    for (const auto& parameter : PLUGIN_CLASS::getParameters())
+    {
+        result.insert(
+            QString::fromStdString(parameter.name),
+            QVariant::fromValue(parameter.id));
+    }
+
+    return result;
+}
+
 QVariantMap SingularityEditor::data() const
 {
     return data_;

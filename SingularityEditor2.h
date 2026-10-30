@@ -40,6 +40,7 @@ private:
 class SingularityEditor : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QVariantMap parameterIds READ parameterIds CONSTANT)
     Q_PROPERTY(QVariantMap data READ data NOTIFY dataChanged)
     Q_PROPERTY(QVariantList audioSamples READ audioSamples NOTIFY audioChanged)
 
@@ -47,6 +48,8 @@ class SingularityEditor : public QObject
     public:
     explicit SingularityEditor(const char* platform = nullptr, std::string hotReloadArgument = {});
     ~SingularityEditor() override;
+
+    QVariantMap parameterIds() const;
 
     QVariantMap data() const;
     void setData(std::string_view name, const ActionValue& value);
