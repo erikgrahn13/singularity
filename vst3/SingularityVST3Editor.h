@@ -4,12 +4,16 @@
 
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "pluginterfaces/gui/iplugviewcontentscalesupport.h"
+// #include "pluginterfaces/base/ftypes.h"
+#include "pluginterfaces/vst/ivstplugview.h"
+
 
 #include "SingularityEditor2.h"
 
 
 class SingularityVST3Editor : public Steinberg::Vst::EditorView, 
                               public Steinberg::IPlugViewContentScaleSupport,
+                              public Steinberg::Vst::IParameterFinder,
                               public SingularityEditor
 #if defined(__linux__)
                               , public Steinberg::Linux::IEventHandler
@@ -28,6 +32,10 @@ class SingularityVST3Editor : public Steinberg::Vst::EditorView,
     Steinberg::tresult PLUGIN_API canResize() SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API checkSizeConstraint(Steinberg::ViewRect* rectToCheck) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API onSize(Steinberg::ViewRect* newSize) SMTG_OVERRIDE;
+
+    // IParameterFinder
+	Steinberg::tresult PLUGIN_API findParameter (Steinberg::int32 xPos, Steinberg::int32 yPos, Steinberg::Vst::ParamID& resultTag) override;
+
     
 
 #if defined(__linux__)
@@ -37,6 +45,7 @@ class SingularityVST3Editor : public Steinberg::Vst::EditorView,
 #endif
     DEFINE_INTERFACES
         DEF_INTERFACE(Steinberg::IPlugViewContentScaleSupport)
+        DEF_INTERFACE(Steinberg::Vst::IParameterFinder)
     END_DEFINE_INTERFACES(Steinberg::Vst::EditorView)
 
     REFCOUNT_METHODS(Steinberg::Vst::EditorView)

@@ -119,6 +119,16 @@ bool SingularityVST3Editor::popUiAudioBlock(UiAudioBlock &block)
     return static_cast<VST3Controller*>(getController())->popUiAudioBlock(block);
 }
 
+Steinberg::tresult PLUGIN_API SingularityVST3Editor::findParameter(Steinberg::int32 xPos, Steinberg::int32 yPos, Steinberg::Vst::ParamID &resultTag)
+{
+    if (const auto id = hitTestHelper(xPos, yPos))
+    {
+        resultTag = *id;
+        return Steinberg::kResultTrue;
+    }
+    return Steinberg::kResultFalse;
+}
+
 void SingularityVST3Editor::attachedToParent()
 {
     getView().setParent(QWindow::fromWinId(reinterpret_cast<WId>(systemWindow)));

@@ -216,6 +216,7 @@ PluginView {
                         valueText: "%1dB".arg(root.gain.value.toFixed(1))
 
                         Dial {
+                            property var parameter: plugin.parameter(13)
                             anchors.centerIn: parent
                             width: 58
                             height: width

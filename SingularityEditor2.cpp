@@ -253,6 +253,26 @@ void SingularityEditor::notifyParameterChanged(unsigned int id)
         emit it->second->valueChanged();
 }
 
+std::optional<unsigned int> SingularityEditor::hitTestHelper(int xPos, int yPos)
+{
+    auto* item = getView().contentItem();
+    QPointF point(xPos, yPos);
+
+    while (auto* child = item->childAt(point.x(), point.y()))
+    {
+        point = child->mapFromItem(item, point);
+        item = child;
+        auto* object = item->property("parameter").value<QObject*>();
+        auto* parameter = qobject_cast<QmlParameter*>(object);
+
+        if (parameter)
+        {
+            return parameter->id();
+        }
+    }
+    return std::nullopt;
+}
+
 QmlParameter::QmlParameter(unsigned int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent)
     : QObject(parent), id_(id), minValue_(minValue), maxValue_(maxValue), editor_(editor)
 {

@@ -5,6 +5,7 @@
 
 #include <QQuickView>
 #include <QObject>
+#include <optional>
 #include <unordered_map>
 
 class SingularityEditor;
@@ -25,6 +26,7 @@ public:
     double minValue() const;
     double maxValue() const;
     void setValue(double value);
+    unsigned int id() const { return id_; }
 
     signals:
     void valueChanged();
@@ -49,6 +51,7 @@ class SingularityEditor : public QObject
     QVariantMap data() const;
     void setData(std::string_view name, const ActionValue& value);
     void notifyParameterChanged(unsigned int id);
+    std::optional<unsigned int> hitTestHelper(int xPos, int yPos);
 
     QVariantList audioSamples() const;
 
