@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload Unix plugin artifacts
         if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: plugin-artifacts-${{ matrix.os }}
           path: plugin-artifacts.tar.gz
@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload Windows plugin artifacts
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: plugin-artifacts-${{ matrix.os }}
           path: |
@@ -135,11 +135,17 @@ jobs:
 
           curl -fsSL "https://github.com/Tracktion/pluginval/releases/download/v2.0.0-beta3/${asset}" -o pluginval.zip
           unzip -q pluginval.zip -d pluginval
+
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            plugin_dll_dir="$(cd "${plugin_path}/Contents/x86_64-win" && pwd)"
+            export PATH="${plugin_dll_dir}:$PATH"
+          fi
+
           "./pluginval/${pluginval_binary}" validate --strictness-level 10 --rtcheck enabled --skip-gui-tests --junit-xml reports/ExampleEffect.xml "${plugin_path}"
 
       - name: Upload pluginval report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pluginval-report-${{ matrix.os }}
           path: reports/
