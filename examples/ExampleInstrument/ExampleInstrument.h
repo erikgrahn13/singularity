@@ -29,6 +29,15 @@ public:
         });
     }
 
+    static AudioConfiguration getAudioConfiguration()
+    {
+        return {
+            .outputs = {
+                {.name = "Output", .layout = AudioLayout::stereo}
+            }
+        };
+    }
+
     // static auto getVst3ProgramUnits()
     // {
     //     return std::to_array<Vst3ProgramUnit>({
