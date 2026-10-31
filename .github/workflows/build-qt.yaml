@@ -86,7 +86,11 @@ jobs:
     name: Test
     needs: build
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      checks: write
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
@@ -129,6 +133,26 @@ jobs:
               ;;
           esac
 
-          curl -fsSL "https://github.com/Tracktion/pluginval/releases/latest/download/${asset}" -o pluginval.zip
+          curl -fsSL "https://github.com/Tracktion/pluginval/releases/download/v2.0.0-beta3/${asset}" -o pluginval.zip
           unzip -q pluginval.zip -d pluginval
-          "./pluginval/${pluginval_binary}" --strictness-level 10 --skip-gui-tests --validate-in-process "${plugin_path}"
+          "./pluginval/${pluginval_binary}" validate --strictness-level 10 --rtcheck enabled --skip-gui-tests --junit-xml reports/ExampleEffect.xml "${plugin_path}"
+
+      - name: Upload pluginval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pluginval-report-${{ matrix.os }}
+          path: reports/
+
+      - name: Display pluginval results
+        if: ${{ !cancelled() }}
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: reports/*.xml
+          check_name: Pluginval (${{ matrix.os }})
+          job_summary: true
+          detailed_summary: true
+          include_passed: true
+          check_annotations: false
+          fail_on_failure: true
+          require_tests: true
