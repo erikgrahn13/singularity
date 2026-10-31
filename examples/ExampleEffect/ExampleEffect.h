@@ -54,6 +54,18 @@ public:
         });
     }
 
+    static AudioConfiguration getAudioConfiguration()
+    {
+        return {
+            .inputs = {
+                {.name = "Input", .layout = AudioLayout::stereo},
+            },
+            .outputs = {
+                {.name = "Output", .layout = AudioLayout::stereo}
+            }
+        };
+    }
+
     void prepare(double sampleRate, int maxBlockSize) {}
 
     template<typename SampleType>
@@ -68,7 +80,7 @@ public:
             const double volume = parameterValues.get (13, s);
             for (int ch = 0; ch < (int)outputs.size(); ++ch)
             {
-                outputs[ch][s] = inputs[0][s] * volume;
+                outputs[ch][s] = inputs[ch][s] * volume;
                 peak = std::max(peak, std::abs(static_cast<double>(outputs[ch][s])));
             }
         }

@@ -16,6 +16,7 @@
 #include "public.sdk/source/vst/utility/audiobuffers.h"
 #include "public.sdk/source/vst/utility/rttransfer.h"
 #include "public.sdk/source/vst/utility/dataexchange.h"
+#include "pluginterfaces/base/ustring.h"
 
 
 #include "plugincids.h"
@@ -90,12 +91,78 @@ public:
         bypassProcessor32_.setActive(false);
         bypassProcessor64_.setActive(false);
 
-        if(!PluginType::isInstrument)
-            addAudioInput(STR16("Stereo In"), Vst::SpeakerArr::kStereo);
-        addAudioOutput(STR16("Stereo Out"), Vst::SpeakerArr::kStereo);
+        AudioConfiguration audioConfiguration = PluginType::getAudioConfiguration();
+        const auto arrangement = [](AudioLayout layout) -> std::optional<Vst::SpeakerArrangement>
+        {
+            switch (layout)
+            {
+                case AudioLayout::mono:
+                    return Vst::SpeakerArr::kMono;
+                case AudioLayout::stereo:
+                    return Vst::SpeakerArr::kStereo;
+            }
+            return std::nullopt;
+        };
+
+        for(bool isInput : {true, false})
+        {
+            const auto& buses = isInput ? audioConfiguration.inputs : audioConfiguration.outputs;
+
+            for(std::size_t index = 0; index < buses.size(); ++index)
+            {
+                const auto& bus = buses[index];
+                const auto speakerArrangement = arrangement(bus.layout);
+
+                if(!speakerArrangement)
+                    return kInvalidArgument;
+
+                Steinberg::Vst::String128 name{};
+                Steinberg::UString(name, 128).fromAscii(bus.name.c_str());
+
+                const auto type = index == 0 ? Vst::kMain : Vst::kAux;
+                const int32 flags = bus.activeByDefault ? Vst::BusInfo::kDefaultActive : 0;
+
+                if (isInput)
+                    addAudioInput(name, *speakerArrangement, type, flags);
+                else
+                    addAudioOutput(name, *speakerArrangement, type, flags);
+            }
+        }
+
         addEventInput(STR16("Event In"), 1);
 
         return kResultOk;
+    }
+
+    Steinberg::tresult PLUGIN_API setBusArrangements (Vst::SpeakerArrangement* inputs, int32 numIns, Vst::SpeakerArrangement* outputs, int32 numOuts) override
+    {
+
+        if (numIns != getBusCount(Vst::kAudio, Vst::kInput) || numOuts != getBusCount(Vst::kAudio, Vst::kOutput))
+        {
+            return kResultFalse;
+        }
+
+        if ((numIns > 0 && !inputs) || (numOuts > 0 && !outputs))
+            return kInvalidArgument;
+
+        for (const auto direction : {Vst::kInput, Vst::kOutput})
+        {
+            const auto* arrangements = direction == Vst::kInput ? inputs : outputs;
+            const int32 count = direction == Vst::kInput ? numIns : numOuts;
+
+            for (int32 index = 0; index < count; ++index)
+            {
+                Vst::SpeakerArrangement expected{};
+
+                if (getBusArrangement(direction, index, expected) != kResultTrue)
+                    return kResultFalse;
+
+                if (arrangements[index] != expected)
+                    return kResultFalse;
+            }
+        }
+
+        return AudioEffect::setBusArrangements(inputs, numIns, outputs, numOuts);
     }
 
     Steinberg::tresult PLUGIN_API connect (Vst::IConnectionPoint* other) SMTG_OVERRIDE
