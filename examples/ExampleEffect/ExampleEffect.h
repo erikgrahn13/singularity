@@ -66,7 +66,11 @@ public:
         };
     }
 
-    void prepare(double sampleRate, int maxBlockSize) {}
+    explicit ExampleEffect(PluginContext& context) : context_(context) {}
+
+    void prepare(double sampleRate, int maxBlockSize) {
+        context_.setLatency(123);
+    }
 
     template<typename SampleType>
     void process(AudioInputBuffer<SampleType> inputs,
@@ -87,7 +91,7 @@ public:
 
         parameterValues.set (14, peak);
 
-        sendToUI(outputs.first(1), numSamples);
+        context_.sendToUI(outputs.first(1), numSamples);
         // sendToUI(0, outputs, numSamples);
     }
 
@@ -113,7 +117,7 @@ public:
         return std::nullopt;
     }
 
-    UiSender sendToUI;
+    PluginContext& context_;
 };
 
 static_assert(SingularityPlugin<ExampleEffect>);

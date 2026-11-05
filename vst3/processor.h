@@ -24,6 +24,8 @@
 #include "SingularityVST3ParameterFactory.h"
 #include "dataexchange.h"
 
+// #include PLUGIN_CLASS_HEADER
+
 using namespace Steinberg;
 
 static constexpr Steinberg::Vst::DataExchangeBlock InvalidDataExchangeBlock = {nullptr, 0,
@@ -33,7 +35,7 @@ static constexpr Steinberg::Vst::DataExchangeBlock InvalidDataExchangeBlock = {n
 //  VST3Processor
 //------------------------------------------------------------------------
 template<SingularityPlugin PluginType>
-class VST3Processor : public Steinberg::Vst::AudioEffect
+class VST3Processor : public Steinberg::Vst::AudioEffect, public PluginContext
 {
 public:
     VST3Processor ()
@@ -63,10 +65,10 @@ public:
             }
         }
 
-        if constexpr (requires { plugin_.sendToUI.connect(*this); })
-        {
-            plugin_.sendToUI.connect(*this);
-        }
+        // if constexpr (requires { plugin_.sendToUI.connect(*this); })
+        // {
+        //     plugin_.sendToUI.connect(*this);
+        // }
     }
 
     ~VST3Processor () SMTG_OVERRIDE
@@ -540,6 +542,11 @@ public:
         return AudioEffect::notify (message);
     }
 
+	uint32 PLUGIN_API getLatencySamples() override
+    {
+        return latency_;
+    }
+
     void acquireNewExchangeBlock(uint16_t channelCount)
     {
         currentExchangeBlock = dataExchange->getCurrentOrNewBlock();
@@ -585,12 +592,28 @@ public:
         }
     }
 
+    void setLatency(int latencyInSamples) override
+    {
+        if(latency_ == latencyInSamples)
+            return;
+            
+        latency_ = latencyInSamples;
+        sendMessageID("Singularity.LatencyChanged");
+    }
 
+    void sendToUI(AudioInputBuffer<float> data, int numSamples) override
+    {
+        sendUiData<float>(data, numSamples);
+    }
 
+    void sendToUI(AudioInputBuffer<double> data, int numSamples) override
+    {
+        sendUiData<double>(data, numSamples);
+    }
 
 //------------------------------------------------------------------------
 protected:
-    PluginType plugin_;
+    PluginType plugin_{*this};
     Vst::BypassProcessor<Vst::Sample32> bypassProcessor32_;
     Vst::BypassProcessor<Vst::Sample64> bypassProcessor64_;
 
@@ -600,7 +623,6 @@ protected:
     std::array<std::vector<double>, kPluginParameterCount> parameterBuffers_;
     std::array<bool, kPluginParameterCount> outputParameterWasSet_{};
 
-    // Vst::Sampl
     std::vector<Vst::SampleAccurate::Parameter> inputParameters_;
     Vst::SampleAccurate::Parameter bypassParameter_{Vst::kMaxParamId, 0.0};
     Vst::ParameterContainer parameterMappings_;
@@ -611,6 +633,7 @@ protected:
     Vst::DataExchangeBlock currentExchangeBlock { InvalidDataExchangeBlock };
     uint16_t numChannels{0};
     uint32 numSamplesToSend{0};
+    uint32 latency_{0};
 };
 
 //------------------------------------------------------------------------

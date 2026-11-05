@@ -139,6 +139,13 @@ tresult PLUGIN_API VST3Controller::notify (Steinberg::Vst::IMessage* message)
 
         return kResultTrue;
     }
+    else if(!std::strcmp(message->getMessageID(), "Singularity.LatencyChanged"))
+    {
+        if(componentHandler)
+            componentHandler->restartComponent(Steinberg::Vst::kLatencyChanged);
+        return kResultTrue;
+    }
+
     return EditControllerEx1::notify(message);
 }
 

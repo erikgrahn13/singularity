@@ -77,40 +77,14 @@ concept SingularityInstrumentPlugin =
 
 std::vector<std::byte> getResource(std::string_view name);
 
-class UiSender
+class PluginContext
 {
 public:
-    template<typename Backend>
-    void connect(Backend &backend)
-    {
-        instance_ = &backend;
+    // Should be called on the main/UI thread only!
+    virtual void setLatency(int latencyInSamples) = 0;
 
-        sendFloat_ = [](void* instance, AudioInputBuffer<float> data, int numSamples)
-        {
-            static_cast<Backend*>(instance)->sendUiData(data, numSamples);
-        };
-
-        sendDouble_ = [](void* instance, AudioInputBuffer<double> data, int numSamples)
-        {
-            static_cast<Backend*>(instance)->sendUiData(data, numSamples);
-        };
-    }
-
-    void operator()(AudioInputBuffer<float> data, int numSamples) const
-    {
-        sendFloat_(instance_, data, numSamples);
-    }
-
-    void operator()(AudioInputBuffer<double> data, int numSamples) const
-    {
-        sendDouble_(instance_, data, numSamples);
-    }
-
-private:
-    void* instance_{nullptr};
-
-    void (*sendFloat_)(void*, AudioInputBuffer<float>, int) = nullptr;
-    void (*sendDouble_)(void*, AudioInputBuffer<double>, int) = nullptr;
+    virtual void sendToUI(AudioInputBuffer<float> data, int numSamples) = 0;
+    virtual void sendToUI(AudioInputBuffer<double> data, int numSamples) = 0;
 };
 
 template<typename P>

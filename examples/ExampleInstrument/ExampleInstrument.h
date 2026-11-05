@@ -38,6 +38,8 @@ public:
         };
     }
 
+    explicit ExampleInstrument(PluginContext& context) : context_(context) {}
+
     // static auto getVst3ProgramUnits()
     // {
     //     return std::to_array<Vst3ProgramUnit>({
@@ -149,6 +151,7 @@ public:
 
 private:
     int programVariant_ = 0;
+    PluginContext& context_;
 };
 
 static_assert(SingularityPlugin<ExampleInstrument>);

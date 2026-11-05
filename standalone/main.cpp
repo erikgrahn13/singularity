@@ -16,9 +16,13 @@
 
 #include PLUGIN_CLASS_HEADER
 
-struct AudioContext
+struct AudioContext : public PluginContext
 {
-    PLUGIN_CLASS plugin;
+    PLUGIN_CLASS plugin{*this};
+    void setLatency(int latencyInSamples) override {}
+    void sendToUI(AudioInputBuffer<float> data, int numSamples) override {}
+    void sendToUI(AudioInputBuffer<double> data, int numSamples) override {}
+
     SingularityQueue<Parameter, 256> parameterChanges;
     std::vector<std::pair<unsigned int, double>> parameters;
     double sampleRate = 0.0;

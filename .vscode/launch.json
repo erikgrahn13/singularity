@@ -33,7 +33,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/Applications/VST3PluginTestHost.app",
-            "args": ["--pluginfolder", "${command:cmake.buildDirectory}/vst3/Debug"],
+            "args": ["--pluginfolder", "${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/Debug/"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "CMake: build",
