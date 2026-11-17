@@ -70,6 +70,13 @@ public:
 
     void prepare(double sampleRate, int maxBlockSize) {
         context_.setLatency(123);
+        context_.setTailSizeSamples(0); // set tail size in samples here if you need a tail for offline processing
+    }
+
+    // optional function
+    void reset()
+    {
+        // Clear DSP buffers or something here. Might run on the audio thread so no memory allocations, blocking operation or syscalls here
     }
 
     template<typename SampleType>

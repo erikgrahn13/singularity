@@ -249,6 +249,17 @@ public:
 
         return kResultOk;
     }
+
+    Steinberg::tresult PLUGIN_API setProcessing(Steinberg::TBool state) override
+    {
+        if constexpr (HasReset<PluginType>)
+        {
+            if (!state)
+                plugin_.reset();
+        }
+
+        return kResultOk;
+    }
     
     /** Asks if a given sample size is supported see SymbolicSampleSizes. */
     Steinberg::tresult PLUGIN_API canProcessSampleSize (Steinberg::int32 symbolicSampleSize) SMTG_OVERRIDE
@@ -547,6 +558,11 @@ public:
         return latency_;
     }
 
+    uint32 PLUGIN_API getTailSamples() override
+    {
+        return tailSize_;
+    }
+
     void acquireNewExchangeBlock(uint16_t channelCount)
     {
         currentExchangeBlock = dataExchange->getCurrentOrNewBlock();
@@ -601,6 +617,14 @@ public:
         sendMessageID("Singularity.LatencyChanged");
     }
 
+    void setTailSizeSamples(int tailSizeSamples) override
+    {
+        if(tailSize_ == tailSizeSamples)
+            return;
+
+        tailSize_ = tailSizeSamples;
+    }
+
     void sendToUI(AudioInputBuffer<float> data, int numSamples) override
     {
         sendUiData<float>(data, numSamples);
@@ -634,6 +658,7 @@ protected:
     uint16_t numChannels{0};
     uint32 numSamplesToSend{0};
     uint32 latency_{0};
+    uint32_t tailSize_{Vst::kNoTail};
 };
 
 //------------------------------------------------------------------------

@@ -75,6 +75,18 @@ concept SingularityInstrumentPlugin =
         requires P::isInstrument;
     };
 
+/**
+ * Optional plugin callback: void reset()
+ *
+ * Clears DSP history while preserving settings and allocated resources.
+ * May run on the audio thread; avoid allocations and blocking.
+ */
+template<typename P>
+concept HasReset = requires(P& plugin)
+{
+    { plugin.reset() } -> std::same_as<void>;
+};
+
 std::vector<std::byte> getResource(std::string_view name);
 
 class PluginContext
@@ -82,6 +94,7 @@ class PluginContext
 public:
     // Should be called on the main/UI thread only!
     virtual void setLatency(int latencyInSamples) = 0;
+    virtual void setTailSizeSamples(int tailSizeInSamples) = 0;
 
     virtual void sendToUI(AudioInputBuffer<float> data, int numSamples) = 0;
     virtual void sendToUI(AudioInputBuffer<double> data, int numSamples) = 0;
