@@ -154,7 +154,10 @@ tresult PLUGIN_API VST3Controller::setParamNormalized (Steinberg::Vst::ParamID t
     const auto result = EditControllerEx1::setParamNormalized(tag, value);
 
     if (result == kResultOk && editor_)
-        editor_->notifyParameterChanged(tag);
+    {
+        auto name = parameters.getParameter(tag)->getInfo().title;
+        editor_->notifyParameterChanged(Steinberg::Vst::StringConvert::convert(name));
+    }
 
     return result;
 }

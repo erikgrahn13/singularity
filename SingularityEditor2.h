@@ -21,17 +21,19 @@ public:
     using Getter = std::function<double(unsigned int)>;
     using Setter = std::function<void(unsigned int, double)>;
 
-    explicit QmlParameter(unsigned int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent = nullptr);
+    explicit QmlParameter(std::string_view name, int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent = nullptr);
     double value() const;
     double minValue() const;
     double maxValue() const;
     void setValue(double value);
-    unsigned int id() const { return id_; }
+    std::string_view name() const { return name_; }
+    int id() const { return id_; }
 
     signals:
     void valueChanged();
 private:
-    int id_;
+    std::string name_;
+    unsigned int id_;
     double minValue_;
     double maxValue_;
     SingularityEditor& editor_;
@@ -53,7 +55,7 @@ class SingularityEditor : public QObject
 
     QVariantMap data() const;
     void setData(std::string_view name, const ActionValue& value);
-    void notifyParameterChanged(unsigned int id);
+    void notifyParameterChanged(const std::string& name);
     std::optional<unsigned int> hitTestHelper(int xPos, int yPos);
 
     QVariantList audioSamples() const;
@@ -62,7 +64,7 @@ class SingularityEditor : public QObject
     virtual void setParameter(unsigned int id, double value) = 0;
     virtual bool popUiAudioBlock(UiAudioBlock& block) = 0;
 
-    Q_INVOKABLE QmlParameter* parameter(int id);
+    Q_INVOKABLE QmlParameter* parameter(const QString& name);
     Q_INVOKABLE void sendAction(QString name, QVariant value);
 
     signals:
@@ -80,7 +82,7 @@ class SingularityEditor : public QObject
     private:
     static QGuiApplication  application;
     std::unique_ptr<QQuickView> view_;
-    std::unordered_map<int, QmlParameter*> parameters_;
+    std::unordered_map<std::string, QmlParameter*> parameters_;
     QVariantMap data_;
     QVariantList audioSamples_;
 };

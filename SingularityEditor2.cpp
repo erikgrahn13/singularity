@@ -214,14 +214,15 @@ void SingularityEditor::sendAction(QString name, QVariant value)
     dispatchAction(std::string_view{utf8Name.constData(), static_cast<std::size_t>(utf8Name.size())}, *actionValue);
 }
 
-QmlParameter* SingularityEditor::parameter(int id)
+QmlParameter* SingularityEditor::parameter(const QString& qmlName)
 {
-    if (auto it = parameters_.find(id); it != parameters_.end())
+    const std::string name = qmlName.toStdString();
+    if (auto it = parameters_.find(name); it != parameters_.end())
         return it->second;
 
     for (const auto& parameter : PLUGIN_CLASS::getParameters())
     {
-        if (parameter.id != id)
+        if (parameter.name != name)
             continue;
 
         const auto [minValue, maxValue] = std::visit(
@@ -252,18 +253,18 @@ QmlParameter* SingularityEditor::parameter(int id)
             parameter.definition);
 
         auto* result = new QmlParameter(
-            id, minValue, maxValue, *this, this);
+            name, parameter.id,  minValue, maxValue, *this, this);
 
-        parameters_.emplace(id, result);
+        parameters_.emplace(name, result);
         return result;
     }
 
     return nullptr;
 }
 
-void SingularityEditor::notifyParameterChanged(unsigned int id)
+void SingularityEditor::notifyParameterChanged(const std::string& name)
 {
-    if(auto it = parameters_.find(id); it != parameters_.end())
+    if(auto it = parameters_.find(name); it != parameters_.end())
         emit it->second->valueChanged();
 }
 
@@ -287,8 +288,8 @@ std::optional<unsigned int> SingularityEditor::hitTestHelper(int xPos, int yPos)
     return std::nullopt;
 }
 
-QmlParameter::QmlParameter(unsigned int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent)
-    : QObject(parent), id_(id), minValue_(minValue), maxValue_(maxValue), editor_(editor)
+QmlParameter::QmlParameter(std::string_view name, int id, double minValue, double maxValue, SingularityEditor& editor, QObject* parent)
+    : QObject(parent), name_(name), id_(id), minValue_(minValue), maxValue_(maxValue), editor_(editor)
 {
 
 }

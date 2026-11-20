@@ -20,8 +20,8 @@ PluginView {
     readonly property color panelBorderColor: "#33263d"
     readonly property color primaryTextColor: "#f4edf7"
     readonly property color secondaryTextColor: "#998da1"
-    readonly property var gain: plugin.parameter(13)
-    readonly property var meter: plugin.parameter(14)
+    readonly property var gain: plugin.parameter("Volume")
+    readonly property var meter: plugin.parameter("Meter")
     property bool gainControlsEnabled: true
     property var activeFileDialog: null
     property var activeFolderDialog: null
@@ -216,7 +216,6 @@ PluginView {
                         valueText: "%1dB".arg(root.gain.value.toFixed(1))
 
                         Dial {
-                            property var parameter: plugin.parameter(13)
                             anchors.centerIn: parent
                             width: 58
                             height: width

@@ -42,7 +42,7 @@ PluginView {
     //     onMoved: parameter.value = value
     // }
 
-    readonly property var gain: plugin.parameters.get(13)
+    readonly property var gain: plugin.parameter("Volume")
 
     Dial{
         value: window.gain.value
