@@ -147,21 +147,25 @@ public:
         if ((numIns > 0 && !inputs) || (numOuts > 0 && !outputs))
             return kInvalidArgument;
 
-        for (const auto direction : {Vst::kInput, Vst::kOutput})
+        
+        for(int i = 0; i < numIns; ++i)
         {
-            const auto* arrangements = direction == Vst::kInput ? inputs : outputs;
-            const int32 count = direction == Vst::kInput ? numIns : numOuts;
+            Vst::SpeakerArrangement expected{};
+            if(getBusArrangement(Vst::kInput, i, expected) != kResultTrue)
+                return kResultFalse;
 
-            for (int32 index = 0; index < count; ++index)
-            {
-                Vst::SpeakerArrangement expected{};
+            if(inputs[i] != expected)
+                return kResultFalse;
+        }
 
-                if (getBusArrangement(direction, index, expected) != kResultTrue)
-                    return kResultFalse;
-
-                if (arrangements[index] != expected)
-                    return kResultFalse;
-            }
+        for(int i = 0; i < numOuts; ++i)
+        {
+            Vst::SpeakerArrangement expected{};
+            if(getBusArrangement(Vst::kOutput, i, expected) != kResultTrue)
+                return kResultFalse;
+            
+            if(outputs[i] != expected)
+                return kResultFalse;
         }
 
         return AudioEffect::setBusArrangements(inputs, numIns, outputs, numOuts);
@@ -561,6 +565,18 @@ public:
     uint32 PLUGIN_API getTailSamples() override
     {
         return tailSize_;
+    }
+
+    Steinberg::tresult PLUGIN_API setIoMode(Steinberg::Vst::IoMode mode) override
+    {
+        // TODO: implement support for this
+        return kNotImplemented;
+    }
+
+    Steinberg::tresult PLUGIN_API getRoutingInfo(Steinberg::Vst::RoutingInfo& inInfo, Steinberg::Vst::RoutingInfo& outInfo) override
+    {
+        // TODO: implement support for this
+        return kNotImplemented;
     }
 
     void acquireNewExchangeBlock(uint16_t channelCount)

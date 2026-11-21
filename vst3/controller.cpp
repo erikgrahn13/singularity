@@ -31,15 +31,54 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
         return result;
     }
 
+    addUnit(new Vst::Unit(STR16("Root"), Steinberg::Vst::kRootUnitId, Steinberg::Vst::kNoParentUnitId, Steinberg::Vst::kNoProgramListId));
+
     // Here you could register some parameters
 
     parameters.addParameter (STR16 ("Bypass"), nullptr, 1, 0,
                             Vst::ParameterInfo::kCanAutomate | Vst::ParameterInfo::kIsBypass,
                             Steinberg::Vst::kMaxParamId);
 
+
     for(const auto& definition : PLUGIN_CLASS::getParameters())
     {
-        parameters.addParameter(createVst3Parameter(definition));
+        Vst::UnitID unitID = Vst::kRootUnitId;
+        
+        if(!definition.group.empty())
+        {
+            for(auto part : definition.group | std::views::split('/'))
+            {
+                const std::string_view group(part.begin(), part.end());
+                if (group.empty())
+                    continue;
+
+                const auto parentID = unitID;
+
+                const auto groupName = Vst::StringConvert::convert(std::string(group));
+                auto it = std::find_if(units.begin(), units.end(), [&groupName, parentID](const auto& unit)
+                            {
+                                return groupName == unit->getName() && unit->getInfo().parentUnitId == parentID;
+                            });
+                if(it != units.end())
+                {
+                    unitID = (*it)->getID();
+                }
+                else
+                {
+                    unitID = getUnitCount();
+                    addUnit(new Vst::Unit(
+                        groupName.c_str(),
+                        unitID,
+                        parentID,
+                        Vst::kNoProgramListId
+                    ));
+                }
+            }
+        }
+
+        auto* parameter = createVst3Parameter(definition);
+        parameter->setUnitID(unitID);
+        parameters.addParameter(parameter);
     }
 
     return result;
@@ -87,6 +126,7 @@ tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
 tresult PLUGIN_API VST3Controller::setState (IBStream* state)
 {
     // Here you get the state of the controller
+    // TODO: implement support for this
 
     return kResultTrue;
 }
@@ -96,6 +136,8 @@ tresult PLUGIN_API VST3Controller::getState (IBStream* state)
 {
     // Here you are asked to deliver the state of the controller (if needed)
     // Note: the real state of your plug-in is saved in the processor
+
+    // TODO: implement support for this
 
     return kResultTrue;
 }
@@ -135,7 +177,9 @@ tresult PLUGIN_API VST3Controller::notify (Steinberg::Vst::IMessage* message)
             value = std::string(static_cast<const char*>(stringData), stringSize);
             
         const std::string_view name{static_cast<const char*>(nameData), nameSize};
-        editor_->setData(name, value);
+
+        if(editor_)
+            editor_->setData(name, value);
 
         return kResultTrue;
     }

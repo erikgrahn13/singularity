@@ -64,8 +64,8 @@ public:
         // Here you can add more supported VST3 interfaces
         // DEF_INTERFACE (Vst::IXXX)
         DEF_INTERFACE (Steinberg::Vst::IDataExchangeReceiver)
-    END_DEFINE_INTERFACES (EditController)
-    DELEGATE_REFCOUNT (EditController)
+    END_DEFINE_INTERFACES (EditControllerEx1)
+    DELEGATE_REFCOUNT (EditControllerEx1)
 
 //------------------------------------------------------------------------
 private:

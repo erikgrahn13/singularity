@@ -24,19 +24,23 @@ public:
                 .name = "Volume",
                 .minValue = -10.0,
                 .maxValue = 10.0,
-                .defaultValue = 0.0
+                .defaultValue = 0.0,
+                .unit = "dB",
+                .group = "test1/test2"
             }),
             Parameter::boolean({
                 .id = 15,
                 .name = "Toggle",
-                .defaultValue = false
+                .defaultValue = false,
+                .group = "test1"
             }),
             Parameter::stepped({
                 .id = 16,
                 .name = "Stepped",
                 .minValue = 1,
                 .maxValue = 8,
-                .defaultValue = 5
+                .defaultValue = 5,
+                .group = "test2"
             }),
             Parameter::choice({
                 .id = 17,
@@ -76,6 +80,7 @@ public:
     // optional function
     void reset()
     {
+        int hej;
         // Clear DSP buffers or something here. Might run on the audio thread so no memory allocations, blocking operation or syscalls here
     }
 

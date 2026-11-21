@@ -50,38 +50,41 @@ struct Parameter
     {
         unsigned int id;
         std::string name;
-
-
         double minValue;
         double maxValue;
         double defaultValue;
+        std::string unit;
+        std::string group;
     };
 
     struct BooleanOptions
     {
         unsigned int id;
         std::string name;
-
         bool defaultValue;
+        std::string unit;
+        std::string group;
     };
 
     struct SteppedOptions
     {
         unsigned int id;
         std::string name;
-
         int minValue;
         int maxValue;
         int defaultValue;
+        std::string unit;
+        std::string group;
     };
 
     struct ChoiceOptions
     {
         unsigned int id;
         std::string name;
-
         std::vector<std::string> choices;
         unsigned int defaultIndex;
+        std::string unit;
+        std::string group;
     };
 
     static Parameter continuous(ContinuousOptions options);
@@ -94,6 +97,8 @@ struct Parameter
     std::string name;
     ParameterDirection direction{ ParameterDirection::input };
     ParameterDefinition definition;
+    std::string unit;
+    std::string group;
 };
 
 inline Parameter Parameter::asOutput() &&
@@ -111,7 +116,9 @@ inline Parameter Parameter::continuous(ContinuousOptions options)
             .minValue = options.minValue,
             .maxValue = options.maxValue,
             .defaultValue = options.defaultValue
-        }
+        },
+        .unit = options.unit,
+        .group = options.group
     };
 }
 
@@ -122,7 +129,9 @@ inline Parameter Parameter::boolean(BooleanOptions options)
         .name = std::move(options.name),
         .definition = BooleanParameter{
             .defaultValue = options.defaultValue
-        }
+        },
+        .unit = options.unit,
+        .group = options.group
     };
 }
 
@@ -135,7 +144,9 @@ inline Parameter Parameter::stepped(SteppedOptions options)
             .minValue = options.minValue,
             .maxValue = options.maxValue,
             .defaultValue = options.defaultValue
-        }
+        },
+        .unit = options.unit,
+        .group = options.group
     };
 }
 
@@ -147,7 +158,9 @@ inline Parameter Parameter::choice(ChoiceOptions options)
         .definition = ChoiceParameter {
             .choices = std::move(options.choices),
             .defaultIndex = options.defaultIndex
-        }
+        },
+        .unit = options.unit,
+        .group = options.group
     };
 }
 
