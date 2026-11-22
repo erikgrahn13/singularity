@@ -160,7 +160,6 @@ function(singularity_create_vst3_plugin target)
         PLUGIN_CLASS_HEADER="${PARAMS_PLUGIN_CLASS_HEADER}"
         PLUGIN_NAME="${VST3_PLUGIN_TITLE}"
         $<$<CONFIG:Debug>:QT_QML_DEBUG>
-        $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )
 
     target_link_libraries(${target}_VST3 PRIVATE sdk ${target})

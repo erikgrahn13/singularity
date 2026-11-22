@@ -5,8 +5,6 @@
 #include "pluginterfaces/base/funknownimpl.h"
 
 
-#include <fstream>
-
 #if defined(_WIN32)
 #include <windows.h>
 #else
@@ -15,8 +13,6 @@
 
 #if defined(__linux__)
 #include <xcb/xcb.h>
-#elif defined(__APPLE__) && defined(QT_QML_DEBUG)
-#include <crt_externs.h>
 #endif
 
 namespace {
@@ -49,47 +45,16 @@ void retainModuleForQml()
 } // namespace
 
 
-#if defined(QT_QML_DEBUG)
-std::string hotReload()
-{
-#if defined(__linux__)
-    std::ifstream commandLine("/proc/self/cmdline", std::ios::binary);
-
-    for(std::string argument; std::getline(commandLine, argument, '\0');)
-    {
-        if(argument.starts_with("-qmljsdebugger="))
-        return argument;
-    }
-#elif defined(__APPLE__)
-    const int argumentCount = *_NSGetArgc();
-    char** arguments = *_NSGetArgv();
-
-    for(int i = 1; i < argumentCount; ++i)
-    {
-        std::string argument = arguments[i];
-        if(argument.starts_with("-qmljsdebugger="))
-            return argument;
-    }
-#endif
-    return {};
-}
-
-#endif
-
-
-SingularityVST3Editor::SingularityVST3Editor(Steinberg::Vst::EditController* controller)
+SingularityVST3Editor::SingularityVST3Editor(
+    Steinberg::Vst::EditController* controller)
     : Steinberg::Vst::EditorView(controller),
-    SingularityEditor(
-#if defined (__linux__)
-        "xcb"
-#else 
-        nullptr
+      SingularityEditor(
+#if defined(__linux__)
+          "xcb"
+#else
+          nullptr
 #endif
-#if defined(QT_QML_DEBUG)
-        , hotReload()
-#endif
-    )
-
+      )
 {
     retainModuleForQml();
     initializeView();

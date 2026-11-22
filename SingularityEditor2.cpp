@@ -12,6 +12,62 @@
 #include <utility>
 #include <iostream>
 
+#if defined(QT_QML_DEBUG)
+#include <QQmlDebuggingEnabler>
+#include <QDebug>
+#endif
+
+void ensureQtApplication(const char* platform)
+{
+    if (QCoreApplication::instance())
+        return;
+
+    if (platform)
+        qputenv("QT_QPA_PLATFORM", QByteArray(platform));
+
+    static int argc = 1;
+    static char name[] = "singularity";
+    static char* argv[] = {name, nullptr};
+
+    QCoreApplication::setAttribute(Qt::AA_PluginApplication, true);
+
+    static auto* const application =new QGuiApplication(argc, argv);
+
+    application->setQuitOnLastWindowClosed(false);
+}
+
+#if defined(QT_QML_DEBUG)
+
+void initializeQmlPreview()
+{
+    [[maybe_unused]] static const bool initialized = []()
+    {
+        bool ok = false;
+
+        const int port = qEnvironmentVariableIntValue("SINGULARITY_QML_PREVIEW_PORT", &ok);
+
+        if (!ok || port <= 0 || port > 65535)
+            return false;
+
+        QQmlDebuggingEnabler::enableDebugging(true);
+
+        const bool started =  QQmlDebuggingEnabler::startTcpDebugServer(port, QQmlDebuggingEnabler::WaitForClient, QStringLiteral("127.0.0.1"));
+
+        if (started)
+        {
+            qInfo() << "[Singularity] QML preview server started" << "on port" << port;
+        }
+        else
+        {
+            qWarning() << "[Singularity] Failed to start QML preview server";
+        }
+
+        return started;
+    }();
+}
+
+#endif
+
 std::vector<std::byte> getResource(std::string_view name)
 {
     const auto path = QStringLiteral(":/data_resources/")
@@ -36,50 +92,39 @@ std::vector<std::byte> getResource(std::string_view name)
     return bytes;
 }
 
-SingularityEditor::SingularityEditor(const char* platform, std::string hotReloadArgument)
+SingularityEditor::SingularityEditor(const char* platform)
 {
-    if (platform)
-        qputenv("QT_QPA_PLATFORM", QByteArray(platform));
+    ensureQtApplication(platform);
 
-    static std::string argument = std::move(hotReloadArgument);
-    static int argc = argument.empty() ? 1 : 2;
-    static char name[] = "singularity";
-
-    static char* argv[] = { name, argument.empty() ? nullptr : argument.data(), nullptr};
-
-    if (!QCoreApplication::instance())
-    {
-        QCoreApplication::setAttribute(Qt::AA_PluginApplication, true);
-        // The plugin-created application belongs to the host process. Avoid a
-        // static QObject destructor running after Qt's own shutdown routines.
-        static auto* const application = new QGuiApplication(argc, argv);
-        application->setQuitOnLastWindowClosed(false);
-    }
+#if defined(QT_QML_DEBUG)
+    initializeQmlPreview();
+#endif
 
     view_ = std::make_unique<QQuickView>();
+
     view_->rootContext()->setContextProperty("plugin", this);
 
     QObject::connect(view_->contentItem(), &QQuickItem::childrenChanged, view_.get(),
-    [this]
-    {
-        auto* root = view_->rootObject();
-
-        if(!root)
-            return;
-
-        const auto version = root->property("singularityPluginViewVersion");
-        if(!version.isValid() || version.toInt() != 1)
+        [this]
         {
-            std::cerr << "[Singularity] ERROR: Main.qml must use PluginView as its root component" << std::endl;
-            view_->setSource({});
-            return;
-        }
+            auto* root = view_->rootObject();
 
-        const auto size = view_->initialSize();
-        requestResize(size.width(), size.height());
+            if (!root)
+                return;
 
-    }, Qt::QueuedConnection);
+            const auto version = root->property("singularityPluginViewVersion");
 
+            if (!version.isValid() || version.toInt() != 1)
+            {
+                std::cerr << "[Singularity] ERROR: Main.qml must use " "PluginView as its root component" << std::endl;
+
+                view_->setSource({});
+                return;
+            }
+
+            const auto size = view_->initialSize();
+            requestResize(size.width(), size.height());
+        }, Qt::QueuedConnection);
 }
 
 SingularityEditor::~SingularityEditor()
@@ -109,12 +154,7 @@ void SingularityEditor::updateAudio()
 
 void SingularityEditor::initializeView()
 {
-#if defined(SINGULARITY_QML_SOURCE_FILE)
-    view_->setSource(
-        QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
-#else
     view_->loadFromModule(SINGULARITY_QML_MODULE_URI, "Main");
-#endif
     view_->setResizeMode(QQuickView::SizeRootObjectToView);
     view_->setTitle(QStringLiteral(PLUGIN_NAME));
 

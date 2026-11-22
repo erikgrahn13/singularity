@@ -48,7 +48,7 @@ class SingularityEditor : public QObject
 
 
     public:
-    explicit SingularityEditor(const char* platform = nullptr, std::string hotReloadArgument = {});
+    explicit SingularityEditor(const char* platform = nullptr);
     ~SingularityEditor() override;
 
     QVariantMap parameterIds() const;

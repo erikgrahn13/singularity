@@ -10,10 +10,28 @@
     },
 
     "qt-qml.qmlls.customExePath": "/usr/bin/qmlls",
+    "qt-qml.preview.additionalBuildDirs": [
+        "${workspaceFolder}/build"
+    ],
+    "cmake.debugConfig": {
+        "environment": [
+            {
+                "name": "SINGULARITY_QML_PREVIEW_PORT",
+                "value": "12150"
+            },
+            {
+                "name": "QT_LOGGING_RULES",
+                "value": "qml.debug=true;js.debug=true"
+            },
+            {
+                "name": "QT_FORCE_STDERR_LOGGING",
+                "value": "1"
+            }
+        ]
+    },
     "qt-qml.qmlls.customArgs": [
         "--build-dir",
         "${workspaceFolder}/build"
     ],
     "cmake.options.statusBarVisibility": "visible",
-    // "cmake.buildDirectory": "${workspaceFolder}/builds/${buildKit}/${buildType}"
 }
