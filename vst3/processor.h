@@ -226,6 +226,7 @@ public:
             plugin_.prepare(processSetup.sampleRate, processSetup.maxSamplesPerBlock);
             bypassProcessor32_.setup(*this, processSetup, getLatencySamples());
             bypassProcessor64_.setup(*this, processSetup, getLatencySamples());
+            midiEvents_.reserve(256);
             currentExchangeBlock = InvalidDataExchangeBlock;
             dataExchange->onActivate(processSetup);
         }
@@ -294,6 +295,54 @@ public:
         });
     }
 
+    void handleInputEvents(Vst::IEventList* inputEvents)
+    {
+        midiEvents_.clear();
+        Vst::Algo::foreach(inputEvents, [&](Vst::Event& event){
+
+            switch(event.type)
+            {
+                case Vst::Event::kNoteOnEvent:
+                    midiEvents_.push_back(MidiEvent{ 
+                        .sampleOffset = event.sampleOffset,
+                        .data_ = MidiEvent::NoteOn{
+                            .channel = event.noteOn.channel, 
+                            .pitch = event.noteOn.pitch, 
+                            .velocity = event.noteOn.velocity, 
+                            .tuning = event.noteOn.tuning, 
+                            .noteId = event.noteOn.noteId}});
+                    break;
+                case Vst::Event::kNoteOffEvent:
+                    midiEvents_.push_back(MidiEvent{ 
+                        .sampleOffset = event.sampleOffset,
+                        .data_ = MidiEvent::NoteOff{
+                            .channel = event.noteOff.channel, 
+                            .pitch = event.noteOff.pitch, 
+                            .velocity = event.noteOff.velocity, 
+                            .tuning = event.noteOff.tuning, 
+                            .noteId = event.noteOff.noteId}});
+                    break;
+                case Vst::Event::kDataEvent:
+                    break;
+                case Vst::Event::kPolyPressureEvent:
+                    break;
+                case Vst::Event::kNoteExpressionValueEvent:
+                    break;
+                case Vst::Event::kNoteExpressionTextEvent:
+                    break;
+                case Vst::Event::kChordEvent:
+                    break;
+                case Vst::Event::kScaleEvent:
+                    break;
+                case Vst::Event::kNoteExpressionIntValueEvent:
+                    break;
+                case Vst::Event::kLegacyMIDICCOutEvent:
+                    break;
+            }
+
+        });
+    }
+
     void publishOutputParameterChanges(Vst::ProcessData& data)
     {
         if(data.outputParameterChanges)
@@ -339,6 +388,7 @@ public:
         });
 
         handleParameterChanges(data.inputParameterChanges);
+        handleInputEvents(data.inputEvents);
 
         // Bypass is processed at block granularity.
         const bool bypassed = bypassParameter_.advance(data.numSamples) >= 0.5;
@@ -397,7 +447,7 @@ public:
 
             std::span<const MidiEvent> midiEvents{};
 
-            plugin_.template process<SampleT>(outputSpan, data.numSamples, midiEvents, parameterValues);
+            plugin_.template process<SampleT>(outputSpan, data.numSamples, midiEvents_, parameterValues);
         }
         else
         {
@@ -425,7 +475,7 @@ public:
 
             outputs->silenceFlags = 0;
             auto inputSpan = std::span<const SampleT* const>(inputBuffers, inputs->numChannels);
-            plugin_.template process<SampleT>(inputSpan, outputSpan, data.numSamples, parameterValues);
+            plugin_.template process<SampleT>(inputSpan, outputSpan, data.numSamples, midiEvents_, parameterValues);
         }
     }
 
@@ -666,6 +716,7 @@ protected:
     std::vector<Vst::SampleAccurate::Parameter> inputParameters_;
     Vst::SampleAccurate::Parameter bypassParameter_{Vst::kMaxParamId, 0.0};
     Vst::ParameterContainer parameterMappings_;
+    std::vector<MidiEvent> midiEvents_;
 
     using ParameterVector = std::vector<std::pair<Vst::ParamID, Vst::ParamValue>>;
     Vst::RTTransferT<ParameterVector> stateTransfer;

@@ -4,7 +4,7 @@
 #include <variant>
 #include <span>
 #include <vector>
-// #include <unordered_map>
+#include <stdint.h>
 
 struct ContinuousParameter
 {
@@ -199,6 +199,31 @@ public:
     std::span<bool> outputParameterWasSet_;
 };
 
-struct MidiEvent{};
+struct MidiEvent 
+{
+    struct NoteOn
+    {
+        int16_t channel{};
+        int16_t pitch{};
+        float velocity{};
+        float tuning{};
+        int32_t noteId{-1};
+    };
+
+    struct NoteOff
+    {
+        int16_t channel{};
+        int16_t pitch{};
+        float velocity{};
+        float tuning{};
+        int32_t noteId{-1};
+    };
+
+    int32_t sampleOffset;
+    std::variant<NoteOn, NoteOff> data_;
+};
+
+using MidiEvents = std::span<const MidiEvent>;
+
 
 

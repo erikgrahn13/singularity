@@ -87,7 +87,7 @@ public:
     template<typename SampleType>
     void process(AudioInputBuffer<SampleType> inputs,
                  AudioOutputBuffer<SampleType> outputs,
-                 int numSamples, ParameterValues parameterValues)
+                 int numSamples, MidiEvents events, ParameterValues parameterValues)
     {
         double peak = 0.0; // params.getValueAtSample (15, 0);
 

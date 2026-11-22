@@ -38,14 +38,15 @@ concept SingularityFxPlugin =
         AudioInputBuffer<float> fin, AudioOutputBuffer<float> fout,
         AudioInputBuffer<double> din, AudioOutputBuffer<double> dout,
         int n, 
+        std::span<const MidiEvent> events,
         ParameterValues params,
         double sampleRate, 
         int maxBlockSize,
         std::string_view name, 
         const ActionValue& value)
     {
-        plugin.template process<float>  (fin,  fout, n, params);
-        plugin.template process<double> (din,  dout, n, params);
+        plugin.template process<float>  (fin,  fout, n, events, params);
+        plugin.template process<double> (din,  dout, n, events, params);
         plugin.prepare(sampleRate, maxBlockSize);
         plugin.handleAction(name, value);
         { P::getParameters() };
