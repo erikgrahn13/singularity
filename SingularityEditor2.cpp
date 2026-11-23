@@ -154,7 +154,12 @@ void SingularityEditor::updateAudio()
 
 void SingularityEditor::initializeView()
 {
+#if defined(SINGULARITY_QML_SOURCE_FILE)
+    view_->setSource(
+        QUrl::fromLocalFile(QStringLiteral(SINGULARITY_QML_SOURCE_FILE)));
+#else
     view_->loadFromModule(SINGULARITY_QML_MODULE_URI, "Main");
+#endif
     view_->setResizeMode(QQuickView::SizeRootObjectToView);
     view_->setTitle(QStringLiteral(PLUGIN_NAME));
 

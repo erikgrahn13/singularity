@@ -103,6 +103,7 @@ function(_singularity_create_plugin target)
         PLUGIN_CLASS=${PARAMS_PLUGIN_CLASS}
         SINGULARITY_QML_MODULE_URI="${qmlModuleUri}"
         $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        $<$<CONFIG:Debug>:SINGULARITY_QML_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Main.qml">
     )
 
     target_compile_features(${target} PUBLIC cxx_std_23)
