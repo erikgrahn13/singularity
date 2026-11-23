@@ -112,11 +112,11 @@ tresult PLUGIN_API VST3Controller::setComponentState (IBStream* state)
     for(int i = 0; i < numParams; ++i)
     {
         if(!streamer.readInt32u(paramID))
-            break;
+            return kResultFalse;
         if(!streamer.readDouble(value))
-            break;
-        if(auto parameter = parameters.getParameter(paramID))
-            parameter->setNormalized(value);
+            return kResultFalse;
+        if(parameters.getParameter(paramID))
+            setParamNormalized(paramID, value);
     }
 
     return kResultOk;

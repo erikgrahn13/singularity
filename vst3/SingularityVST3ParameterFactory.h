@@ -55,7 +55,7 @@ inline Steinberg::Vst::Parameter* createVst3Parameter(
             }
             else if constexpr (std::is_same_v<Type, ChoiceParameter>)
             {
-                auto* result = new Vst::StringListParameter(title.c_str(), parameter.id, unit.c_str());
+                auto* result = new Vst::StringListParameter(title.c_str(), parameter.id, unit.c_str(), flags | Vst::ParameterInfo::kIsList);
 
                 for (const auto& choice : definition.choices)
                     result->appendString(Vst::StringConvert::convert(choice).c_str());
