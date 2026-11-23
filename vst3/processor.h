@@ -453,15 +453,7 @@ public:
         {
             Vst::AudioBusBuffers* inputs = data.inputs;
             auto inputBuffers = Vst::getChannelBuffers<SampleSize>(*inputs);
-    
-            if(inputs->silenceFlags == Vst::getChannelMask(inputs->numChannels))
-            {
-                outputs->silenceFlags = Vst::getChannelMask(outputs->numChannels);
-                for(int i = 0; i < outputs->numChannels; ++i)
-                    std::memset(outputBuffers[i], 0, data.numSamples * sizeof(SampleT));
-                return;
-            }
-    
+
             if(bypassProcessor32_.isActive())
             {
                 if constexpr (SampleSize == Vst::kSample32)
