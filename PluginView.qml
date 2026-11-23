@@ -1,8 +1,9 @@
 import QtQuick
+import QtQuick.Controls
 
 Rectangle {
     id: pluginView
-    
+
     readonly property int singularityPluginViewVersion: 1
 
     Component.onCompleted: Qt.callLater(() => {
