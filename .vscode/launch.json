@@ -41,58 +41,6 @@
             "MIMode": "lldb"
         },
         {
-            "name": "EditorHost Mac",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.buildDirectory}/bin/Debug/editorhost.app/Contents/MacOS/editorhost",
-            "args": ["${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/Debug/Example Effect.vst3"],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "CMake: build",
-            "externalConsole": false,
-            "MIMode": "lldb",
-            "environment": [
-                { "name": "QSG_INFO", "value": "1" },
-                { "name": "QSG_RHI_BACKEND", "value": "metal" }
-            ],
-        },
-        {
-            "name": "EditorHost MacOS ExampleEffect QML Preview",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "/opt/homebrew/bin/qmlpreview",
-            "args": [
-                "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/editorhost.app/Contents/MacOS/editorhost",
-                "${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/${command:cmake.buildType}/Example Effect.vst3"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/examples/ExampleEffect",
-            "preLaunchTask": "CMake: build",
-            "externalConsole": false,
-            "MIMode": "lldb",
-            "targetArchitecture": "arm64",
-            "symbolLoadInfo": {
-                "loadAll": false,
-                "exceptionList": "*Example*;*singularity*;*editorhost*"
-            },
-            "setupCommands": [
-                {
-                    "description": "Keep QML Preview running after it launches EditorHost",
-                    "text": "set detach-on-fork on",
-                    "ignoreFailures": false
-                },
-                {
-                    "description": "Debug EditorHost and the loaded VST3",
-                    "text": "set follow-fork-mode child",
-                    "ignoreFailures": false
-                },
-                {
-                    "text": "set debuginfod enabled off",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
             "name": "Editorhost Windows",
             "type": "cppvsdbg",
             "request": "launch",
@@ -102,25 +50,6 @@
             "cwd": "${workspaceFolder}",
             "console": "newExternalWindow",
             "preLaunchTask": "CMake: build"
-        },
-        {
-            "name": "ExamplePlugin APP Windows",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "cwd": "${workspaceFolder}/examples/ExampleEffect",
-            "environment": [],
-            "args": []
-        },
-        {
-            "name": "ExamplePlugin APP Mac",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "cwd": "${workspaceFolder}/examples/ExampleEffect",
-            "environment": [],
-            "args": [],
-            "MIMode": "lldb"
         },
         {
             "name": "REAPER Linux",
@@ -156,11 +85,16 @@
             ]
         },
         {
-            "name": "EditorHost Linux ExampleEffect",
+            "name": "EditorHost ExampleEffect",
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/editorhost",
             "args": ["${command:cmake.buildDirectory}/examples/ExampleEffect/out/VST3/${command:cmake.buildType}/Example Effect.vst3"],
+            "osx": {
+                "program": "${command:cmake.buildDirectory}/bin/${command:cmake.buildType}/editorhost.app/Contents/MacOS/editorhost",
+                "MIMode": "lldb",
+                "setupCommands": []
+            },
             "environment": [
                 {
                     "name": "SINGULARITY_QML_PREVIEW_PORT",

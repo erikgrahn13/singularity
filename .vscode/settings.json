@@ -7,6 +7,10 @@
     "cmake.configureSettings": {
         "SINGULARITY_BUILD_EXAMPLES": true,
         "SMTG_ENABLE_VST3_HOSTING_EXAMPLES":true,
+        "XCODE_VERSION": "27.0"
+    },
+    "cmake.configureEnvironment": {
+        "XCODE_VERSION": "27.0"
     },
 
     "qt-qml.qmlls.customExePath": "/usr/bin/qmlls",
