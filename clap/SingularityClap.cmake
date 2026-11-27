@@ -40,7 +40,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(clap-validator)
 
 file(GLOB CLAP_VALIDATOR_ARCHIVE LIST_DIRECTORIES FALSE "${clap-validator_SOURCE_DIR}/*.tar.gz")
-file(ARCHIVE_EXTRACT INPUT "${CLAP_VALIDATOR_ARCHIVE}" DESTINATION "${clap-validator_SOURCE_DIR}")
+
+if(CLAP_VALIDATOR_ARCHIVE)
+    file(ARCHIVE_EXTRACT INPUT "${CLAP_VALIDATOR_ARCHIVE}" DESTINATION "${clap-validator_SOURCE_DIR}")
+endif()
 
 function(singularity_create_clap_plugin target)
 
