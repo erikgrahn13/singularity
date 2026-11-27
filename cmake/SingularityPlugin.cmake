@@ -117,6 +117,9 @@ function(_singularity_create_plugin target)
             singularity_create_vst3_plugin(${target}
                 PLUGIN_TITLE "${pluginTitle}"
             )
+        elseif(FORMAT STREQUAL "CLAP")
+            include("${SINGULARITY_ROOT_DIR}/clap/SingularityClap.cmake")
+            singularity_create_clap_plugin(${target})
         endif()
     endforeach()
 endfunction()

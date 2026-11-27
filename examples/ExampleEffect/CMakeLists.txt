@@ -8,7 +8,7 @@ project(ExampleEffect
 singularity_create_plugin(
     ${PROJECT_NAME}
     PLUGIN_NAME "Example Effect"
-    FORMATS APP VST3
+    FORMATS APP VST3 CLAP
     PLUGIN_CLASS ExampleEffect
     PLUGIN_CLASS_HEADER "ExampleEffect.h"
     QML_FILES
